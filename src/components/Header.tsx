@@ -9,11 +9,11 @@ export default function Header() {
       <Container>
         <Navbar.Brand href="/">
           <Image
-              src="/site/logo_web.png"
-              width="125"
+              src="/site/lllms-logo.png"
+              width="50"
               height="50"
               className="d-inline-block align-top logo-img"
-              alt="React Bootstrap logo"
+              alt="LLLMS logo"
             />
         </Navbar.Brand>
         <Navbar.Toggle aria-controls="basic-navbar-nav" />

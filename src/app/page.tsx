@@ -15,11 +15,11 @@ export default function Home() {
                 <div className="margin-b-40">
                     <p className="promo-block-text">
                       <Image
-                        src="/site/logo_web.png"
-                        width="375"
-                        height="150"
+                        src="/site/lllms-logo.png"
+                        width="200"
+                        height="200"
                         className="d-inline-block align-top logo-img"
-                        alt="React Bootstrap logo"
+                        alt="LLLMS logo"
                       />
                     </p>
                     <h1>{t("phrase1")} 22222</h1>
@@ -30,39 +30,9 @@ export default function Home() {
         <div className="row">
             <div className="col-md-2"></div>
             <div className="col-md-8 content">
-                We are a reliable partner in the field of web solutions development. With over 10 years of experience in providing quality software development services, we are committed to delivering effective products for your business.
-
-    Our team of skilled professionals utilizes cutting-edge advanced IT technologies and our own development standards to create custom web solutions that meet your unique needs. <br/>
-    Whether you need a simple landing page, an information web portal, or a large online store, we have the expertise to deliver a solution that exceeds your expectations.<br/>
-
-    Contact us today to learn more about our web solutions development services and how we can help you achieve your goals. 
+                Test LLLMS service. Main page.
             </div>
             <div className="col-md-2"></div>
-        </div>
-
-        <div className="row">
-            <div className="col-md-12">
-                <h5> We look forward to hearing from you!</h5>
-                <a href="https://t.me/Nadya_Bohdanova">
-                  <Image
-                    src="/site/telegram.png"
-                    width="35"
-                    height="35"
-                    className="d-inline-block align-top"
-                    alt="Telegram webeasysoft link"
-                  />
-                </a>
-                <a href="https://wa.me/375293114271">
-                  <Image
-                    src="/site/whatsapp.png"
-                    width="35"
-                    height="35"
-                    className="d-inline-block align-top"
-                    alt="Whatsapp webeasysoft link"
-                  />
-                </a><br/>
-                <a href="mailto:contact@webeasysoft.com">contact@webeasysoft.com</a> 
-            </div>
         </div>
       </main>
     </div>
