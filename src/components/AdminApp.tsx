@@ -3,7 +3,7 @@ import { Admin, Resource, ListGuesser, EditGuesser } from "react-admin";
 import {AdministratorList} from "@/src/repositories/administrators/admin-resources"
 import simpleRestProvider from "ra-data-simple-rest";
 
-const api_url = process.env.NEXT_PRIVATE_API_URL ?? 'http://localhost/api/';
+const api_url = process.env.NEXT_PRIVATE_API_URL ?? 'http://lllms-dev.ru/api';
 console.log('rest ', api_url)
 const dataProvider = simpleRestProvider(api_url);
 
