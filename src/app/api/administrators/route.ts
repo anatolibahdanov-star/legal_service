@@ -45,6 +45,7 @@ export async function GET(request: NextRequest) {
     const response = NextResponse.json(admins, { status: 200 });
     const header_str = _range[0] + '-' + _range[1] + '/' + total
     response.headers.set("Content-Range", "administrators " + header_str)
+    response.headers.set("X-Total-Count", total.toString())
     return response 
 }
 
