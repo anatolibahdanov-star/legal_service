@@ -33,9 +33,6 @@ async function handler(request: Request) {
             accept: request.headers.get('accept') ?? 'application/json',
             ['content-type']:
                 request.headers.get('content-type') ?? 'application/json',
-            // supabase authentication
-            apiKey: process.env.SUPABASE_SERVICE_ROLE ?? '',
-            Authorization: "Bearer " + process.env.SUPABASE_SERVICE_ROLE ?? '',
         },
     };
 

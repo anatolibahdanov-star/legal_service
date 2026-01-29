@@ -7,8 +7,8 @@ export const AdministratorList = () => (
             <DataTable.Col source="name" />
             <DataTable.Col source="username" />
             <DataTable.Col source="email" />
-            <DataTable.Col source="created_at" field={DateField} />
             <DataTable.Col source="is_super" field={BooleanField} />
+            <DataTable.Col source="created_at" field={DateField} />
         </DataTable>
     </List>
 );

@@ -1,20 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
-import {getAdministrators, getAdministratorsByIds, DBAdminUser} from "@/src/repositories/administrators/repo"
+import {getAdministrators, getTotalAdministrators, getAdministratorsByIds, DBAdminUser} from "@/src/repositories/administrators/repo"
 
 export const dynamic = 'force-dynamic'; // defaults to auto
 export async function GET(request: NextRequest) {
     console.log("Administrators GET request", request)
-    const requestUrlId = parseInt(request.url.split('/api/administrators/')[1]);
+    const requestUrlId = parseInt(request.url.split('/api/administrators/')[1] ?? 0);
     console.log('Administrators GET path', requestUrlId)
     const searchParams = request.nextUrl.searchParams;
-    const limit = searchParams.get('limit') ?? '10';
-    const page = searchParams.get('page') ?? '1';
-    console.log('Administrators GET limit/offset', limit, page)
+    const filter = searchParams.getAll('filter') ?? [];
+    const range = searchParams.get('range') ?? '[0,9]';
+    const _range = range.slice(1, range.length-1).split(",").map(Number);
+    const sort = searchParams.getAll('sort') ?? [];
+    // if
+    let limit = searchParams.get('limit');
+    if (!limit && _range.length > 0) {
+        limit = (_range[1] + 1).toString()
+    } else if(!limit) {
+        limit = '10'
+    }
+    let page = searchParams.get('page');
+    if (!page && _range.length > 0) {
+        page = Math.ceil((_range[1])/parseInt(limit)).toString()
+    } else if(!page) {
+        page = '1'
+    }
+    console.log('Administrators GET limit/offset', limit, page, filter, range, _range, sort, requestUrlId)
 
     let admins: DBAdminUser[] | null = []
+    let total: number = 0;
     try {
-        if (!requestUrlId) {
+        if (requestUrlId === 0) {
             admins = await getAdministrators(page, limit)
+            total = await getTotalAdministrators()
         } else {
             admins = await getAdministratorsByIds([requestUrlId.toString()])
         }
@@ -25,8 +42,10 @@ export async function GET(request: NextRequest) {
             { status: 401 }
         );
     }
-    
-    return NextResponse.json(admins, { status: 200 });
+    const response = NextResponse.json(admins, { status: 200 });
+    const header_str = _range[0] + '-' + _range[1] + '/' + total
+    response.headers.set("Content-Range", "administrators " + header_str)
+    return response 
 }
 
 export async function POST(request: Request) {
