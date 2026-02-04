@@ -21,12 +21,15 @@
     "next-auth": "^4.24.13",
     "react": "19.2.1",
     "react-bootstrap": "^2.10.10",
+    "react-chartjs-2": "^5.3.1",
     "react-dom": "19.2.1",
     "react-i18next": "^16.5.3",
     "react-admin": "^5.14.0",
     "ra-data-json-server": "^5.14.0",
     "ra-data-simple-rest": "^5.14.0",
-    "crypto-js": "^4.2.0"
+    "ra-input-rich-text": "^5.14.1",
+    "crypto-js": "^4.2.0",
+    "chart.js": "^4.5.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

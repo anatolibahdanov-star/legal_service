@@ -1,14 +1,12 @@
-import { List, DataTable, DateField, BooleanField } from 'react-admin';
+import * as React from 'react';
+import { List, ListProps } from 'react-admin';
+import StatisticDiagram from '@/src/components/admin/statisticDiagram';
+import { JSX } from 'react/jsx-runtime';
 
-export const AdministratorList = () => (
-    <List>
-        <DataTable>
-            <DataTable.Col source="admin_id" />
-            <DataTable.Col source="name" />
-            <DataTable.Col source="username" />
-            <DataTable.Col source="email" />
-            <DataTable.Col source="is_super" field={BooleanField} />
-            <DataTable.Col source="created_at" field={DateField} />
-        </DataTable>
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const StatisticList = (props: JSX.IntrinsicAttributes & ListProps<any>) => (
+    <List {...props}>
+        {/* Pass your custom component as a child */}
+        <StatisticDiagram />
     </List>
 );

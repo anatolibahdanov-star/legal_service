@@ -1,22 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import {getAdministrators, getAdministratorsByIds, DBAdminUser} from "@/src/repositories/administrators/repo"
+import {getAdministratorsByIds, saveAdministrator, deleteAdministrator, DBAdminUser} from "@/src/repositories/administrators/repo"
 
 export const dynamic = 'force-dynamic'; // defaults to auto
 export async function GET(request: NextRequest) {
     console.log("Administrators GET request", request)
     const requestUrlId = parseInt(request.url.split('/api/administrators/')[1]);
-    console.log('Administrators GET path', requestUrlId)
-    const searchParams = request.nextUrl.searchParams;
-    const limit = searchParams.get('limit') ?? '10';
-    const page = searchParams.get('page') ?? '1';
-    console.log('Administrators GET limit/offset', limit, page)
+    console.log('Administrators GET SINGLE requestUrlId', requestUrlId, typeof requestUrlId)
 
-    let admins: DBAdminUser[] | null = []
+    let admin: DBAdminUser | null = null
     try {
-        if (!requestUrlId) {
-            admins = await getAdministrators(page, limit)
-        } else {
-            admins = await getAdministratorsByIds([requestUrlId.toString()])
+        const admins = await getAdministratorsByIds([requestUrlId.toString()])
+        console.log('Administrators admins', admins)
+        if (admins !== null) {
+            admin = admins[0]
         }
     } catch(err) {
         console.error("Exception(administrator) in GET: ", (err as Error).message)
@@ -25,8 +21,10 @@ export async function GET(request: NextRequest) {
             { status: 401 }
         );
     }
-    
-    return NextResponse.json(admins, { status: 200 });
+    console.log('Administrators admin', admin)
+    const response = NextResponse.json(admin, { status: 200 });
+    response.headers.set("X-Total-Count", "1")
+    return response 
 }
 
 export async function POST(request: Request) {
@@ -34,7 +32,28 @@ export async function POST(request: Request) {
 }
 
 export async function PUT(request: Request) {
-    return handler(request);
+    console.log("Administrators PUT request", request)
+    const requestUrlId = request.url.split('/api/administrators/')[1];
+    const updatedAdmin: DBAdminUser = await request.json(); 
+
+    let admin: DBAdminUser | null = null
+    try {
+        const admins = await saveAdministrator(requestUrlId, updatedAdmin)
+        console.log('Administrators admins', admins)
+        if (admins !== null) {
+            admin = admins[0]
+        }
+    } catch(err) {
+        console.error("Exception(administrator) in PUT: ", (err as Error).message)
+        return NextResponse.json(
+            { success: false, message: 'Exception(administrator) in PUT.' },
+            { status: 401 }
+        );
+    }
+    console.log('Administrators updated admin', admin)
+    const response = NextResponse.json(admin, { status: 200 });
+    response.headers.set("X-Total-Count", "1")
+    return response
 }
 
 export async function PATCH(request: Request) {
@@ -42,7 +61,27 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-    return handler(request);
+    console.log("Administrators DELETE request", request)
+    const requestUrlId = request.url.split('/api/administrators/')[1];
+
+    let admin: DBAdminUser | null = null
+    try {
+        const admins = await deleteAdministrator(requestUrlId)
+        console.log('Administrators deleted admins', admins)
+        if (admins !== null) {
+            admin = admins[0]
+        }
+    } catch(err) {
+        console.error("Exception(administrator) in DELETE: ", (err as Error).message)
+        return NextResponse.json(
+            { success: false, message: 'Exception(administrator) in DELETE.' },
+            { status: 401 }
+        );
+    }
+    console.log('Administrators deleted admin', admin)
+    const response = NextResponse.json(admin, { status: 200 });
+    response.headers.set("X-Total-Count", "1")
+    return response
 }
 
 async function handler(request: Request) {

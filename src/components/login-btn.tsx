@@ -5,7 +5,7 @@ export default function SignInComponent() {
   if (session) {
     return (
       <>
-        Signed in as {session?.user?.email} <br />
+        {session?.user?.email} <br />
         (<a href="/admin">Admin</a>)<br />
         <button onClick={() => signOut()}>Sign out</button>
       </>
@@ -13,7 +13,6 @@ export default function SignInComponent() {
   }
   return (
     <>
-      Not signed in <br />
       <button onClick={() => signIn()}>Sign in</button>
     </>
   )

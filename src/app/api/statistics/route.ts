@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import {getAdministrators, getTotalAdministrators, addAdministrator, DBAdminUser} from "@/src/repositories/administrators/repo"
+import {getStatistics, getTotalStatistics, DBStatistic} from "@/src/repositories/statistics/repo"
 
 export const dynamic = 'force-dynamic'; // defaults to auto
-
 export async function GET(request: NextRequest) {
-    console.log("Administrators GET request", request)
+    console.log("STATISTICS GET request", request)
     const searchParams = request.nextUrl.searchParams;
     const filter = searchParams.getAll('filter') ?? [];
     const range = searchParams.get('range') ?? '[0,9]';
@@ -24,53 +23,32 @@ export async function GET(request: NextRequest) {
     } else if(!page) {
         page = '1'
     }
-    console.log('Administrators GET limit/offset', limit, page, filter)
+    console.log('STATISTICS GET limit/offset', limit, page, filter)
 
-    let admins: DBAdminUser[] | null = []
+    let statistics: DBStatistic[] | null = []
     let total: number = 0;
     try {
-        admins = await getAdministrators(page, limit, sort)
-        total = await getTotalAdministrators()
+        statistics = await getStatistics(page, limit, sort)
+        total = await getTotalStatistics()
     } catch(err) {
-        console.error("Exception(administrator) in GET: ", (err as Error).message)
+        console.error("Exception(statistics) in GET: ", (err as Error).message)
         return NextResponse.json(
-            { success: false, message: 'Exception(administrator) in GET.' },
+            { success: false, message: 'Exception(statistics) in GET.' },
             { status: 401 }
         );
     }
-    const response = NextResponse.json(admins, { status: 200 });
+    const response = NextResponse.json(statistics, { status: 200 });
     const header_str = _range[0] + '-' + _range[1] + '/' + total
-    response.headers.set("Content-Range", "administrators " + header_str)
+    response.headers.set("Content-Range", "statistics " + header_str)
     response.headers.set("X-Total-Count", total.toString())
-    console.log('ADMINISTRATORS GET result', admins)
-    return response 
-}
-
-export async function POST(request: Request) {
-    console.log("Administrators PUT request", request)
-    const insertedAdmin: DBAdminUser = await request.json(); 
-
-    let admin: DBAdminUser | null = null
-    try {
-        const admins = await addAdministrator(insertedAdmin)
-        console.log('Administrators admins', admins)
-        if (admins !== null) {
-            admin = admins[0]
-        }
-    } catch(err) {
-        console.error("Exception(administrator) in PUT: ", (err as Error).message)
-        return NextResponse.json(
-            { success: false, message: 'Exception(administrator) in PUT.' },
-            { status: 401 }
-        );
-    }
-    console.log('Administrators created admin', admin)
-    const response = NextResponse.json(admin, { status: 200 });
-    response.headers.set("X-Total-Count", "1")
     return response
 }
 
-export async function PUT(request: NextRequest) {
+export async function POST(request: Request) {
+    return handler(request);
+}
+
+export async function PUT(request: Request) {
     return handler(request);
 }
 
@@ -84,7 +62,7 @@ export async function DELETE(request: Request) {
 
 async function handler(request: Request) {
     // get part after /api/admin/ in string url
-    const requestUrl = request.url.split('/api/administrator')[1];
+    const requestUrl = request.url.split('/api/statistics')[1];
 
     // build the CRUD request based on the incoming request
     const url = `${process.env.SUPABASE_URL}/rest/v1${requestUrl}`;

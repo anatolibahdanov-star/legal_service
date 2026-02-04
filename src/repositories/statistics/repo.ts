@@ -1,45 +1,40 @@
 import {User} from "next-auth"
 import pool from '@/src/libs/db';
 import { RowDataPacket } from 'mysql2/promise';
+import { DateTime } from "next-auth/providers/kakao";
 
-export interface DBAdminUser extends RowDataPacket, User {
+export interface DBStatistic extends RowDataPacket, User {
   id: string;
-  name: string;
-  email: string;
-  password: string;
-  admin_id: number;
-  username: string;
-  is_super: boolean;
-  status: number;
+  st_date: DateTime;
+  avg_llm_time: number;
+  avg_manager_time: number;
+  avg_request_time: number;
 }
 
 interface CountResult extends RowDataPacket {
   counter: number; // The alias from the SQL query
 }
 
-export async function getAdministrators(page: string = '1', _limit: string = '10'): Promise<DBAdminUser[] | null> {
-    const sql: string =  `SELECT u.id as id, u.name as name, u.email as email, ad.id as admin_id, ad.username as username, 
-    ad.password as password, ad.is_super as is_super, ad.status as status 
-    FROM user u JOIN administrator ad ON u.id=ad.user_id
-    ORDER BY ad.id DESC
-    LIMIT ?
+export async function getStatistics(page: string = '1', _limit: string = '10', _sorter: string[] = ['id', 'DESC']): Promise<DBStatistic[] | null> {
+    const orderBy = getStatisticOrder(_sorter);
+    const sql: string =  `SELECT *  
+    FROM statistic 
+    ORDER BY ` + orderBy +
+    ` LIMIT ?
     OFFSET ?`;
     const limit = parseInt(_limit) ?? 10
     const offset = ((parseInt(page) ?? 1) - 1) * limit
-    console.log('sql ', sql)
-    const [rows] = await pool.query<DBAdminUser[]>({sql: sql, values: [limit, offset]});
+    const [rows] = await pool.query<DBStatistic[]>({sql: sql, values: [limit, offset]});
     if (rows.length === 0) {
         return []
     }
     return rows
 }
 
-export async function getTotalAdministrators(): Promise<number> {
-    const sql: string =  `SELECT COUNT(ad.id) as counter
-    FROM user u JOIN administrator ad ON u.id=ad.user_id
-    ORDER BY ad.id DESC`;
+export async function getTotalStatistics(): Promise<number> {
+    const sql: string =  `SELECT COUNT(id) as counter FROM statistic`;
     const [rows] = await pool.query<CountResult[]>({sql: sql});
-    console.log('sql counter ', rows)
+    console.log('STATISTICS sql counter ', rows)
     if (rows.length === 0) {
         return 0
     }
@@ -47,14 +42,12 @@ export async function getTotalAdministrators(): Promise<number> {
     return totalCount
 }
 
-export async function getAdministratorsByIds(ids: string[]): Promise<DBAdminUser[] | null> {
-    const sql: string =  `SELECT u.id as id, u.name as name, u.email as email, ad.id as admin_id, ad.username as username, 
-    ad.password as password, ad.is_super as is_super, ad.status as status 
-    FROM user u JOIN administrator ad ON u.id=ad.user_id
-    WHERE ad.id IN (?)`;
-    const [rows] = await pool.query<DBAdminUser[]>({sql: sql, values: ids.join(",")});
-    if (rows.length === 0) {
-        return []
+export function getStatisticOrder(orderBy:string[]): string {
+    console.log('STATISTICS orderBy ', orderBy)
+    if(orderBy && orderBy.length>0) {
+        const field = orderBy[0] ?? "id"
+        const sorter = ["ASC", "DESC"].includes(orderBy[1])? orderBy[1] : "ASC"
+        return field + ' ' + sorter
     }
-    return rows
+    return "id DESC"
 }
