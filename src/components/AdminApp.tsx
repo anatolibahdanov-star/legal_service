@@ -7,8 +7,8 @@ import {AdministratorAdminIcon, StatisticAdminIcon, QuestionAdminIcon} from '@/s
 import simpleRestProvider from "ra-data-simple-rest";
 
 
-// const api_url = process.env.API_URL ?? 'http://lllms-dev.ru/api';
-const api_url = process.env.API_URL ?? 'http://localhost/api';
+const api_url = process.env.API_URL ?? 'http://lllms-dev.ru/api';
+// const api_url = process.env.API_URL ?? 'http://localhost/api';
 console.log('api url', process.env.API_URL, api_url)
 console.log('rest ', api_url)
 const dataProvider = simpleRestProvider(api_url);
