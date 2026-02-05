@@ -1,22 +1,13 @@
 'use client'; 
 
-// import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+// import 'bootstrap/dist/css/bootstrap.min.css';
 import "./globals.css";
-import 'bootstrap/dist/css/bootstrap.min.css';
-import Header from "@/src/components/Header";
-import Footer from "@/src/components/Footer";
+// import Header from "@/src/components/Header";
+import { Header } from "@/src/app/components/header";
+// import Footer from "@/src/components/Footer";
+import { Footer } from "@/src/app/components/footer";
 import {NextAuthProvider} from "@/src/app/providers/NextAuthProvider"
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+import '@/src/styles/index.css';
 
 export default function RootLayout({
   children,
@@ -26,11 +17,13 @@ export default function RootLayout({
   return (
     <html lang="en" dir="ltr">
       <body>
-        <NextAuthProvider>
-          <Header />
-          {children}
-          <Footer />
-        </NextAuthProvider>
+        <div className="min-h-screen bg-[#fefdf9]">
+          <NextAuthProvider>
+            <Header />
+            {children}
+            <Footer />
+          </NextAuthProvider>
+        </div>
       </body>
     </html>
   );

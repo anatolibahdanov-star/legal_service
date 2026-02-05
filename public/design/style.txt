@@ -1,0 +1,11 @@
+Body  #FCFBF7
+body font #29282B
+H1, H2 , H3 #87B7CE  цветные 
+Block colour,  button  #3D4B5E
+button #87B7CE голубые
+
+https://www.figma.com/design/RM6W2M0snYd1DcxeXBZ17h/Lawyer-AI?node-id=5-1554&t=7bGscYTaVTmmZRzU-1
+
+font style    Inter
+H1 		48px Inter bold 
+

@@ -2,6 +2,11 @@
 import Image from 'next/image'
 import { initI18next } from "@/src/app/i18n/server";
 import type { Locale } from "@/i18n.config";
+import { StatsBar } from "@/src/app/components/stats-bar";
+import { Hero } from "@/src/app/components/hero";
+import { AboutUs } from "@/src/app/components/about-us";
+import { HowItWorks } from "@/src/app/components/how-it-works";
+import { Services } from "@/src/app/components/services";
 
 export default async function Home({
   params,
@@ -16,30 +21,11 @@ export default async function Home({
 
   return (
     <>
-        <div className="row">
-            <div className="col-md-12">
-                <div className="margin-b-40">
-                    <p className="promo-block-text">
-                      <Image
-                        src="/site/lllms-logo.png"
-                        width="200"
-                        height="200"
-                        className="d-inline-block align-top logo-img"
-                        alt="LLLMS logo"
-                      />
-                    </p>
-                    <h1>{tHome("phrase1")}</h1>
-                </div>
-            </div>
-        </div>
-
-        <div className="row">
-            <div className="col-md-2"></div>
-            <div className="col-md-8 content">
-                Test LLLMS service. Main page.
-            </div>
-            <div className="col-md-2"></div>
-        </div>
+      <StatsBar />
+      <Hero />
+      <AboutUs />
+      <HowItWorks />
+      <Services />
     </>
   );
 }
