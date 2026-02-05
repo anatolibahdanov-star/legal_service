@@ -1,8 +1,8 @@
-// import Image from "next/image";
+import { StatusPage } from "@/src/app/components/status-page";
 
 
 export default function ResultPage() {
   return (
-    <div className="content">Result</div>
+    <StatusPage />
   );
 }
