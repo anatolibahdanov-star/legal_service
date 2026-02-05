@@ -1,4 +1,4 @@
-import themisImage from "figma:asset/0712ad56d911edb4b949befba2fb4b1a0f147575.png";
+import Image from 'next/image'
 
 export function BankruptcyConditions() {
   const conditions = [
@@ -13,10 +13,12 @@ export function BankruptcyConditions() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center">
           {/* Изображение Фемиды слева */}
           <div className="flex justify-center lg:justify-start">
-            <img
-              src={themisImage}
-              alt="Фемида"
+            <Image
+              src="/assets/0712ad56d911edb4b949befba2fb4b1a0f147575.png"
+              width={450}
+              height={0}
               className="w-full max-w-[380px] lg:max-w-[450px] h-auto"
+              alt="LLLMS Фемида"
             />
           </div>
 
