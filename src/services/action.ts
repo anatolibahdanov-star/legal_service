@@ -9,6 +9,7 @@ export async function submitFormAction(formData: FormData) {
   console.log('submit action', name, email, topic, question)
 
   const api_url = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost/api';
+  const openapi_request_timeout = parseInt(process.env.NEXT_PUBLIC_OPENAI_TIMEOUT ?? '1')
   console.log('api url', process.env.NEXT_PUBLIC_API_URL, api_url)
   const request = { "name": name, "email": email, "topic": topic, "question": question }
   console.log('submit action request', request)
@@ -19,6 +20,7 @@ export async function submitFormAction(formData: FormData) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify(request),
+    signal: AbortSignal.timeout(openapi_request_timeout * 60 * 1000)
   });
 
   console.log('submit action response', response)
