@@ -1,7 +1,8 @@
 import {User} from "next-auth"
 import pool from '@/src/libs/db';
-import { RowDataPacket } from 'mysql2/promise';
+import { OkPacket, RowDataPacket, FieldPacket } from 'mysql2/promise';
 import { DateTime } from "next-auth/providers/kakao";
+import {addUser, DBUser} from "@/src/repositories/users/repo"
 
 export interface DBQuestions extends RowDataPacket, User {
   id: string;
@@ -13,6 +14,15 @@ export interface DBQuestions extends RowDataPacket, User {
   final_reply_id: string;
   status: number;
   created_at: DateTime;
+}
+
+export interface UserRequest {
+    name: string;
+    email: string;
+    topic: string;
+    question: string;
+    llm?: string;
+    chat?: boolean;
 }
 
 interface CountResult extends RowDataPacket {
@@ -82,6 +92,73 @@ export function getAdminQuestionOrder(orderBy:string[]): string {
         return field + ' ' + sorter
     }
     return "q.id DESC"
+}
+
+export async function addQuestion(question: DBQuestions): Promise<DBQuestions[] | null> {
+
+    const userInsertSQL = `INSERT INTO question(name, email) VALUES(?, ?)`
+    const [resultUserInsert, ufields] = await pool.execute(userInsertSQL, [question.name, question.email]) as [OkPacket, FieldPacket[]];
+    console.log('inserted data ', resultUserInsert, ufields)
+    const insertedUserId = resultUserInsert?.insertId
+    if (!insertedUserId) {
+        console.log("ADMIN repo INSERT User: empty inserted user id", question, ufields)
+        return null
+    }
+
+    const adminInsertSQL = `INSERT INTO administrator(username, password, created_admin_id, user_id, status, is_super) VALUES(?, MD5(?), ?, ?, ?, ?)`
+    const [resultAdminInsert, afields] = await pool.execute(adminInsertSQL, 
+        [question.username, question.password, 2, insertedUserId, question.status, question.is_super]) as [OkPacket, FieldPacket[]];
+    console.log('inserted data2 ', resultAdminInsert, afields)
+    const insertedAdminId = resultAdminInsert.insertId
+    if (!insertedAdminId) {
+        console.log("ADMIN repo INSERT Admin: empty inserted admin id", question, afields)
+        return null
+    }
+    return getQuestionsByIds([insertedAdminId.toString()])
+}
+
+export async function addClientQuestion(data: UserRequest): Promise<DBQuestions[] | null> {
+    const _user: DBUser = {
+        id: '',
+        name: data.name,
+        email: data.email
+    } as DBUser
+    const users = await addUser(_user)
+    if(users === null) {
+        console.error("CLIENT ADD QUESTION: can not create user", _user)
+        return null
+    }
+    const user = users[0]
+
+    const questionInsertSQL = `INSERT INTO question(user_id, question, status) VALUES(?, ?, ?)`
+    const [resultQuestionInsert, ufields] = await pool.execute(questionInsertSQL, [user.id, data.question, 1]) as [OkPacket, FieldPacket[]];
+    console.log('CLIENT ADD QUESTION inserted data ', resultQuestionInsert, ufields)
+    const insertedQuestionId = resultQuestionInsert?.insertId
+    if (!insertedQuestionId) {
+        console.log("CLIENT ADD QUESTION: empty inserted question id", data, ufields)
+        return null
+    }
+
+    const reply_status = data.llm !== '' ? 1 : 0 
+
+    const replyInsertSQL = `INSERT INTO reply(question_id, reply, status) VALUES(?, ?, ?)`
+    const [resultReplyInsert, rfields] = await pool.execute(replyInsertSQL, [insertedQuestionId, data.llm, reply_status]) as [OkPacket, FieldPacket[]];
+    console.log('CLIENT ADD REPLY inserted data ', resultReplyInsert, rfields)
+    const insertedReplyId = resultReplyInsert?.insertId
+    if (!insertedReplyId) {
+        console.log("CLIENT ADD REPLY: empty inserted reply id", data, rfields)
+        return null
+    }
+
+    const finalReplyInsertSQL = `INSERT INTO final_reply(reply_id, admin_id, final_reply, status) VALUES(?, ?, ?, ?)`
+    const [resultFinalReplyInsert, frfields] = await pool.execute(finalReplyInsertSQL, [insertedReplyId, 2, '', 0]) as [OkPacket, FieldPacket[]];
+    console.log('CLIENT ADD FINAL REPLY inserted data ', resultFinalReplyInsert, frfields)
+    const insertedFinalReplyId = resultFinalReplyInsert?.insertId
+    if (!insertedFinalReplyId) {
+        console.log("CLIENT ADD FINAL REPLY: empty inserted final reply id", data, frfields)
+        return null
+    }
+    return getQuestionsByIds([insertedQuestionId.toString()])
 }
 
 export async function saveQuestion(id: string, questionIn: DBQuestions): Promise<DBQuestions[] | null> {

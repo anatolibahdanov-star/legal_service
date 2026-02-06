@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Send, Clock, Users, CheckCircle } from "lucide-react";
+import {submitFormAction} from "@/src/services/action"
 import Image from 'next/image'
 
 export function Hero() {
@@ -12,14 +13,6 @@ export function Hero() {
     question: "",
     agree: false,
   });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (formData.agree) {
-      // Переход на страницу подтверждения
-      window.location.hash = "success";
-    }
-  };
 
   return (
     <section className="bg-[#fefdf9] pt-[20px] pb-[20px] lg:pt-[20px] lg:pb-[20px] rounded-b-[60px]">
@@ -44,9 +37,9 @@ export function Hero() {
                 <div className="flex-shrink-0">
                   <Image
                     src="/assets/0712ad56d911edb4b949befba2fb4b1a0f147575.png"
-                    width={56}
-                    height={0}
-                    className="w-56 h-auto"
+                    width={500}
+                    height={298}
+                    className="w-64 h-auto"
                     alt="LLLMS Фемида"
                   />
                 </div>
@@ -102,7 +95,7 @@ export function Hero() {
               </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form action={submitFormAction} className="space-y-5">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="email" className="block text-sm font-medium text-white/90 mb-2">
@@ -111,6 +104,7 @@ export function Hero() {
                   <input
                     type="email"
                     id="email"
+                    name="email"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     placeholder="example@example.com"
@@ -126,6 +120,7 @@ export function Hero() {
                   <input
                     type="text"
                     id="name"
+                    name="name"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     placeholder="Имя"
@@ -142,6 +137,7 @@ export function Hero() {
                 <input
                   type="text"
                   id="topic"
+                  name="topic"
                   value={formData.topic}
                   onChange={(e) => setFormData({ ...formData, topic: e.target.value })}
                   placeholder="Тема вопроса"
@@ -156,6 +152,7 @@ export function Hero() {
                 </label>
                 <textarea
                   id="question"
+                  name="question"
                   rows={6}
                   value={formData.question}
                   onChange={(e) => setFormData({ ...formData, question: e.target.value })}
