@@ -8,9 +8,9 @@ export async function submitFormAction(formData: FormData) {
   const question = formData.get("question");
   console.log('submit action', name, email, topic, question)
 
-  const api_url = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost/api';
+  const api_url = process.env.API_URL ?? 'http://localhost/api';
   const openapi_request_timeout = parseInt(process.env.NEXT_PUBLIC_OPENAI_TIMEOUT ?? '1')
-  console.log('api url', process.env.NEXT_PUBLIC_API_URL, api_url)
+  console.log('api url', process.env.API_URL, api_url)
   const request = { "name": name, "email": email, "topic": topic, "question": question }
   console.log('submit action request', request)
   // Call your external API here
@@ -35,5 +35,5 @@ export async function submitFormAction(formData: FormData) {
   const result = await response.json();
   console.log('submit action result', result)
   const msg = "Your request successfully received. Please wait for our response ASAP on special reply page created for you."
-  redirect('/consultation/' + result.id + '/?msg=' + encodeURIComponent(msg));
+  redirect('/consultation/' + result.uuid + '/?msg=' + encodeURIComponent(msg));
 }

@@ -57,7 +57,7 @@ function Image() {
   return (
     <div className="absolute h-[267.703px] left-[759px] top-[17px] w-[448px]" data-name="Image (О компании)">
       <StImage
-        src="/assets/43cf47f0ffe404b068e32bb2ded98cd50bbdd9d5.png"
+        src="/design/aboutcompany.png"
         width={0}
         height={0}
         className="absolute inset-0 max-w-none object-contain pointer-events-none size-full"

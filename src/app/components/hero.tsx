@@ -21,22 +21,22 @@ export function Hero() {
           {/* Левая часть - описание */}
           <div className="space-y-6">
             <h1 className="text-4xl lg:text-5xl font-bold text-[#252623] leading-[1.1]">
-              Задавайте вопросы юристам по <span className="text-[#8faaba] whitespace-nowrap">Уголовным делам</span>
+              Задавайте вопросы опытным юристам <span className="text-[#8faaba] whitespace-nowrap">онлайн</span>.
             </h1>
             
             <p className="text-xl text-[#29282b]">
-              Бесплатная юридическая помощь в сложных и экстренных ситуациях
+              Онлайн-консультации юристов для решения правовых вопросов в повседневных и нестандартных ситуациях.
             </p>
             
             <p className="text-2xl text-[#8faaba] font-semibold">
-              Анонимно, безопасно и без личного визита к юристу
+              Анонимно, безопасно и без личного визита к юристу.
             </p>
 
             <div className="bg-[#fefdf9] rounded-lg p-6 space-y-4">
               <div className="flex items-start gap-6">
                 <div className="flex-shrink-0">
                   <Image
-                    src="/assets/0712ad56d911edb4b949befba2fb4b1a0f147575.png"
+                    src="/design/femida.png"
                     width={500}
                     height={298}
                     className="w-64 h-auto"
@@ -50,7 +50,7 @@ export function Hero() {
                         /
                       </span>
                       <span className="text-[#29282b] text-base leading-relaxed">
-                        Консультации при задержании, допросе, обыске и иных следственных действиях
+                        Консультации по гражданским и административным вопросам, включая недвижимость.
                       </span>
                     </li>
                     <li className="flex items-start gap-3">
@@ -58,7 +58,7 @@ export function Hero() {
                         /
                       </span>
                       <span className="text-[#29282b] text-base leading-relaxed">
-                        Разъяснение прав подозреваемых, обвиняемых, свидетелей и потерпевших
+                        Разъяснение прав и обязанностей физических лиц в типовых и сложных правовых ситуациях.
                       </span>
                     </li>
                     <li className="flex items-start gap-3">
@@ -66,7 +66,7 @@ export function Hero() {
                         /
                       </span>
                       <span className="text-[#29282b] text-base leading-relaxed">
-                        Первичная правовая оценка ситуации и рекомендации по дальнейшим действиям
+                        Первичная правовая оценка и рекомендации по дальнейшим действиям.
                       </span>
                     </li>
                   </ul>
@@ -179,7 +179,7 @@ export function Hero() {
                   required
                 />
                 <label htmlFor="agree" className="text-xs text-white/60 leading-relaxed">
-                  Нажимая кнопку «Далее», я принимаю условия Пользовательского соглашения и условия Политики конфиденциальности.
+                  Нажимая кнопку «Оставить заявку», я принимаю условия Пользовательского соглашения и условия Политики конфиденциальности.
                 </label>
               </div>
             </form>

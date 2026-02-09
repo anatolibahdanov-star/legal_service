@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {addClientQuestion, getQuestions, getTotalQuestions, DBQuestions, UserRequest} from "@/src/repositories/requests/repo"
-import OpenAI from "openai";
 
 export const dynamic = 'force-dynamic'; // defaults to auto
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
 
 export async function GET(request: NextRequest) {
     console.log("QUESTIONS GET request", request)
@@ -55,9 +50,7 @@ export async function POST(request: Request) {
     console.log("QUESTIONS POST request", request)
     const insertedQuestion: UserRequest = await request.json(); 
     console.log("QUESTIONS POST request json", insertedQuestion)
-
-    const llm = await sendIIBot(insertedQuestion.question)
-    insertedQuestion.llm = llm ?? ''
+    insertedQuestion.llm = ''
 
     let question: DBQuestions | null = null
     try {
@@ -77,24 +70,6 @@ export async function POST(request: Request) {
     const response = NextResponse.json(question, { status: 200 });
     response.headers.set("X-Total-Count", "1")
     return response
-}
-
-export async function sendIIBot(question: string): Promise<string | null | undefined> {
-    const hints = '\nResponse translate to Russian language.\nLimit response with 1500 symbols.'
-    try {
-        const response = await openai.responses.create({
-            model: "gpt-5-nano",
-            input: question + hints,
-            store: true,
-        });
-        if(response) {
-            return response.output_text
-        }
-        console.error("SEND GPT: Empty response");
-    } catch (error) {
-        console.error("SEND GPT: Error generating response:", error);
-    }
-    return null
 }
 
 export async function PUT(request: Request) {

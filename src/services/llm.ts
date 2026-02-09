@@ -1,56 +1,33 @@
-// Define the expected types for the request body and response data
-export interface Message {
-  role: 'user' | 'assistant' | 'system';
-  content: string;
-}
+import OpenAI from "openai";
+import * as fs from 'fs';
+import path from 'path';
 
-export interface ChatCompletionRequestBody {
-  model: string;
-  messages: Message[];
-  stream?: boolean; // Optional, set to true for streaming responses
-}
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
-export interface ChatCompletionResponse {
-  id: string;
-  choices: {
-    index: number;
-    message: Message;
-    finish_reason: string;
-  }[];
-  // ... other fields
-}
+export async function sendIIBot(question: string): Promise<string | null | undefined> {
+    let hints = '\nResponse translate to Russian language.\nLimit response with 1500 symbols.'
+    const filePath: string = path.join(process.cwd(), 'src/services/prompt_7.1.md');
+    try {
+        hints = fs.readFileSync(filePath, 'utf-8');
+    } catch (error) {
+      console.error("SEND GPT: Error reading PROMPT file:", error, filePath);
+    }
 
-/**
- * Sends a request to the OpenAI chat completions API.
- * @param messages The conversation history and current user message.
- * @param apiKey Your OpenAI API key.
- * @returns A Promise that resolves to the API response data.
- */
-export async function sendChatRequest(messages: Message[], apiKey: string): Promise<ChatCompletionResponse> {
-  const url = "https://api.openai.com";
-
-  const requestBody: ChatCompletionRequestBody = {
-    model: "gpt-5-nano", // Or another model like "gpt-4"
-    messages: messages,
-    // stream: false // Default is false
-  };
-
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify(requestBody),
-  });
-
-  // Check for HTTP errors
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(`API request failed: ${errorData.error.message || response.statusText}`);
-  }
-
-  // Parse the response body as JSON
-  const data: ChatCompletionResponse = await response.json();
-  return data;
+    try {
+        const response = await openai.responses.create({
+            model: process.env.OPENAI_MODEL,
+            input: question + hints,
+            store: true,
+            reasoning: {"effort": "medium"},
+        });
+        if(response) {
+            return response.output_text
+        }
+        console.error("SEND GPT: Empty response", question);
+    } catch (error) {
+        console.error("SEND GPT: Error generating response:", error, question);
+    }
+    return null
 }

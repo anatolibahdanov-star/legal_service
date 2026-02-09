@@ -1,57 +1,45 @@
+'use client';
+
+import { DBQuestions } from '@/src/repositories/requests/repo';
 import { Shield, Lock, Scale, CheckCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { format } from 'date-fns';
 
 interface StatusPageProps {
   caseDescription?: string;
 }
 
 export function StatusPage({ caseDescription }: StatusPageProps) {
-  const answerContent = {
-    qualification: {
-      title: "Возможная квалификация",
-      text: "По описанным обстоятельствам ситуация может подпадать под ст. 158 УК РФ (Кража) — тайное хищение чужого имущества.",
-      points: [
-        "имущество принадлежит другому лицу",
-        "изъятие произошло тайно",
-        "был умысел на присвоение"
-      ]
-    },
-    responsibility: {
-      title: "От чего зависит ответственность",
-      text: "Квалификация и тяжесть последствий зависят от:",
-      points: [
-        "стоимости имущества",
-        "наличия значительного ущерба",
-        "проникновения в помещение или жилище",
-        "совершения деяния группой лиц",
-        "наличия предыдущих судимостей"
-      ]
-    },
-    consequences: {
-      title: "Возможные последствия",
-      text: "Ст. 158 УК РФ предусматривает ответственность от штрафа и обязательных работ до лишения свободы (в более тяжёлых случаях — до 10 лет)."
-    },
-    defense: {
-      title: "Что важно для защиты",
-      text: "Ключевое значение имеют:",
-      points: [
-        "доказанность умысла",
-        "обстоятельства изъятия имущества",
-        "возврат ущерба",
-        "смягчающие обстоятельства (ст. 61 УК РФ)",
-        "процессуальные нарушения со стороны следствия"
-      ]
-    },
-    actions: {
-      title: "Рекомендуемые действия сейчас",
-      text: "До консультации с адвокатом:",
-      points: [
-        "не давайте показаний без защитника",
-        "внимательно читайте документы перед подписью",
-        "уточните свой процессуальный статус"
-      ],
-      footer: "Раннее участие адвоката существенно влияет на исход дела по ст. 158 УК РФ."
-    }
-  };
+  const [data, setData] = useState<DBQuestions|null>(null);
+  const slug = caseDescription
+
+  useEffect(() => {
+    const intervalId = setInterval(async () => {
+      const response = await fetch('/api/requests/' + slug + '/');
+      const newData: DBQuestions = await response.json();
+      setData(newData); // Updating state causes the component to re-render
+    }, 5000); // Fetch every 5 seconds
+
+    return () => clearInterval(intervalId); // Cleanup
+  }, []);
+
+  const answer = data && [4].includes(data.status) && data.final_reply ? 
+    <>
+      <h2 className="text-3xl font-bold text-white mb-8">
+        Первичная правовая оценка вашей ситуации
+      </h2>
+
+      {/* Блок ответа юриста */}
+      <div className="space-y-6 mb-8">
+        <div className="border-l-4 border-[#8faaba] pl-6">
+          <div className="text-white/90 leading-relaxed">
+            <div dangerouslySetInnerHTML={{ __html: data.final_reply }} />
+          </div>
+        </div>
+      </div>
+    </> :
+    ``;
+
 
   const educationalLinks = [
     {
@@ -67,6 +55,9 @@ export function StatusPage({ caseDescription }: StatusPageProps) {
       description: 'Этапы уголовного процесса и роль адвоката'
     }
   ];
+
+  console.log('Component consultation slug', slug)
+  console.log('Component consultation data', data)
 
   return (
     <div className="min-h-screen bg-[#fefdf9]">
@@ -108,125 +99,16 @@ export function StatusPage({ caseDescription }: StatusPageProps) {
               <span className="text-sm font-medium text-white/70">Ваше обращение:</span>
             </div>
             <p className="text-xl font-semibold text-white mb-6">
-              № 145 от 28.01.2026
+              {data ? ( '№ ' + data.id + ' от ' + format(new Date(data.created_at), "dd.mm.yyyy")) : 'Ваша заявка еще не взята в разработку.'}
             </p>
             <p className="text-lg text-white/90">
-              Ответ адвоката Михайлова Т.В. готов
+              {data && [3, 4].includes(data.status) ? ('Ответ адвоката ' + data.lawyer + ' готов.') : ''}
             </p>
           </div>
 
           {/* Контент в зависимости от статуса */}
           <>
-            {/* Заголовок ответа */}
-            <h2 className="text-3xl font-bold text-white mb-8">
-              Первичная правовая оценка вашей ситуации
-            </h2>
-
-            {/* Блок ответа юриста */}
-            <div className="space-y-6 mb-8">
-              <div className="border-l-4 border-[#8faaba] pl-6">
-                <h3 className="text-lg font-bold text-white mb-3">
-                  {answerContent.qualification.title}
-                </h3>
-                <p className="text-white/90 leading-relaxed">
-                  {answerContent.qualification.text}
-                </p>
-                <ul className="space-y-2 mt-2">
-                  {answerContent.qualification.points.map((point, index) => (
-                    <li key={index} className="flex items-start gap-3">
-                      <div className="w-2 h-2 rounded-full bg-[#8faaba] mt-2 flex-shrink-0" />
-                      <span className="text-white/80">
-                        {point}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="border-l-4 border-[#8faaba] pl-6">
-                <h3 className="text-lg font-bold text-white mb-3">
-                  {answerContent.responsibility.title}
-                </h3>
-                <p className="text-white/90 leading-relaxed">
-                  {answerContent.responsibility.text}
-                </p>
-                <ul className="space-y-2 mt-2">
-                  {answerContent.responsibility.points.map((point, index) => (
-                    <li key={index} className="flex items-start gap-3">
-                      <div className="w-2 h-2 rounded-full bg-[#8faaba] mt-2 flex-shrink-0" />
-                      <span className="text-white/80">
-                        {point}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="border-l-4 border-[#8faaba] pl-6">
-                <h3 className="text-lg font-bold text-white mb-3">
-                  {answerContent.consequences.title}
-                </h3>
-                <p className="text-white/90 leading-relaxed">
-                  {answerContent.consequences.text}
-                </p>
-              </div>
-
-              <div className="border-l-4 border-[#8faaba] pl-6">
-                <h3 className="text-lg font-bold text-white mb-3">
-                  {answerContent.defense.title}
-                </h3>
-                <p className="text-white/90 leading-relaxed">
-                  {answerContent.defense.text}
-                </p>
-                <ul className="space-y-2 mt-2">
-                  {answerContent.defense.points.map((point, index) => (
-                    <li key={index} className="flex items-start gap-3">
-                      <div className="w-2 h-2 rounded-full bg-[#8faaba] mt-2 flex-shrink-0" />
-                      <span className="text-white/80">
-                        {point}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="border-l-4 border-[#8faaba] pl-6">
-                <h3 className="text-lg font-bold text-white mb-3">
-                  {answerContent.actions.title}
-                </h3>
-                <p className="text-white/90 leading-relaxed">
-                  {answerContent.actions.text}
-                </p>
-                <ul className="space-y-2 mt-2">
-                  {answerContent.actions.points.map((point, index) => (
-                    <li key={index} className="flex items-start gap-3">
-                      <div className="w-2 h-2 rounded-full bg-[#8faaba] mt-2 flex-shrink-0" />
-                      <span className="text-white/80">
-                        {point}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-                <p className="text-sm text-white/80 mt-4">
-                  {answerContent.actions.footer}
-                </p>
-              </div>
-            </div>
-
-            {/* Блок "Что делать дальше" */}
-            <div className="bg-[#fefdf9] rounded-2xl p-6">
-              <h3 className="text-xl font-bold text-[#29282b] mb-4">
-                Рекомендуемый следующий шаг
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <button className="w-full bg-[#8faaba] hover:bg-[#7a8fa0] text-white font-semibold py-4 px-6 rounded-xl transition-colors">
-                  Задать уточняющий вопрос по моему случаю
-                </button>
-                <button className="w-full bg-[#29282b] hover:bg-[#3d3c3f] text-white font-semibold py-4 px-6 rounded-xl transition-colors">
-                  Связаться с адвокатом
-                </button>
-              </div>
-            </div>
+            {answer}
           </>
         </div>
       </div>

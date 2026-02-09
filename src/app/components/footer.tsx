@@ -1,5 +1,6 @@
 import { Mail, Phone, MapPin } from "lucide-react";
 import Image from 'next/image'
+import Link from 'next/link';
 
 export function Footer() {
   return (
@@ -10,19 +11,19 @@ export function Footer() {
           <div>
             <div className="flex items-center gap-3 mb-4">
               <Image
-                src="/assets/ade02f125857301f6a372fe5362b23131e9d900d.png"
+                src="/design/logowhite.svg"
                 width={9}
                 height={9}
                 className="w-9 h-9 object-contain"
                 alt="LLLMS Logo"
               />
               <div>
-                <h3 className="text-lg font-bold">Адвокат онлайн</h3>
-                <p className="text-xs text-white/60">Уголовные дела. Онлайн-консультации.</p>
+                <h3 className="text-lg font-bold">ЮристПро онлайн</h3>
+                <p className="text-xs text-white/60">Быстрая юридическая помощь онлайн.</p>
               </div>
             </div>
             <p className="text-white/70 text-sm mb-4">
-              Профессиональная юридическая помощь и консультации по уголовным делам.
+              Профессиональная юридическая помощь и консультации.
             </p>
             <p className="text-white/70 text-sm">
               Работаем с 2014 года. Более 5000 успешных дел.
@@ -69,14 +70,10 @@ export function Footer() {
                 </a>
               </li>
               <li>
-                <a href="/about" className="hover:text-white transition-colors">
-                  О нас
-                </a>
+                <Link href="/about" className="hover:text-white transition-colors">О нас</Link>
               </li>
               <li>
-                <a href="/contact" className="hover:text-white transition-colors">
-                  Контакты
-                </a>
+                <Link href="/contact" className="hover:text-white transition-colors">Контакты</Link>
               </li>
             </ul>
           </div>
@@ -85,15 +82,11 @@ export function Footer() {
         <div className="border-t border-white/20 pt-8 mt-8">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-sm text-white/70">
-              © 2024 Адвокат онлайн. Все права защищены.
+              © 2026 ЮристПро. Все права защищены.
             </p>
             <div className="flex gap-6 text-sm text-white/70">
-              <a href="/privacy_policy" className="hover:text-white transition-colors">
-                Политика конфиденциальности
-              </a>
-              <a href="/terms_and_conditions" className="hover:text-white transition-colors">
-                Пользовательское соглашение
-              </a>
+              <Link href="/privacy_policy" className="hover:text-white transition-colors">Политика конфиденциальности</Link>
+              <Link href="/terms_and_conditions" className="hover:text-white transition-colors">Пользовательское соглашение</Link>
             </div>
           </div>
         </div>

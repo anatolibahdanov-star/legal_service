@@ -50,9 +50,9 @@ export default async function AboutPage({
               {/* Left - Image */}
               <div className="rounded-[24px] overflow-hidden">
                 <Image
-                  src="/assets/10f5baf3688d266721960b87abe3fe9722fdc500.png"
-                  width={32}
-                  height={48}
+                  src="/design/aboutus.jpg"
+                  width={500}
+                  height={358}
                   className="w-full h-auto"
                   alt="LLLMS Команда юристов"
                 />
@@ -72,22 +72,22 @@ export default async function AboutPage({
                     О компании
                   </h2>
                   <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold text-[20px] leading-[1.5] text-[#87b7ce] mb-6">
-                    Защита прав в уголовном процессе — наша специализация с 2009 года
+                    С 2014 года мы помогаем защищать права собственников и участников сделок с недвижимостью.
                   </p>
                   <p className="font-['Inter:Regular',sans-serif] text-[18px] leading-[1.7] text-[#29282b]">
-                    Мы – профессиональная юридическая компания с многолетним опытом работы в сфере уголовного права. Наша команда состоит из опытных адвокатов, которые помогли сотням клиентов защитить свои права и добиться справедливости.
-                  </p>
-                </div>
-
-                <div>
-                  <p className="font-['Inter:Regular',sans-serif] text-[18px] leading-[1.7] text-[#29282b]">
-                    География нашей работы — <span className="font-semibold text-[#87b7ce]">Москва и Московская область</span>. Мы работаем с 2009 года и за это время накопили огромный опыт в решении самых сложных уголовных дел.
+                    Мы — профессиональная юридическая компания с многолетним опытом работы в сфере права. Наша команда опытных юристов помогла сотням клиентов защитить интересы и добиться справедливого решения.
                   </p>
                 </div>
 
                 <div>
                   <p className="font-['Inter:Regular',sans-serif] text-[18px] leading-[1.7] text-[#29282b]">
-                    Мы гарантируем индивидуальный подход, полную конфиденциальность и профессиональную защиту на всех стадиях уголовного процесса — от проверки до суда и обжалования приговора.
+                    География нашей работы — <span className="font-semibold text-[#87b7ce]">Москва и Московская область</span>. С 2014 года мы накопили значительный опыт в решении самых сложных юридических вопросов.
+                  </p>
+                </div>
+
+                <div>
+                  <p className="font-['Inter:Regular',sans-serif] text-[18px] leading-[1.7] text-[#29282b]">
+                    Гарантируем индивидуальный подход, полную конфиденциальность и профессиональное сопровождение на всех этапах — от консультации и досудебного урегулирования до представительства в суде и обжалования решений.
                   </p>
                 </div>
 
@@ -242,8 +242,8 @@ export default async function AboutPage({
             <div className="rounded-[24px] overflow-hidden shadow-lg">
               <Image
                 src="/assets/3c51396355c47d641799181b140721641be0b1c3.png"
-                width={0}
-                height={0}
+                width={958}
+                height={239}
                 className="w-full h-auto"
                 alt="LLLMS Карта с местоположением офиса"
               />

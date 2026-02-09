@@ -3,30 +3,49 @@ import {
     getQuestionsByIds,
     saveQuestion,
     deleteQuestion,
+    addLLMReply,
     DBQuestions
 } from "@/src/repositories/requests/repo"
+import {sendIIBot} from "@/src/services/llm";
 
 export const dynamic = 'force-dynamic'; // defaults to auto
 export async function GET(request: NextRequest) {
-    console.log("QUESTIONS GET request in", request)
-    const requestUrlId = parseInt(request.url.split('/api/requests/')[1]);
-    console.log('QUESTIONS GET SINGLE requestUrlId', requestUrlId, typeof requestUrlId)
+    console.log("QUESTION GET request in", request)
+    const requestUrlId = request.url.split('/api/requests/')[1];
+    console.log('QUESTION GET SINGLE requestUrlId', requestUrlId, typeof requestUrlId)
+
 
     let question: DBQuestions | null = null
     try {
-        const questions = await getQuestionsByIds([requestUrlId.toString()])
-        console.log('QUESTIONS questions', questions)
+        const is_number = !isNaN(Number(requestUrlId))
+        const questions = await getQuestionsByIds([requestUrlId], is_number)
+        console.log('QUESTION questions', questions)
         if (questions !== null) {
             question = questions[0]
+
+            if(question.reply_status === 0 && question.reply === '') {
+                const llm = await sendIIBot(question.question)
+                if(llm) {
+                    console.log("LLM QUESTION reply length ", llm.length)
+                    console.log("LLM QUESTION reply ", llm)
+                    const _questions = await addLLMReply(requestUrlId.toString(), llm)
+                    if (_questions !== null) {
+                        question = _questions[0]
+                    }
+                }
+            } else {
+                console.log("QUESTION GET")
+            }
+            
         }
     } catch(err) {
-        console.error("Exception(QUESTIONS) in GET: ", (err as Error).message)
+        console.error("Exception(QUESTION) in GET: ", (err as Error).message)
         return NextResponse.json(
-            { success: false, message: 'Exception(QUESTIONS) in GET.' },
+            { success: false, message: 'Exception(QUESTION) in GET.' },
             { status: 401 }
         );
     }
-    console.log('QUESTIONS GET response out', question)
+    console.log('QUESTION GET response out', question)
     const response = NextResponse.json(question, { status: 200 });
     response.headers.set("X-Total-Count", "1")
     return response 

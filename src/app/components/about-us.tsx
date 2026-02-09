@@ -40,13 +40,10 @@ export function AboutUs() {
       <div className="px-4 sm:px-6 lg:px-8">
         <div className="bg-[#3d4b5e] rounded-[50px] p-8 lg:p-12 w-full">
           <div className="max-w-7xl mx-auto">
-            {/* Почему мы */}
             <div className="mb-[30px]">
-              <h2 className="text-4xl lg:text-5xl font-bold text-white leading-tight mb-4">
-                Почему мы
-              </h2>
+              <h2 className="text-4xl lg:text-5xl font-bold text-white leading-tight mb-4">Почему мы?</h2>
               <p className="text-xl text-white/90 max-w-3xl">
-                Знаем все нюансы <span className="text-[#8faaba]">уголовного процесса</span>, что позволяет обеспечить максимальную защиту и успех в защите ваших прав и интересов
+                Знаем все нюансы <span className="text-[#8faaba]">рынка недвижимости</span>, что позволяет обеспечить максимальную защиту и успех в защите ваших прав и интересов.
               </p>
             </div>
 
@@ -58,10 +55,10 @@ export function AboutUs() {
                   О компании
                 </h3>
                 <p className="text-[#29282b]/70 leading-relaxed text-base lg:text-lg max-w-3xl">
-                  Мы – профессиональная юридическая компания с многолетним опытом работы в сфере уголовного права. Наша команда состоит из опытных адвокатов, которые помогли сотням клиентов защитить свои права и добиться справедливости. Мы гарантируем индивидуальный подход, полную конфиденциальность и профессиональную защиту на всех стадиях уголовного процесса.
+                  Мы — юридическая команда, оказывающая онлайн-помощь по широкому кругу правовых вопросов. Работаем с гражданскими, семейными и административными делами, в том числе с вопросами, связанными с недвижимостью и имущественными правами. Сопровождаем клиентов от первичной консультации до решения задачи,обеспечивая конфиденциальность.
                 </p>
                 <Image
-                  src="/assets/89b93fc2612b94bf886039b6f54988d6802254de.png"
+                  src="/design/aboutcompany.png"
                   width={450}
                   height={0}
                   className="absolute right-0 top-1/2 -translate-y-1/2 w-[35%] max-w-[450px] h-auto object-contain"
@@ -73,10 +70,10 @@ export function AboutUs() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div className="bg-[#fefdf9] rounded-[40px] p-6 flex flex-col">
                   <h3 className="text-lg lg:text-xl font-bold text-[#29282b] mb-3">
-                    Специализация — Уголовные Дела
+                    Экспертиза в юридических вопросах.
                   </h3>
                   <p className="text-[#29282b]/70 text-base mb-6 flex-grow">
-                    Работаем только с уголовными делами. Сопровождаем от проверки до суда и обжалования. Узкая специализация — сильная защита.
+                    Решаем широкий спектр задач: сделки с недвижимостью, имущественные права. Опыт позволяет сопровождать как стандартные, так и сложные операции.
                   </p>
                   <div className="mt-auto flex justify-center">
                     <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl border-2 border-[#576280]">
@@ -87,10 +84,10 @@ export function AboutUs() {
 
                 <div className="bg-[#fefdf9] rounded-[40px] p-6 flex flex-col">
                   <h3 className="text-lg lg:text-xl font-bold text-[#29282b] mb-3">
-                    Подходим К Делу С Умом
+                    Взвешенный подход к каждому делу.
                   </h3>
                   <p className="text-[#29282b]/70 text-base mb-6 flex-grow">
-                    Анализируем материалы и позицию следствия. Выстраиваем стратегию защиты с учётом рисков и сценариев.
+                    Анализируем документы и риски, особенно при сделках с недвижимостью и правом собственности, чтобы надежно защитить ваши интересы.
                   </p>
                   <div className="mt-auto flex justify-center">
                     <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl border-2 border-[#576280]">
@@ -101,10 +98,12 @@ export function AboutUs() {
 
                 <div className="bg-[#fefdf9] rounded-[40px] p-6 flex flex-col">
                   <h3 className="text-lg lg:text-xl font-bold text-[#29282b] mb-3">
-                    Работаем На Результат
+                    Работаем на результат.
                   </h3>
+                  
                   <p className="text-[#29282b]/70 text-base mb-6 flex-grow">
-                    Наша цель — не формальное участие, а реальный результат для клиента: смягчение меры пресечения, прекращение дела, переквалификация обвинения или оправдание.
+                    <br />
+                    Стремимся к практическому решению задач клиента: минимизируем риски, обеспечиваем правовую безопасность и защиту интересов.
                   </p>
                   <div className="mt-auto flex justify-center">
                     <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl border-2 border-[#576280]">
@@ -115,10 +114,10 @@ export function AboutUs() {
 
                 <div className="bg-[#fefdf9] rounded-[40px] p-6 flex flex-col">
                   <h3 className="text-lg lg:text-xl font-bold text-[#29282b] mb-3">
-                    Консультация профессионалов
+                    Консультация профессионалов.
                   </h3>
                   <p className="text-[#29282b]/70 text-base mb-6 flex-grow">
-                    Онлайн-консультации опытных адвокатов по уголовным делам. Анализ ситуации и помощь в подготовке необходимых документов.
+                    Консультируем по сделкам с недвижимостью и спорам, включая жилищные вопросы. Онлайн-помощь — быстро, удобно, без визита в офис.
                   </p>
                   <div className="mt-auto flex justify-center">
                     <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl border-2 border-[#576280]">

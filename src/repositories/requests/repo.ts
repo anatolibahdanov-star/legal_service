@@ -3,16 +3,19 @@ import pool from '@/src/libs/db';
 import { OkPacket, RowDataPacket, FieldPacket } from 'mysql2/promise';
 import { DateTime } from "next-auth/providers/kakao";
 import {addUser, DBUser} from "@/src/repositories/users/repo"
+import { randomUUID } from 'crypto';
 
 export interface DBQuestions extends RowDataPacket, User {
   id: string;
   username: string;
+  lawyer?: string;
   question: string;
   reply: string;
   reply_id: string;
   final_reply: string | null;
   final_reply_id: string;
   status: number;
+  reply_status: number;
   created_at: DateTime;
 }
 
@@ -21,6 +24,7 @@ export interface UserRequest {
     email: string;
     topic: string;
     question: string;
+    uuid: string;
     llm?: string;
     chat?: boolean;
 }
@@ -32,7 +36,7 @@ interface CountResult extends RowDataPacket {
 export async function getQuestions(page: string = '1', _limit: string = '10', _sorter: string[] = ['id', 'DESC']): Promise<DBQuestions[] | null> {
     const orderBy = getAdminQuestionOrder(_sorter);
     const sql: string =  `SELECT q.id as id, u.name as username, q.question as question,
-    q.status as status, q.created_at as created_at
+    q.status as status, q.created_at as created_at, BIN_TO_UUID(q.uuid) as uuid 
     FROM question q JOIN user u ON q.user_id=u.id
     ORDER BY ` + orderBy +
     ` LIMIT ?
@@ -59,14 +63,18 @@ export async function getTotalQuestions(): Promise<number> {
     return totalCount
 }
 
-export async function getQuestionsByIds(ids: string[]): Promise<DBQuestions[] | null> {
-    const sql: string =  `SELECT q.id as id, u.name as username, q.question as question,
-    q.status as status, q.created_at as created_at, r.reply as reply, fr.final_reply as final_reply,
-    r.id as reply_id, fr.id as final_reply_id 
+export async function getQuestionsByIds(ids: string[], is_number: boolean = true): Promise<DBQuestions[] | null> {
+    let sql: string =  `SELECT q.id as id, u.name as username, q.question as question,
+    q.status as status, q.created_at as created_at, r.reply as reply, IF(fr.final_reply = '', r.reply, fr.final_reply) as final_reply,
+    r.id as reply_id, fr.id as final_reply_id, r.status as reply_status, BIN_TO_UUID(q.uuid) as uuid, u2.name as lawyer 
     FROM question q JOIN user u ON q.user_id=u.id 
     LEFT JOIN reply r ON q.id=r.question_id 
     LEFT JOIN final_reply fr ON r.id=fr.reply_id 
-    WHERE q.id IN (?)`;
+    LEFT JOIN administrator ad ON fr.admin_id=ad.id 
+    LEFT JOIN user u2 ON ad.user_id=u2.id
+    WHERE `;
+
+    sql += is_number ? 'q.id IN (?)' : 'q.uuid = UUID_TO_BIN(?)' 
     console.log("getQuestionsByIds params", ids)
     const [rows] = await pool.query<DBQuestions[]>({sql: sql, values: [ids]});
     if (rows.length === 0) {
@@ -96,8 +104,9 @@ export function getAdminQuestionOrder(orderBy:string[]): string {
 
 export async function addQuestion(question: DBQuestions): Promise<DBQuestions[] | null> {
 
-    const userInsertSQL = `INSERT INTO question(name, email) VALUES(?, ?)`
-    const [resultUserInsert, ufields] = await pool.execute(userInsertSQL, [question.name, question.email]) as [OkPacket, FieldPacket[]];
+    const myUuid: string = randomUUID();
+    const userInsertSQL = `INSERT INTO question(name, email, uuid) VALUES(?, ?, UUID_TO_BIN(?))`
+    const [resultUserInsert, ufields] = await pool.execute(userInsertSQL, [question.name, question.email, myUuid]) as [OkPacket, FieldPacket[]];
     console.log('inserted data ', resultUserInsert, ufields)
     const insertedUserId = resultUserInsert?.insertId
     if (!insertedUserId) {
@@ -130,8 +139,9 @@ export async function addClientQuestion(data: UserRequest): Promise<DBQuestions[
     }
     const user = users[0]
 
-    const questionInsertSQL = `INSERT INTO question(user_id, question, status) VALUES(?, ?, ?)`
-    const [resultQuestionInsert, ufields] = await pool.execute(questionInsertSQL, [user.id, data.question, 1]) as [OkPacket, FieldPacket[]];
+    const myUuid: string = randomUUID();
+    const questionInsertSQL = `INSERT INTO question(user_id, question, status, uuid) VALUES(?, ?, ?, UUID_TO_BIN(?))`
+    const [resultQuestionInsert, ufields] = await pool.execute(questionInsertSQL, [user.id, data.question, 1, myUuid]) as [OkPacket, FieldPacket[]];
     console.log('CLIENT ADD QUESTION inserted data ', resultQuestionInsert, ufields)
     const insertedQuestionId = resultQuestionInsert?.insertId
     if (!insertedQuestionId) {
@@ -159,6 +169,14 @@ export async function addClientQuestion(data: UserRequest): Promise<DBQuestions[
         return null
     }
     return getQuestionsByIds([insertedQuestionId.toString()])
+}
+
+export async function addLLMReply(id: string, llm: string): Promise<DBQuestions[] | null> {
+    const replyUpdateSQL = `UPDATE reply SET reply=?, status=? WHERE question_id=?`
+    const [resultReplyUpdate, ufields] = await pool.execute(replyUpdateSQL, 
+        [llm, 1, id]);
+    console.log('UPDATED DATA reply ', resultReplyUpdate, ufields)
+    return getQuestionsByIds([id])
 }
 
 export async function saveQuestion(id: string, questionIn: DBQuestions): Promise<DBQuestions[] | null> {

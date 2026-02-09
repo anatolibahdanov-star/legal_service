@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS question(
 
 CREATE TABLE IF NOT EXISTS reply(
     id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    reply VARCHAR(2000) NOT NULL,
+    reply VARCHAR(4000) NOT NULL,
     question_id INT UNSIGNED NOT NULL,
     status TINYINT NOT NULL DEFAULT 1,
     created_at DATETIME DEFAULT NOW(),
@@ -61,7 +61,7 @@ CREATE TABLE IF NOT EXISTS administrator(
 
 CREATE TABLE IF NOT EXISTS final_reply(
     id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    final_reply VARCHAR(3000) NOT NULL,
+    final_reply VARCHAR(5000) NOT NULL,
     reply_id INT UNSIGNED NOT NULL,
     admin_id INT UNSIGNED NOT NULL,
     status TINYINT NOT NULL DEFAULT 1,
@@ -87,10 +87,10 @@ INSERT INTO administrator(username, password, created_admin_id, user_id, is_supe
 VALUES("petya", MD5("petya"), NULL, 2, FALSE),
 ("anatoli", MD5("anatoli"), NULL, 3, TRUE);
 
-INSERT INTO question(question, user_id) 
-VALUES("Vasia Pupkin question 1", 1),
-("Vasia Pupkin question 2", 1),
-("Liza Kuku question 1", 4);
+INSERT INTO question(question, user_id, uuid) 
+VALUES("Vasia Pupkin question 1", 1, UUID_TO_BIN("941d9205-8226-4d96-be11-51250b3db6b1")),
+("Vasia Pupkin question 2", 1, UUID_TO_BIN("11fb6f78-2090-4984-ad53-de825746f63f")),
+("Liza Kuku question 1", 4, UUID_TO_BIN("5c7f5f5a-9b86-4715-9ca0-f1ccc40742b3"));
 
 INSERT INTO reply(reply, question_id) 
 VALUES("Vasia Pupkin response 1", 1),
@@ -108,4 +108,22 @@ VALUES("2026-01-20", 40.5, 450.9, 800.1),
 ("2026-01-22", 100.5, 215.9, 1020.1),
 ("2026-01-24", 134.5, 255.9, 1730.1),
 ("2026-01-25", 21.5, 300.9, 505.1),
-("2026-01-26", 2.5, 500.9, 701.1);
+("2026-01-26", 2.5, 500.9, 701.1),
+("2026-01-27", 12.5, 300.9, 1701.1),
+("2026-01-28", 22.5, 400.9, 2701.1),
+("2026-01-29", 32.5, 500.9, 1701.1),
+("2026-01-30", 42.5, 210.9, 1201.1),
+("2026-01-31", 52.5, 320.9, 301.1),
+("2026-02-01", 62.5, 430.9, 1401.1),
+("2026-02-02", 72.5, 540.9, 1601.1),
+("2026-02-03", 82.5, 650.9, 1701.1),
+("2026-02-04", 92.5, 760.9, 401.1),
+("2026-02-05", 83.5, 340.9, 1501.1),
+("2026-02-06", 61.5, 260.9, 901.1),
+("2026-02-07", 112.5, 80.9, 1001.1);
+
+ALTER TABLE question ADD COLUMN uuid BINARY(16) AFTER status;
+CREATE INDEX uuid_question_idx ON question(uuid);
+
+ALTER TABLE reply MODIFY reply VARCHAR(4000);
+ALTER TABLE final_reply MODIFY final_reply VARCHAR(5000);

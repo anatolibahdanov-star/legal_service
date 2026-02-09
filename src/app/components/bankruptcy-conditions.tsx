@@ -14,7 +14,7 @@ export function BankruptcyConditions() {
           {/* Изображение Фемиды слева */}
           <div className="flex justify-center lg:justify-start">
             <Image
-              src="/assets/0712ad56d911edb4b949befba2fb4b1a0f147575.png"
+              src="/design/femida.png"
               width={450}
               height={0}
               className="w-full max-w-[380px] lg:max-w-[450px] h-auto"
