@@ -74,13 +74,19 @@ export async function getQuestionsByIds(ids: string[], is_number: boolean = true
     LEFT JOIN user u2 ON ad.user_id=u2.id
     WHERE `;
 
-    sql += is_number ? 'q.id IN (?)' : 'q.uuid = UUID_TO_BIN(?)' 
-    console.log("getQuestionsByIds params", ids)
-    const [rows] = await pool.query<DBQuestions[]>({sql: sql, values: [ids]});
-    if (rows.length === 0) {
-        return []
+    try {
+        sql += is_number ? 'q.id IN (?)' : 'q.uuid = UUID_TO_BIN(?)' 
+        console.log("getQuestionsByIds params", ids, sql)
+        const [rows] = await pool.query<DBQuestions[]>({sql: sql, values: [ids]});
+        if (rows.length === 0) {
+            return []
+        }
+        return rows
+    } catch(error) {
+        console.error("REPO QUESTIONS Exception(getQuestionsByIds): ", (error as Error).message, sql)
     }
-    return rows
+    
+    return []
 }
 
 export function getAdminQuestionOrder(orderBy:string[]): string {

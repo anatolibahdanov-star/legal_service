@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
         if (questions !== null) {
             question = questions[0]
 
-            if(question.reply_status === 0 && question.reply === '') {
+            if(question.reply_status === 0 && question.reply === '' && is_number) {
                 const llm = await sendIIBot(question.question)
                 if(llm) {
                     console.log("LLM QUESTION reply length ", llm.length)

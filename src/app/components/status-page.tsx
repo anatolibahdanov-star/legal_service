@@ -9,20 +9,30 @@ interface StatusPageProps {
   caseDescription?: string;
 }
 
+let isStatus = false
+
 export function StatusPage({ caseDescription }: StatusPageProps) {
   const [data, setData] = useState<DBQuestions|null>(null);
   const slug = caseDescription
 
   useEffect(() => {
     const intervalId = setInterval(async () => {
-      const response = await fetch('/api/requests/' + slug + '/');
-      const newData: DBQuestions = await response.json();
-      setData(newData); // Updating state causes the component to re-render
+      if(!isStatus) {
+        const response = await fetch('/api/requests/' + slug + '/');
+        const newData: DBQuestions = await response.json();
+        if(newData.status === 4) {
+          isStatus = true
+        }
+        setData(newData); // Updating state causes the component to re-render
+      }
+      
     }, 5000); // Fetch every 5 seconds
 
     return () => clearInterval(intervalId); // Cleanup
   }, []);
 
+  console.log('Out interval status ', isStatus)
+  console.log('Out interval data status ', data?.status)
   const answer = data && [4].includes(data.status) && data.final_reply ? 
     <>
       <h2 className="text-3xl font-bold text-white mb-8">
@@ -40,6 +50,14 @@ export function StatusPage({ caseDescription }: StatusPageProps) {
     </> :
     ``;
 
+  const status = data && data.id ? 
+    ( '№ ' + data.id + ' от ' + format(new Date(data.created_at), "dd.mm.yyyy")) : 
+    'Ваша заявка еще не взята в разработку.'
+  
+  const from = data && [3, 4].includes(data.status) ? 
+    ('Ответ адвоката ' + data.lawyer + ' готов.') : 
+    (data && data.status == 2 ? ('Над вашей заявкой работает адвокат ' + data.lawyer + '.') : '')
+
 
   const educationalLinks = [
     {
@@ -55,9 +73,6 @@ export function StatusPage({ caseDescription }: StatusPageProps) {
       description: 'Этапы уголовного процесса и роль адвоката'
     }
   ];
-
-  console.log('Component consultation slug', slug)
-  console.log('Component consultation data', data)
 
   return (
     <div className="min-h-screen bg-[#fefdf9]">
@@ -99,10 +114,10 @@ export function StatusPage({ caseDescription }: StatusPageProps) {
               <span className="text-sm font-medium text-white/70">Ваше обращение:</span>
             </div>
             <p className="text-xl font-semibold text-white mb-6">
-              {data ? ( '№ ' + data.id + ' от ' + format(new Date(data.created_at), "dd.mm.yyyy")) : 'Ваша заявка еще не взята в разработку.'}
+              {status}
             </p>
             <p className="text-lg text-white/90">
-              {data && [3, 4].includes(data.status) ? ('Ответ адвоката ' + data.lawyer + ' готов.') : ''}
+              {from}
             </p>
           </div>
 

@@ -26,7 +26,7 @@ export const RequestList = () => (
 );
 
 export const RequestEdit = () => (
-    <Edit>
+    <Edit loading={<p>Loading the post details...</p>}>
         <SimpleForm>
             <TextInput source="question" readOnly />
             <TextInput source="username" readOnly />
@@ -40,7 +40,7 @@ export const RequestEdit = () => (
 );
 
 export const RequestShow = () => (
-    <Show>
+    <Show loading={<p>Loading the post...</p>}>
         <SimpleShowLayout>
             <TextField source="id" />
             <TextField source="question" />
