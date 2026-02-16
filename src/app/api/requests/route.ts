@@ -1,17 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import {addClientQuestion, getQuestions, getTotalQuestions, DBQuestions, UserRequest} from "@/src/repositories/requests/repo"
+import {addClientQuestion, getQuestions, getTotalQuestions} from "@/src/repositories/requests/repo"
+import {DBQuestions} from "@/src/interfaces/db"
+import {UserRequest} from "@/src/interfaces/api"
 
 export const dynamic = 'force-dynamic'; // defaults to auto
 
 export async function GET(request: NextRequest) {
-    console.log("QUESTIONS GET request", request)
-    const requestUrlId = parseInt(request.url.split('/api/requests/')[1] ?? 0);
-    console.log('QUESTIONS GET path', requestUrlId)
+    // console.log("QUESTIONS GET request", request)
     const searchParams = request.nextUrl.searchParams;
-    const filter = searchParams.getAll('filter') ?? [];
+    // const filter = searchParams.getAll('filter') ?? [];
     const range = searchParams.get('range') ?? '[0,9]';
     const _range = range.slice(1, range.length-1).split(",").map(Number);
-    const sort = searchParams.getAll('sort') ?? [];
+    const _sort = searchParams.get('sort') ?? '';
+    const sort = _sort.slice(1, _sort.length-1).split(",").map(param => param.slice(1, param.length-1));
     // if
     let limit = searchParams.get('limit');
     if (!limit && _range.length > 0) {
@@ -25,17 +26,17 @@ export async function GET(request: NextRequest) {
     } else if(!page) {
         page = '1'
     }
-    console.log('QUESTIONS GET limit/offset', limit, page, filter, range, _range, sort, requestUrlId)
+    console.log('API QUESTIONS GET: params', limit, page, sort)
 
     let questions: DBQuestions[] | null = []
     let total: number = 0;
     try {
-        questions = await getQuestions(page, limit)
+        questions = await getQuestions(page, limit, sort)
         total = await getTotalQuestions()
     } catch(err) {
-        console.error("Exception(QUESTIONS GET): ", (err as Error).message)
+        console.error("(ERROR)API QUESTIONS GET: ", (err as Error).message)
         return NextResponse.json(
-            { success: false, message: 'Exception(QUESTIONS GET).' },
+            { success: false, message: '(ERROR)API QUESTIONS GET: error during get questions info.' },
             { status: 401 }
         );
     }
@@ -47,26 +48,26 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: Request) {
-    console.log("QUESTIONS POST request", request)
+    // console.log("API QUESTIONS POST: request ", request)
     const insertedQuestion: UserRequest = await request.json(); 
-    console.log("QUESTIONS POST request json", insertedQuestion)
+    console.log("API QUESTIONS POST: request json", insertedQuestion)
     insertedQuestion.llm = ''
 
     let question: DBQuestions | null = null
     try {
         const questions = await addClientQuestion(insertedQuestion)
-        console.log('QUESTIONS POST questions', questions)
+        // console.log('API QUESTIONS POST: questions ', questions)
         if (questions !== null) {
             question = questions[0]
         }
     } catch(err) {
-        console.error("Exception(QUESTIONS POST): ", (err as Error).message)
+        console.error("(ERROR)API QUESTIONS POST: ", (err as Error).message)
         return NextResponse.json(
-            { success: false, message: 'Exception(QUESTIONS POST).' },
+            { success: false, message: '(ERROR)API QUESTIONS POST: error during add question.' },
             { status: 401 }
         );
     }
-    console.log('QUESTIONS POST created question', question)
+    console.log('API QUESTIONS POST: created ', question)
     const response = NextResponse.json(question, { status: 200 });
     response.headers.set("X-Total-Count", "1")
     return response

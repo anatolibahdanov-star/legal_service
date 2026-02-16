@@ -1,6 +1,6 @@
 'use client';
 
-import { DBQuestions } from '@/src/repositories/requests/repo';
+import { DBQuestions } from '@/src/interfaces/db';
 import { Shield, Lock, Scale, CheckCircle } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';

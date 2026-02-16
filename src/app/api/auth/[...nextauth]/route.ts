@@ -13,7 +13,6 @@ interface DBAdminUser extends RowDataPacket, User {
   name: string;
   email: string;
   password: string;
-  admin_id: number;
   username: string;
   is_super: boolean;
   status: number;
@@ -55,7 +54,7 @@ export const authOptions = {
             if(credentials !== undefined && "username" in credentials && "password" in credentials) {
               try {
                 const [rows] = await pool.query<DBAdminUser[]>({
-                  sql: 'SELECT u.id as id, u.name as name, u.email as email, ad.id as admin_id, ad.username as username, ad.password as password, ad.is_super as is_super, ad.status as status FROM user u JOIN administrator ad ON u.id=ad.user_id WHERE ad.username=?',
+                  sql: 'SELECT id, name, email, username, password, is_super, status FROM administrator WHERE username=?',
                   values: [credentials?.username]
                 });
                 if (rows.length === 1) {

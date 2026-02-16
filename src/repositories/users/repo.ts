@@ -1,26 +1,10 @@
-import {User} from "next-auth"
 import pool from '@/src/libs/db';
-import { OkPacket, RowDataPacket, FieldPacket } from 'mysql2/promise';
-import { DateTime } from "next-auth/providers/kakao";
-
-export interface DBUser extends RowDataPacket, User {
-  id: string;
-  name: string;
-  email: string;
-  created_at?: DateTime;
-}
-
-interface CountResult extends RowDataPacket {
-  counter: number; // The alias from the SQL query
-}
+import { OkPacket, FieldPacket } from 'mysql2/promise';
+import {CountResult, DBUser} from "@/src/interfaces/db"
 
 export async function getUsers(page: string = '1', _limit: string = '10', _sorter: string[] = ['id', 'DESC']): Promise<DBUser[] | null> {
     const orderBy = getAdminUserOrder(_sorter);
-    const sql: string =  `SELECT *  
-    FROM user 
-    ORDER BY ` + orderBy +
-    ` LIMIT ?
-    OFFSET ?`;
+    const sql: string =  `SELECT * FROM user ORDER BY ` + orderBy + ` LIMIT ? OFFSET ?`;
     const limit = parseInt(_limit) ?? 10
     const offset = ((parseInt(page) ?? 1) - 1) * limit
     const [rows] = await pool.query<DBUser[]>({sql: sql, values: [limit, offset]});
@@ -41,8 +25,9 @@ export async function getTotalUsers(): Promise<number> {
 }
 
 export async function getUsersByIds(ids: string[]): Promise<DBUser[] | null> {
+    const msg = "REPO getUsersByIds: "
     const sql: string =  `SELECT * FROM user WHERE id IN (?)`;
-    console.log("getUsersByIds params", ids)
+    console.log(msg + "params", ids)
     const [rows] = await pool.query<DBUser[]>({sql: sql, values: [ids]});
     if (rows.length === 0) {
         return []
@@ -51,8 +36,9 @@ export async function getUsersByIds(ids: string[]): Promise<DBUser[] | null> {
 }
 
 export async function getUserByEmail(email: string): Promise<DBUser[] | null> {
+    const msg = "REPO getUserByEmail: "
     const sql: string =  `SELECT * FROM user WHERE email=?`;
-    console.log("getUserByEmail params", email)
+    console.log(msg + "params", email)
     const [rows] = await pool.query<DBUser[]>({sql: sql, values: [email]});
     if (rows.length === 0) {
         return []
@@ -61,7 +47,6 @@ export async function getUserByEmail(email: string): Promise<DBUser[] | null> {
 }
 
 export function getAdminUserOrder(orderBy:string[]): string {
-    console.log('USERS orderBy ', orderBy)
     if(orderBy && orderBy.length>0) {
         const field = orderBy[0] ?? "id"
         const sorter = ["ASC", "DESC"].includes(orderBy[1])? orderBy[1] : "ASC"
@@ -71,42 +56,44 @@ export function getAdminUserOrder(orderBy:string[]): string {
 }
 
 export async function addUser(user: DBUser): Promise<DBUser[] | null> {
+    const msg = "REPO addUser: "
     const userByEmail = await getUserByEmail(user.email)
     if(userByEmail === null || userByEmail.length === 0) {
         const userInsertSQL = `INSERT INTO user(name, email) VALUES(?, ?)`
-        const [resultUserInsert, ufields] = await pool.execute(userInsertSQL, [user.name, user.email]) as [OkPacket, FieldPacket[]];
-        console.log('USERS inserted data ', resultUserInsert, ufields)
+        const [resultUserInsert, ufields] = await pool.execute(userInsertSQL, 
+            [user.name, user.email]) as [OkPacket, FieldPacket[]];
         const insertedUserId = resultUserInsert?.insertId
         if (!insertedUserId) {
-            console.log("USERS repo INSERT User: empty inserted user id", user, ufields)
+            console.error("(ERROR)" + msg + "empty inserted user id", user, ufields)
             return null
         }
+        console.log(msg + 'inserted', resultUserInsert, ufields)
 
         return getUsersByIds([insertedUserId.toString()])
     }
     return userByEmail
-    
 }
 
 export async function saveUser(id: string, user: DBUser): Promise<DBUser[] | null> {
+    const msg = "REPO getUserByEmail: "
     const userUpdateSQL = `UPDATE user SET name=?, email=? WHERE id=?`
     const [resultUserUpdate, ufields] = await pool.execute(userUpdateSQL, [user.name, user.email, id]);
-    console.log('Updated data user ', resultUserUpdate, ufields)
+    console.log(msg + 'updated', resultUserUpdate, ufields)
 
     return [user]
 }
 
 export async function deleteUser(id: string): Promise<DBUser[] | null> {
+    const msg = "REPO deleteUser: "
     const users = await getUsersByIds([id])
     if(users === null) {
-        console.log('DELETE USER: user not found ', id)
+        console.error("(ERROR)" + msg + "user not found", id)
         return null
     }
     const user: DBUser = users[0]
-
     const userDeleteSQL = `DELETE FROM user WHERE id=?`
     const [resultUserDelete] = await pool.execute(userDeleteSQL, [id]);
-    console.log('DELETE USER deleted data user ', resultUserDelete)
+    console.log(msg + 'deleted', resultUserDelete)
 
     return [user]
 }

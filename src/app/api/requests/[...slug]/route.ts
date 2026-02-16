@@ -4,48 +4,50 @@ import {
     saveQuestion,
     deleteQuestion,
     addLLMReply,
-    DBQuestions
+    updateEmailStatus
 } from "@/src/repositories/requests/repo"
+import {DBQuestions} from "@/src/interfaces/db"
 import {sendIIBot} from "@/src/services/llm";
+import SendSendGridEmail, {EmailDataI} from "@/src/services/sendgrid"
 
 export const dynamic = 'force-dynamic'; // defaults to auto
 export async function GET(request: NextRequest) {
-    console.log("QUESTION GET request in", request)
+    const msg = "API QUESTION GET: "
+    // onsole.log("API QUESTION GET: request in", request)
     const requestUrlId = request.url.split('/api/requests/')[1];
-    console.log('QUESTION GET SINGLE requestUrlId', requestUrlId, typeof requestUrlId)
-
+    // console.log('API QUESTION GET: requestUrlId', requestUrlId, typeof requestUrlId)
 
     let question: DBQuestions | null = null
     try {
         const is_number = !isNaN(Number(requestUrlId))
         const questions = await getQuestionsByIds([requestUrlId], is_number)
-        console.log('QUESTION questions', questions)
+        console.log(msg + 'questions', questions)
         if (questions !== null) {
             question = questions[0]
 
             if(question.reply_status === 0 && question.reply === '' && is_number) {
                 const llm = await sendIIBot(question.question)
                 if(llm) {
-                    console.log("LLM QUESTION reply length ", llm.length)
-                    console.log("LLM QUESTION reply ", llm)
+                    console.log("(LLM)" + msg + "reply length ", llm.length)
+                    console.log("(LLM)" + msg + "reply ", llm)
                     const _questions = await addLLMReply(requestUrlId.toString(), llm)
                     if (_questions !== null) {
                         question = _questions[0]
                     }
                 }
             } else {
-                console.log("QUESTION GET")
+                console.log(msg + "no llm request!!!")
             }
             
         }
     } catch(err) {
-        console.error("Exception(QUESTION) in GET: ", (err as Error).message)
+        console.error("(ERROR)" + msg, (err as Error).message)
         return NextResponse.json(
-            { success: false, message: 'Exception(QUESTION) in GET.' },
+            { success: false, message: '(ERROR)' + msg + 'error during get question info.' },
             { status: 401 }
         );
     }
-    console.log('QUESTION GET response out', question)
+    console.log(msg + 'response out', question)
     const response = NextResponse.json(question, { status: 200 });
     response.headers.set("X-Total-Count", "1")
     return response 
@@ -56,25 +58,43 @@ export async function POST(request: Request) {
 }
 
 export async function PUT(request: Request) {
-    console.log("QUESTIONS PUT request in", request)
+    const msg = "API QUESTION PUT: "
+    // console.log(msg + "request in", request)
     const requestUrlId = request.url.split('/api/requests/')[1];
-    const updatedQuestion: DBQuestions = await request.json(); 
+    const updatedQuestion: DBQuestions = await request.json();
+    console.log(msg + "request in updatedQuestion", updatedQuestion)
 
     let question: DBQuestions | null = null
     try {
         const questions = await saveQuestion(requestUrlId, updatedQuestion)
-        console.log('QUESTIONS questions', questions)
+        console.log(msg + 'questions', questions)
         if (questions !== null) {
             question = questions[0]
         }
     } catch(err) {
-        console.error("Exception(QUESTIONS) in PUT: ", (err as Error).message)
+        console.error("(ERROR)" + msg, (err as Error).message)
         return NextResponse.json(
-            { success: false, message: 'Exception(QUESTIONS) in PUT.' },
+            { success: false, message: '(ERROR)' + msg + ': during save data process.' },
             { status: 401 }
         );
     }
-    console.log('QUESTIONS PUT response out', question)
+    console.log(msg + 'response out', updatedQuestion, question)
+    if(question?.status === 4 && question.email_status === 0) {
+        const domainUrl = process.env.NEXTAUTH_URL
+        const sendData: EmailDataI = {
+            recipient: question.email,
+            url: domainUrl + '/consultation/' + question.uuid + '/',
+            username: question.username
+        }
+        const isSendEmail = await SendSendGridEmail(sendData)
+        let email_status = 1
+        if(!isSendEmail) {
+            console.error("(ERROR)" + msg + "email on question ready was not sent", sendData)
+            email_status = 2
+        }
+        await updateEmailStatus(question.id, email_status)
+        question.email_status = email_status
+    }
     const response = NextResponse.json(question, { status: 200 });
     response.headers.set("X-Total-Count", "1")
     return response
@@ -85,24 +105,25 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-    console.log("QUESTIONS DELETE request in", request)
+    const msg = "API QUESTION DELETE: "
+    // console.log(msg + "request in", request)
     const requestUrlId = request.url.split('/api/requests/')[1];
 
     let question: DBQuestions | null = null
     try {
         const questions = await deleteQuestion(requestUrlId)
-        console.log('QUESTIONS DELETE questions', questions)
+        console.log(msg + 'questions', questions)
         if (questions !== null) {
             question = questions[0]
         }
     } catch(err) {
-        console.error("Exception(QUESTIONS) in DELETE: ", (err as Error).message)
+        console.error("(ERROR)" + msg, (err as Error).message)
         return NextResponse.json(
-            { success: false, message: 'Exception(QUESTIONS) in DELETE.' },
+            { success: false, message: '(ERROR)' + msg + 'error during deleting data.' },
             { status: 401 }
         );
     }
-    console.log('QUESTIONS DELETE response out', question)
+    console.log(msg + 'response out', question)
     const response = NextResponse.json(question, { status: 200 });
     response.headers.set("X-Total-Count", "1")
     return response

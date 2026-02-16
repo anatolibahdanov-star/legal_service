@@ -9,13 +9,21 @@ const QuestionStatuses = [
     { id: 4, name: 'Approved' },
 ]
 
+const QuestionEmailStatuses = [
+    { id: 0, name: 'None' },
+    { id: 1, name: 'Sent' },
+    { id: 2, name: 'Error' },
+]
+
 export const RequestList = () => (
     <List>
         <Datagrid>
             <TextField source="id" />
             <TextField source="username" />
+            <TextField label="Category" source="category_name" />
             <TextField source="question" />
             <SelectField source='status' choices={QuestionStatuses} optionValue={'status'} />
+            <SelectField label="Email" source='email_status' choices={QuestionEmailStatuses} optionValue={'email_status'} />
             <DateField source='created_at' locales="ru-RU" />
             <>
                 <EditButton />
@@ -26,10 +34,11 @@ export const RequestList = () => (
 );
 
 export const RequestEdit = () => (
-    <Edit loading={<p>Loading the post details...</p>}>
+    <Edit loading={<p>Loading the question details...</p>}>
         <SimpleForm>
-            <TextInput source="question" readOnly />
             <TextInput source="username" readOnly />
+            <TextInput source="category_name" readOnly />
+            <TextInput source="question" readOnly />
             <TextInput source="reply_id" style={{ display: 'none' }} />
             <TextInput source="final_reply_id" style={{ display: 'none' }} />
             <RichTextInput source="reply" readOnly />
@@ -40,16 +49,18 @@ export const RequestEdit = () => (
 );
 
 export const RequestShow = () => (
-    <Show loading={<p>Loading the post...</p>}>
+    <Show loading={<p>Loading the questions...</p>}>
         <SimpleShowLayout>
             <TextField source="id" />
-            <TextField source="question" />
             <TextField source="username" />
+            <TextField label="Category" source="category_name" />
+            <TextField source="question" />
             <TextField source="reply_id" />
             <RichTextField source="reply" />
             <TextField source="final_reply_id" />
             <RichTextField source="final_reply" />
             <SelectField source='status' choices={QuestionStatuses} optionValue={'status'} />
+            <SelectField label="Email" source='email_status' choices={QuestionEmailStatuses} optionValue={'email_status'} />
             <DateField label="Created date" source="created_at" />
         </SimpleShowLayout>
     </Show>

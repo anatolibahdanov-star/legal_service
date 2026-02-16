@@ -127,3 +127,33 @@ CREATE INDEX uuid_question_idx ON question(uuid);
 
 ALTER TABLE reply MODIFY reply VARCHAR(4000);
 ALTER TABLE final_reply MODIFY final_reply VARCHAR(5000);
+
+CREATE TABLE IF NOT EXISTS category(
+    id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(150) NOT NULL UNIQUE,
+    weight TINYINT NOT NULL DEFAULT 0
+) ENGINE=InnoDB;
+
+ALTER TABLE question ADD COLUMN category_id INT UNSIGNED AFTER user_id, ADD CONSTRAINT fk_question_category_id
+        FOREIGN KEY (category_id) 
+        REFERENCES category (id)
+        ON DELETE SET NULL;
+
+INSERT INTO category(name, weight) 
+VALUES("Объекты недвижимости", 1),
+("Жилая недвижимость", 2),
+("Коммерческая недвижимость", 3),
+("Права на недвижимость", 4),
+("Сделки с недвижимостью", 5),
+("Ограничения и обременения", 6);
+
+ALTER TABLE administrator ADD COLUMN name VARCHAR(300) NOT NULL AFTER id, ADD COLUMN email VARCHAR(255) NOT NULL AFTER name,
+    DROP FOREIGN KEY fk_administrator_user_id, DROP COLUMN user_id;
+
+ALTER TABLE reply ADD COLUMN duration BIGINT AFTER reply;
+
+ALTER TABLE final_reply ADD COLUMN duration BIGINT AFTER final_reply, ADD COLUMN ready_at DATETIME;
+
+CREATE INDEX category_name_idx ON category(name);
+
+ALTER TABLE question ADD COLUMN email_status TINYINT NOT NULL DEFAULT 0 AFTER status;

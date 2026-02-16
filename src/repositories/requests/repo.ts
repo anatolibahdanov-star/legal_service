@@ -1,43 +1,18 @@
-import {User} from "next-auth"
 import pool from '@/src/libs/db';
-import { OkPacket, RowDataPacket, FieldPacket } from 'mysql2/promise';
-import { DateTime } from "next-auth/providers/kakao";
-import {addUser, DBUser} from "@/src/repositories/users/repo"
+import { OkPacket, FieldPacket } from 'mysql2/promise';
+import {addUser} from "@/src/repositories/users/repo"
 import { randomUUID } from 'crypto';
-
-export interface DBQuestions extends RowDataPacket, User {
-  id: string;
-  username: string;
-  lawyer?: string;
-  question: string;
-  reply: string;
-  reply_id: string;
-  final_reply: string | null;
-  final_reply_id: string;
-  status: number;
-  reply_status: number;
-  created_at: DateTime;
-}
-
-export interface UserRequest {
-    name: string;
-    email: string;
-    topic: string;
-    question: string;
-    uuid: string;
-    llm?: string;
-    chat?: boolean;
-}
-
-interface CountResult extends RowDataPacket {
-  counter: number; // The alias from the SQL query
-}
+import {CountResult, DBQuestions, DBUser} from "@/src/interfaces/db"
+import {UserRequest} from "@/src/interfaces/api"
+import {getCategoryByName} from "@/src/repositories/categories/repo"
 
 export async function getQuestions(page: string = '1', _limit: string = '10', _sorter: string[] = ['id', 'DESC']): Promise<DBQuestions[] | null> {
     const orderBy = getAdminQuestionOrder(_sorter);
-    const sql: string =  `SELECT q.id as id, u.name as username, q.question as question,
-    q.status as status, q.created_at as created_at, BIN_TO_UUID(q.uuid) as uuid 
-    FROM question q JOIN user u ON q.user_id=u.id
+    const sql: string =  `SELECT q.id id, u.name username, q.question question,
+    q.status status, q.created_at as created_at, BIN_TO_UUID(q.uuid) uuid, u.email email,
+    c.id category_id, c.name category_name, q.email_status email_status 
+    FROM question q JOIN user u ON q.user_id=u.id 
+    LEFT JOIN category c ON q.category_id=c.id
     ORDER BY ` + orderBy +
     ` LIMIT ?
     OFFSET ?`;
@@ -52,8 +27,7 @@ export async function getQuestions(page: string = '1', _limit: string = '10', _s
 }
 
 export async function getTotalQuestions(): Promise<number> {
-    const sql: string =  `SELECT COUNT(q.id) as counter
-    FROM question q JOIN user u ON q.user_id=u.id`;
+    const sql: string =  `SELECT COUNT(q.id) as counter FROM question q JOIN user u ON q.user_id=u.id`;
     const [rows] = await pool.query<CountResult[]>({sql: sql});
     console.log('sql counter ', rows)
     if (rows.length === 0) {
@@ -64,37 +38,40 @@ export async function getTotalQuestions(): Promise<number> {
 }
 
 export async function getQuestionsByIds(ids: string[], is_number: boolean = true): Promise<DBQuestions[] | null> {
-    let sql: string =  `SELECT q.id as id, u.name as username, q.question as question,
-    q.status as status, q.created_at as created_at, r.reply as reply, IF(fr.final_reply = '', r.reply, fr.final_reply) as final_reply,
-    r.id as reply_id, fr.id as final_reply_id, r.status as reply_status, BIN_TO_UUID(q.uuid) as uuid, u2.name as lawyer 
+    const msg = "REPO getQuestionsByIds: "
+    let sql: string =  `SELECT q.id id, u.name username, q.question question,
+    q.status status, q.created_at created_at, r.reply reply, IF(fr.final_reply = '', r.reply, fr.final_reply) final_reply,
+    r.id reply_id, fr.id final_reply_id, r.status reply_status, BIN_TO_UUID(q.uuid) uuid, ad.name lawyer,
+    u.email as email, c.id category_id, c.name category_name, q.email_status email_status  
     FROM question q JOIN user u ON q.user_id=u.id 
     LEFT JOIN reply r ON q.id=r.question_id 
     LEFT JOIN final_reply fr ON r.id=fr.reply_id 
     LEFT JOIN administrator ad ON fr.admin_id=ad.id 
-    LEFT JOIN user u2 ON ad.user_id=u2.id
+    LEFT JOIN category c ON q.category_id=c.id
     WHERE `;
 
     try {
         sql += is_number ? 'q.id IN (?)' : 'q.uuid = UUID_TO_BIN(?)' 
-        console.log("getQuestionsByIds params", ids, sql)
+        console.log(msg + "params", ids, sql)
         const [rows] = await pool.query<DBQuestions[]>({sql: sql, values: [ids]});
         if (rows.length === 0) {
             return []
         }
         return rows
     } catch(error) {
-        console.error("REPO QUESTIONS Exception(getQuestionsByIds): ", (error as Error).message, sql)
+        console.error("(ERROR)" + msg, (error as Error).message, sql)
     }
     
     return []
 }
 
 export function getAdminQuestionOrder(orderBy:string[]): string {
-    console.log('orderBy ', orderBy)
     const tablesFields: { [key: string]: string } = {
         "id": "q.id",
         "username": "u.name",
         "question": "q.question",
+        "category": "c.name",
+        "lawyer": "ad.name",
         "reply": "r.reply",
         "final_reply": "fr.final_reply",
         "status": "q.status",
@@ -109,30 +86,25 @@ export function getAdminQuestionOrder(orderBy:string[]): string {
 }
 
 export async function addQuestion(question: DBQuestions): Promise<DBQuestions[] | null> {
-
+    const msg = "REPO addQuestion: "
     const myUuid: string = randomUUID();
-    const userInsertSQL = `INSERT INTO question(name, email, uuid) VALUES(?, ?, UUID_TO_BIN(?))`
-    const [resultUserInsert, ufields] = await pool.execute(userInsertSQL, [question.name, question.email, myUuid]) as [OkPacket, FieldPacket[]];
-    console.log('inserted data ', resultUserInsert, ufields)
-    const insertedUserId = resultUserInsert?.insertId
-    if (!insertedUserId) {
-        console.log("ADMIN repo INSERT User: empty inserted user id", question, ufields)
+    const questionInsertSQL = `INSERT INTO question(name, email, uuid) VALUES(?, ?, UUID_TO_BIN(?))`
+    const [resultQuestionInsert, ufields] = await pool.execute(questionInsertSQL, 
+            [question.name, question.email, myUuid]) as [OkPacket, FieldPacket[]];
+    const insertedQuestionId = resultQuestionInsert?.insertId
+    if (!insertedQuestionId) {
+        console.error("(ERROR)" + msg + ": empty inserted question id", question, ufields)
         return null
     }
+    console.log(msg + 'inserted', resultQuestionInsert, ufields)
 
-    const adminInsertSQL = `INSERT INTO administrator(username, password, created_admin_id, user_id, status, is_super) VALUES(?, MD5(?), ?, ?, ?, ?)`
-    const [resultAdminInsert, afields] = await pool.execute(adminInsertSQL, 
-        [question.username, question.password, 2, insertedUserId, question.status, question.is_super]) as [OkPacket, FieldPacket[]];
-    console.log('inserted data2 ', resultAdminInsert, afields)
-    const insertedAdminId = resultAdminInsert.insertId
-    if (!insertedAdminId) {
-        console.log("ADMIN repo INSERT Admin: empty inserted admin id", question, afields)
-        return null
-    }
-    return getQuestionsByIds([insertedAdminId.toString()])
+    // @TO-DO other logic
+
+    return getQuestionsByIds([insertedQuestionId.toString()])
 }
 
 export async function addClientQuestion(data: UserRequest): Promise<DBQuestions[] | null> {
+    const msg = "REPO addClientQuestion: "
     const _user: DBUser = {
         id: '',
         name: data.name,
@@ -140,14 +112,20 @@ export async function addClientQuestion(data: UserRequest): Promise<DBQuestions[
     } as DBUser
     const users = await addUser(_user)
     if(users === null) {
-        console.error("CLIENT ADD QUESTION: can not create user", _user)
+        console.error("(ERROR)" + msg + ": can not create user", _user)
         return null
     }
     const user = users[0]
-
+    const categories = await getCategoryByName(data.topic)
+    let categoryId = null
+    if(categories !== null && categories.length > 0 ) {
+        categoryId = categories[0].id
+    }
+    
     const myUuid: string = randomUUID();
-    const questionInsertSQL = `INSERT INTO question(user_id, question, status, uuid) VALUES(?, ?, ?, UUID_TO_BIN(?))`
-    const [resultQuestionInsert, ufields] = await pool.execute(questionInsertSQL, [user.id, data.question, 1, myUuid]) as [OkPacket, FieldPacket[]];
+    const questionInsertSQL = `INSERT INTO question(user_id, question, status, uuid, category_id) VALUES(?, ?, ?, UUID_TO_BIN(?), ?)`
+    const [resultQuestionInsert, ufields] = await pool.execute(questionInsertSQL, 
+        [user.id, data.question, 1, myUuid, categoryId]) as [OkPacket, FieldPacket[]];
     console.log('CLIENT ADD QUESTION inserted data ', resultQuestionInsert, ufields)
     const insertedQuestionId = resultQuestionInsert?.insertId
     if (!insertedQuestionId) {
@@ -182,6 +160,15 @@ export async function addLLMReply(id: string, llm: string): Promise<DBQuestions[
     const [resultReplyUpdate, ufields] = await pool.execute(replyUpdateSQL, 
         [llm, 1, id]);
     console.log('UPDATED DATA reply ', resultReplyUpdate, ufields)
+    return getQuestionsByIds([id])
+}
+
+export async function updateEmailStatus(id: string, email_status: number): Promise<DBQuestions[] | null> {
+    const msg = "REPO updateEmailStatus: "
+    const updateSQL = `UPDATE question SET email_status=? WHERE id=?`
+    const [updateResult, fields] = await pool.execute(updateSQL, 
+            [email_status, id]);
+    console.log(msg + 'UPDATED question ', updateResult, fields)
     return getQuestionsByIds([id])
 }
 

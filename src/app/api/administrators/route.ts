@@ -1,17 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import {getAdministrators, getTotalAdministrators, addAdministrator, DBAdminUser} from "@/src/repositories/administrators/repo"
+import {getAdministrators, getTotalAdministrators, addAdministrator} from "@/src/repositories/administrators/repo"
+import {DBAdminUser} from "@/src/interfaces/db"
 
 export const dynamic = 'force-dynamic'; // defaults to auto
 
 export async function GET(request: NextRequest) {
-    console.log("Administrators GET request", request)
+    // console.log("API ADMINISTRATORS GET: request", request)
     const searchParams = request.nextUrl.searchParams;
-    const filter = searchParams.getAll('filter') ?? [];
+    // const filter = searchParams.getAll('filter') ?? [];
     const range = searchParams.get('range') ?? '[0,9]';
     const _range = range.slice(1, range.length-1).split(",").map(Number);
     const _sort = searchParams.get('sort') ?? '';
     const sort = _sort.slice(1, _sort.length-1).split(",").map(param => param.slice(1, param.length-1));
-    // if
+
     let limit = searchParams.get('limit');
     if (!limit && _range.length > 0) {
         limit = (_range[1] + 1).toString()
@@ -24,7 +25,7 @@ export async function GET(request: NextRequest) {
     } else if(!page) {
         page = '1'
     }
-    console.log('Administrators GET limit/offset', limit, page, filter)
+    console.log('API ADMINISTRATORS GET: params', limit, page, sort)
 
     let admins: DBAdminUser[] | null = []
     let total: number = 0;
@@ -32,9 +33,9 @@ export async function GET(request: NextRequest) {
         admins = await getAdministrators(page, limit, sort)
         total = await getTotalAdministrators()
     } catch(err) {
-        console.error("Exception(administrator) in GET: ", (err as Error).message)
+        console.error("(ERROR)API ADMINISTRATORS GET: ", (err as Error).message)
         return NextResponse.json(
-            { success: false, message: 'Exception(administrator) in GET.' },
+            { success: false, message: '(ERROR)API ADMINISTRATORS GET: during getting data from DB.' },
             { status: 401 }
         );
     }
@@ -42,29 +43,30 @@ export async function GET(request: NextRequest) {
     const header_str = _range[0] + '-' + _range[1] + '/' + total
     response.headers.set("Content-Range", "administrators " + header_str)
     response.headers.set("X-Total-Count", total.toString())
-    console.log('ADMINISTRATORS GET result', admins)
+    console.log('API ADMINISTRATORS GET: result', admins)
     return response 
 }
 
 export async function POST(request: Request) {
-    console.log("Administrators PUT request", request)
-    const insertedAdmin: DBAdminUser = await request.json(); 
+    // console.log("API ADMINISTRATORS POST: request", request)
+    const insertedAdmin: DBAdminUser = await request.json();
+    console.log("API ADMINISTRATORS POST: insertedAdmin", insertedAdmin)
 
     let admin: DBAdminUser | null = null
     try {
         const admins = await addAdministrator(insertedAdmin)
-        console.log('Administrators admins', admins)
+        // console.log('API ADMINISTRATORS POST: admins', admins)
         if (admins !== null) {
             admin = admins[0]
         }
     } catch(err) {
-        console.error("Exception(administrator) in PUT: ", (err as Error).message)
+        console.error("(ERROR)API ADMINISTRATORS POST: ", (err as Error).message)
         return NextResponse.json(
-            { success: false, message: 'Exception(administrator) in PUT.' },
+            { success: false, message: 'API ADMINISTRATORS POST: error during adding administrator process.' },
             { status: 401 }
         );
     }
-    console.log('Administrators created admin', admin)
+    console.log('API ADMINISTRATORS POST: admin', admin)
     const response = NextResponse.json(admin, { status: 200 });
     response.headers.set("X-Total-Count", "1")
     return response

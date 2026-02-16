@@ -1,27 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
-import {getAdministratorsByIds, saveAdministrator, deleteAdministrator, DBAdminUser} from "@/src/repositories/administrators/repo"
+import {getAdministratorsByIds, saveAdministrator, deleteAdministrator} from "@/src/repositories/administrators/repo"
+import {DBAdminUser} from "@/src/interfaces/db"
 
 export const dynamic = 'force-dynamic'; // defaults to auto
 export async function GET(request: NextRequest) {
-    console.log("Administrators GET request", request)
+    const msg = "API ADMINISTRATOR GET: "
+    // console.log(msg + "request", request)
     const requestUrlId = parseInt(request.url.split('/api/administrators/')[1]);
-    console.log('Administrators GET SINGLE requestUrlId', requestUrlId, typeof requestUrlId)
+    console.log(msg + 'requestUrlId', requestUrlId, typeof requestUrlId)
 
     let admin: DBAdminUser | null = null
     try {
         const admins = await getAdministratorsByIds([requestUrlId.toString()])
-        console.log('Administrators admins', admins)
+        console.log(msg + 'admins', admins)
         if (admins !== null) {
             admin = admins[0]
         }
     } catch(err) {
-        console.error("Exception(administrator) in GET: ", (err as Error).message)
+        console.error("(ERROR)" + msg, (err as Error).message)
         return NextResponse.json(
-            { success: false, message: 'Exception(administrator) in GET.' },
+            { success: false, message: '(ERROR)' + msg + 'error during get data.' },
             { status: 401 }
         );
     }
-    console.log('Administrators admin', admin)
+    console.log(msg + 'admin out', admin)
     const response = NextResponse.json(admin, { status: 200 });
     response.headers.set("X-Total-Count", "1")
     return response 
@@ -32,25 +34,26 @@ export async function POST(request: Request) {
 }
 
 export async function PUT(request: Request) {
-    console.log("Administrators PUT request", request)
+    const msg = "API ADMINISTRATOR PUT: "
+    // console.log(msg + "request", request)
     const requestUrlId = request.url.split('/api/administrators/')[1];
     const updatedAdmin: DBAdminUser = await request.json(); 
 
     let admin: DBAdminUser | null = null
     try {
         const admins = await saveAdministrator(requestUrlId, updatedAdmin)
-        console.log('Administrators admins', admins)
+        console.log(msg + 'admins', admins)
         if (admins !== null) {
             admin = admins[0]
         }
     } catch(err) {
-        console.error("Exception(administrator) in PUT: ", (err as Error).message)
+        console.error("(ERROR)" + msg, (err as Error).message)
         return NextResponse.json(
-            { success: false, message: 'Exception(administrator) in PUT.' },
+            { success: false, message: '(ERROR)' + msg + 'error during save data.' },
             { status: 401 }
         );
     }
-    console.log('Administrators updated admin', admin)
+    console.log(msg + 'updated', admin)
     const response = NextResponse.json(admin, { status: 200 });
     response.headers.set("X-Total-Count", "1")
     return response
@@ -61,24 +64,25 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-    console.log("Administrators DELETE request", request)
+    const msg = "API ADMINISTRATOR DELETE: "
+    // console.log(msg + "request", request)
     const requestUrlId = request.url.split('/api/administrators/')[1];
 
     let admin: DBAdminUser | null = null
     try {
         const admins = await deleteAdministrator(requestUrlId)
-        console.log('Administrators deleted admins', admins)
+        console.log(msg + 'admins', admins)
         if (admins !== null) {
             admin = admins[0]
         }
     } catch(err) {
-        console.error("Exception(administrator) in DELETE: ", (err as Error).message)
+        console.error("(ERROR)" + msg, (err as Error).message)
         return NextResponse.json(
-            { success: false, message: 'Exception(administrator) in DELETE.' },
+            { success: false, message: '(ERROR)' + msg + 'error during deleting data.' },
             { status: 401 }
         );
     }
-    console.log('Administrators deleted admin', admin)
+    console.log(msg + 'deleted', admin)
     const response = NextResponse.json(admin, { status: 200 });
     response.headers.set("X-Total-Count", "1")
     return response
