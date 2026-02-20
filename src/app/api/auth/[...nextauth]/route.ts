@@ -1,22 +1,13 @@
-import NextAuth, {User} from "next-auth"
+import NextAuth from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 import pool from '@/src/libs/db';
-import { RowDataPacket } from 'mysql2/promise';
 import { createHash } from 'crypto';
+import {DBAdminUser} from "@/src/interfaces/db"
+import {NextAuthSessionInput, NextAuthJWTInput} from "@/src/interfaces/custom-next-auth"
 
 export const md5 = (str: string): string => {
   return createHash('md5').update(str).digest('hex');
 };
-
-interface DBAdminUser extends RowDataPacket, User {
-  id: string;
-  name: string;
-  email: string;
-  password: string;
-  username: string;
-  is_super: boolean;
-  status: number;
-}
 
 export const authOptions = {
   // Configure one or more authentication providers
@@ -32,6 +23,7 @@ export const authOptions = {
             username: { label: "Username", type: "text", placeholder: "jsmith" },
             password: { label: "Password", type: "password" }
         },
+
         async authorize(credentials: Record<string, string> | undefined, req): Promise<DBAdminUser | null> {
             // You need to provide your own logic here that takes the credentials
             // submitted and returns either a object representing a user or value
@@ -87,10 +79,32 @@ export const authOptions = {
               console.error("Credentials incorrect: ", credentials)
               throw new Error("Authentication failed! Please, check credentials and try again.");
             }
-        }
+        },
     })
     // ...add more providers here
   ],
+
+  callbacks: {
+    async jwt({ token, user, account, profile }: NextAuthJWTInput) {
+      if (user) {
+        // 'user' is only present on the first sign-in
+        token.id = user.id;
+        token.role = user.role; // Add custom field from your user model
+        token.is_super = user.is_super; 
+      }
+      return token;
+    },
+
+    async session({ session, token }: NextAuthSessionInput) {
+      if (token) {
+        // Explicitly forward properties from the token to the session object
+        session.user.id = token.id;
+        session.user.role = token.is_super ? "admin" : "lowyer";
+        session.user.is_super = token.is_super
+      }
+      return session;
+    },
+  }
 }
 
 // export default NextAuth(authOptions)

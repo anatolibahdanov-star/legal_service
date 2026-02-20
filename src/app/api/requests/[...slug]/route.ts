@@ -7,7 +7,7 @@ import {
     updateEmailStatus
 } from "@/src/repositories/requests/repo"
 import {DBQuestions} from "@/src/interfaces/db"
-import {sendIIBot} from "@/src/services/llm";
+import {sendIIBot, sendConsultantPlusBot} from "@/src/services/llm";
 import SendSendGridEmail, {EmailDataI} from "@/src/services/sendgrid"
 
 export const dynamic = 'force-dynamic'; // defaults to auto
@@ -26,11 +26,13 @@ export async function GET(request: NextRequest) {
             question = questions[0]
 
             if(question.reply_status === 0 && question.reply === '' && is_number) {
+                const start = performance.now();
                 const llm = await sendIIBot(question.question)
+                const duration = start - performance.now();
                 if(llm) {
-                    console.log("(LLM)" + msg + "reply length ", llm.length)
+                    console.log("(LLM)" + msg + "reply length/duration ", llm.length, duration)
                     console.log("(LLM)" + msg + "reply ", llm)
-                    const _questions = await addLLMReply(requestUrlId.toString(), llm)
+                    const _questions = await addLLMReply(requestUrlId.toString(), llm, duration)
                     if (_questions !== null) {
                         question = _questions[0]
                     }
@@ -63,6 +65,17 @@ export async function PUT(request: Request) {
     const requestUrlId = request.url.split('/api/requests/')[1];
     const updatedQuestion: DBQuestions = await request.json();
     console.log(msg + "request in updatedQuestion", updatedQuestion)
+
+    /* if(updatedQuestion.chat === 1) {
+        const consultantReply = await sendConsultantPlusBot(updatedQuestion.question)
+        console.log(msg + " Consultant+ response", consultantReply)
+    } else {
+        console.log(msg + " no Consultant+ request", updatedQuestion)
+    }
+    return NextResponse.json(
+            { success: false, message: '(ERROR)' + msg + ': TEST.', updatedQuestion },
+            { status: 404 }
+        );*/
 
     let question: DBQuestions | null = null
     try {

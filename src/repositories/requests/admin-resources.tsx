@@ -15,8 +15,16 @@ const QuestionEmailStatuses = [
     { id: 2, name: 'Error' },
 ]
 
+
+const requestFilters = [
+    // eslint-disable-next-line react/jsx-key
+    // <TextInput label="Search" source="q" alwaysOn />,
+    // eslint-disable-next-line react/jsx-key
+    <TextInput label="Пользователь" source="username" defaultValue="Hello, World!" />,
+];
+
 export const RequestList = () => (
-    <List>
+    <List sort={{ field: 'id', order: 'DESC' }} filters={requestFilters}>
         <Datagrid>
             <TextField source="id" />
             <TextField source="username" />

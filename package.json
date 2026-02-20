@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 80",
+    "local": "next dev",
     "build": "next build",
     "start": "next start -p 3002",
     "lint": "eslint",
@@ -45,6 +46,7 @@
     "@sendgrid/mail": "^8.1.6",
     "ai": "^6.0.86",
     "bootstrap": "^5.3.8",
+    "node-cron": "^4.2.1",
     "i18next": "^25.7.4",
     "i18next-browser-languagedetector": "^8.2.0",
     "i18next-http-backend": "^3.0.2",

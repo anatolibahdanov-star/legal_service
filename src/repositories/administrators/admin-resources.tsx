@@ -13,7 +13,7 @@ const AdministratorSuperStatuses = [
 ]
 
 export const AdministratorList = () => (
-    <List>
+    <List sort={{ field: 'id', order: 'DESC' }}>
         <Datagrid>
             <TextField source="id" />
             <TextField source="name" />

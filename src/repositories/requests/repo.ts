@@ -155,10 +155,10 @@ export async function addClientQuestion(data: UserRequest): Promise<DBQuestions[
     return getQuestionsByIds([insertedQuestionId.toString()])
 }
 
-export async function addLLMReply(id: string, llm: string): Promise<DBQuestions[] | null> {
-    const replyUpdateSQL = `UPDATE reply SET reply=?, status=? WHERE question_id=?`
+export async function addLLMReply(id: string, llm: string, duration: number): Promise<DBQuestions[] | null> {
+    const replyUpdateSQL = `UPDATE reply SET reply=?, status=?, duration=? WHERE question_id=?`
     const [resultReplyUpdate, ufields] = await pool.execute(replyUpdateSQL, 
-        [llm, 1, id]);
+        [llm, 1, duration, id]);
     console.log('UPDATED DATA reply ', resultReplyUpdate, ufields)
     return getQuestionsByIds([id])
 }

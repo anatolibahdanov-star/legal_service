@@ -35,7 +35,9 @@ export interface DBQuestions extends RowDataPacket, User {
   reply_status: number;
   final_reply_id: string;
   final_reply: string | null;
+  final_reply_duration?: number;
   created_at: DateTime;
+  chat?: number;
 }
 
 export interface DBUser extends RowDataPacket, User {

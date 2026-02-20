@@ -15,13 +15,13 @@ export async function GET(request: NextRequest) {
 
     let limit = searchParams.get('limit');
     if (!limit && _range.length > 0) {
-        limit = (_range[1] + 1).toString()
+        limit = (_range[1] - _range[0] + 1).toString()
     } else if(!limit) {
         limit = '10'
     }
     let page = searchParams.get('page');
     if (!page && _range.length > 0) {
-        page = Math.ceil((_range[1])/parseInt(limit)).toString()
+        page = Math.ceil((_range[1] + 1)/parseInt(limit)).toString()
     } else if(!page) {
         page = '1'
     }

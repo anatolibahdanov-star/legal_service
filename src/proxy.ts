@@ -10,6 +10,7 @@ export function proxy(request: NextRequest) {
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api") ||
     pathname.startsWith("/static") ||
+    pathname.startsWith("/login") ||
     PUBLIC_FILE.test(pathname)
   ) {
     return;
@@ -31,6 +32,6 @@ export function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     // Match all paths except the ones starting with these and files with an extension
-    "/((?!api|_next|static|.*\\..*).*)",
+    "/((?!api|_next|static|login|.*\\..*).*)",
   ],
 };
