@@ -37,3 +37,4 @@ export async function submitFormAction(formData: FormData) {
   const msg = "Your request successfully received. Please wait for our response ASAP on special reply page created for you."
   redirect('/consultation/' + result.uuid + '/?msg=' + encodeURIComponent(msg));
 }
+

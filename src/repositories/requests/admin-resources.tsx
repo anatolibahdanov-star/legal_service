@@ -1,5 +1,7 @@
-import { RichTextField, Show, SimpleShowLayout, required, SelectInput, TextInput, SimpleForm, Edit, List, Datagrid, DateField, TextField, SelectField, EditButton, DeleteButton} from 'react-admin';
+/* eslint-disable react/jsx-key */
+import { ReferenceInput, Filter, DateInput, RichTextField, Show, SimpleShowLayout, required, SelectInput, TextInput, SimpleForm, Edit, List, Datagrid, DateField, TextField, SelectField, EditButton, DeleteButton, FilterProps} from 'react-admin';
 import {RichTextInput} from "ra-input-rich-text"
+import { JSX } from 'react/jsx-runtime';
 
 const QuestionStatuses = [
     { id: 0, name: 'Disabled' },
@@ -15,16 +17,27 @@ const QuestionEmailStatuses = [
     { id: 2, name: 'Error' },
 ]
 
+const nextMonth = new Date()
+nextMonth.setMonth(nextMonth.getMonth() + 1);
 
-const requestFilters = [
-    // eslint-disable-next-line react/jsx-key
-    // <TextInput label="Search" source="q" alwaysOn />,
-    // eslint-disable-next-line react/jsx-key
-    <TextInput label="Пользователь" source="username" defaultValue="Hello, World!" />,
-];
+const RequestFilters = (props: JSX.IntrinsicAttributes) => (
+    <Filter {...props}>
+        <TextInput label="Пользователь" source="username" />
+        <TextInput label="Вопрос" source="question" />
+        <ReferenceInput label="Категория" source="category" reference="categories">
+            <SelectInput optionText="name" />
+        </ReferenceInput>
+        <SelectInput label="Статус" source="status" choices={QuestionStatuses} />
+        <SelectInput label="E-mail" source="email" choices={QuestionEmailStatuses} />
+        <DateInput label="С" source="published_at_gte" defaultValue={(new Date()).toISOString().split('T')[0]} />
+        <DateInput label="До" source="published_at_lte" defaultValue={nextMonth.toISOString().split('T')[0]} />
+    </Filter>
+);
+
+const defaultLoading = <p>Загружаем вопросы...</p>
 
 export const RequestList = () => (
-    <List sort={{ field: 'id', order: 'DESC' }} filters={requestFilters}>
+    <List sort={{ field: 'id', order: 'DESC' }} filters={<RequestFilters />} loading={defaultLoading}>
         <Datagrid>
             <TextField source="id" />
             <TextField source="username" />

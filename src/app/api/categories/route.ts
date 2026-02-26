@@ -1,19 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import {addClientQuestion, getQuestions, getTotalQuestions} from "@/src/repositories/requests/repo"
-import {DBQuestions} from "@/src/interfaces/db"
-import {UserRequest} from "@/src/interfaces/api"
+import {getCategories, getTotalCategories} from "@/src/repositories/categories/repo"
+import {DBCategory} from "@/src/interfaces/db"
 
 export const dynamic = 'force-dynamic'; // defaults to auto
 
 export async function GET(request: NextRequest) {
-    // console.log("QUESTIONS GET request", request)
+    // console.log("API CATEGORIES GET: request", request)
     const searchParams = request.nextUrl.searchParams;
     const _filter = searchParams.get('filter') ?? "";
     const range = searchParams.get('range') ?? '[0,9]';
     const _range = range.slice(1, range.length-1).split(",").map(Number);
     const _sort = searchParams.get('sort') ?? '';
     const sort = _sort.slice(1, _sort.length-1).split(",").map(param => param.slice(1, param.length-1));
-    // if
+
     let limit = searchParams.get('limit');
     if (!limit && _range.length > 0) {
         limit = (_range[1] - _range[0] + 1).toString()
@@ -27,54 +26,33 @@ export async function GET(request: NextRequest) {
         page = '1'
     }
     const filter = _filter ?  JSON.parse(_filter) : null
-    console.log('API QUESTIONS GET: params', limit, page, sort, filter)
+    // console.log('API CATEGORIES GET: params', limit, page, sort)
 
-    let questions: DBQuestions[] | null = []
+    let admins: DBCategory[] | null = []
     let total: number = 0;
     try {
-        questions = await getQuestions(page, limit, sort, filter)
-        total = await getTotalQuestions(filter)
+        admins = await getCategories(page, limit, sort)
+        total = await getTotalCategories()
     } catch(err) {
-        console.error("(ERROR)API QUESTIONS GET: ", (err as Error).message)
+        console.error("(ERROR)API CATEGORIES GET: ", (err as Error).message)
         return NextResponse.json(
-            { success: false, message: '(ERROR)API QUESTIONS GET: error during get questions info.' },
+            { success: false, message: '(ERROR)API CATEGORIES GET: during getting data from DB.' },
             { status: 401 }
         );
     }
-    const response = NextResponse.json(questions, { status: 200 });
+    const response = NextResponse.json(admins, { status: 200 });
     const header_str = _range[0] + '-' + _range[1] + '/' + total
-    response.headers.set("Content-Range", "requests " + header_str)
+    response.headers.set("Content-Range", "categories " + header_str)
     response.headers.set("X-Total-Count", total.toString())
+    // console.log('API ADMINISTRATORS GET: result', admins)
     return response 
 }
 
 export async function POST(request: Request) {
-    // console.log("API QUESTIONS POST: request ", request)
-    const insertedQuestion: UserRequest = await request.json(); 
-    console.log("API QUESTIONS POST: request json", insertedQuestion)
-    insertedQuestion.llm = ''
-
-    let question: DBQuestions | null = null
-    try {
-        const questions = await addClientQuestion(insertedQuestion)
-        // console.log('API QUESTIONS POST: questions ', questions)
-        if (questions !== null) {
-            question = questions[0]
-        }
-    } catch(err) {
-        console.error("(ERROR)API QUESTIONS POST: ", (err as Error).message)
-        return NextResponse.json(
-            { success: false, message: '(ERROR)API QUESTIONS POST: error during add question.' },
-            { status: 401 }
-        );
-    }
-    console.log('API QUESTIONS POST: created ', question)
-    const response = NextResponse.json(question, { status: 200 });
-    response.headers.set("X-Total-Count", "1")
-    return response
+    return handler(request);
 }
 
-export async function PUT(request: Request) {
+export async function PUT(request: NextRequest) {
     return handler(request);
 }
 

@@ -1,5 +1,6 @@
 import * as React from 'react';
-import { Datagrid, EditButton, DeleteButton, Edit, Show, SimpleShowLayout, TextField, List, DateField, Create, SimpleForm, TextInput, SelectInput, PasswordInput, BooleanInput, required, SelectField } from 'react-admin';
+import { DateInput, Filter, Datagrid, EditButton, DeleteButton, Edit, Show, SimpleShowLayout, TextField, List, DateField, Create, SimpleForm, TextInput, SelectInput, PasswordInput, BooleanInput, required, SelectField } from 'react-admin';
+import { JSX } from 'react/jsx-runtime';
 
 const AdministratorStatuses = [
     { id: 0, name: 'Disabled' },
@@ -8,12 +9,27 @@ const AdministratorStatuses = [
 ]
 
 const AdministratorSuperStatuses = [
-    { id: 0, name: 'Content Manager' },
-    { id: 1, name: 'Super Admin' },
+    { id: 0, name: 'Юрист' },
+    { id: 1, name: 'Администртор' },
 ]
 
+const nextMonth = new Date()
+nextMonth.setMonth(nextMonth.getMonth() + 1);
+const defaultLoading = <p>Загружаем администраторов и юристов...</p>
+
+const AdminFilters = (props: JSX.IntrinsicAttributes) => (
+    <Filter {...props}>
+        <TextInput label="Пользователь" source="username" />
+        <TextInput label="Имя" source="name" />
+        <SelectInput label="Статус" source="status" choices={AdministratorStatuses} />
+        <SelectInput label="Роль" source="is_super" choices={AdministratorSuperStatuses} />
+        <DateInput label="С" source="published_at_gte" defaultValue={(new Date()).toISOString().split('T')[0]} />
+        <DateInput label="До" source="published_at_lte" defaultValue={nextMonth.toISOString().split('T')[0]} />
+    </Filter>
+);
+
 export const AdministratorList = () => (
-    <List sort={{ field: 'id', order: 'DESC' }}>
+    <List sort={{ field: 'id', order: 'DESC' }} filters={<AdminFilters />} loading={defaultLoading}>
         <Datagrid>
             <TextField source="id" />
             <TextField source="name" />

@@ -9,16 +9,13 @@ import {
   Select, 
   SelectContent, 
   SelectGroup, 
-  SelectItem, 
-  SelectScrollDownButton, 
-  SelectScrollUpButton, 
   SelectLabel,
-  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "./ui/select";
 
-export function Hero() {
+
+export function Hero({ children }: { children: React.ReactNode }) {
   const [formData, setFormData] = useState({
     email: "",
     name: "",
@@ -147,18 +144,6 @@ export function Hero() {
                 <label htmlFor="topic" className="block text-sm font-medium text-white/90 mb-2">
                   Тема вопроса
                 </label>
-                {/* <Form.Select 
-                  id="topic" name="topic" aria-label="topic" 
-                  value={formData.topic} 
-                  onChange={(e) => setFormData({ ...formData, topic: e.target.value })}
-                  className="w-full px-5 py-4 bg-transparent border-2 border-white/20 rounded-2xl text-white placeholder-white/40 focus:outline-none focus:border-[#8faaba] transition-colors"
-                  required
-                >
-                  <option value="">Open this select menu</option>
-                  <option value="1">One</option>
-                  <option value="2">Two</option>
-                  <option value="3">Three</option>
-                </Form.Select> */}
                 <Select
                   name="topic" aria-label="topic"
                   required
@@ -169,12 +154,7 @@ export function Hero() {
                     <SelectContent className="SelectContent">
                       <SelectGroup>
                         <SelectLabel className="SelectLabel">Недвижимость</SelectLabel>
-                        <SelectItem value="Объекты недвижимости">Объекты недвижимости</SelectItem>
-                        <SelectItem value="Жилая недвижимость">Жилая недвижимость</SelectItem>
-                        <SelectItem value="Коммерческая недвижимость">Коммерческая недвижимость</SelectItem>
-                        <SelectItem value="Права на недвижимость">Права на недвижимость</SelectItem>
-                        <SelectItem value="Сделки с недвижимостью">Сделки с недвижимостью</SelectItem>
-                        <SelectItem value="Ограничения и обременения">Ограничения и обременения</SelectItem>
+                        {children}
                       </SelectGroup>
                     </SelectContent>
                 </Select>

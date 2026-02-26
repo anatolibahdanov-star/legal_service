@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {getAdministrators, getTotalAdministrators, addAdministrator} from "@/src/repositories/administrators/repo"
-import {DBAdminUser} from "@/src/interfaces/db"
+import {DBUser} from "@/src/interfaces/db"
 
 export const dynamic = 'force-dynamic'; // defaults to auto
 
 export async function GET(request: NextRequest) {
     // console.log("API ADMINISTRATORS GET: request", request)
     const searchParams = request.nextUrl.searchParams;
-    // const filter = searchParams.getAll('filter') ?? [];
+    const _filter = searchParams.get('filter') ?? "";
     const range = searchParams.get('range') ?? '[0,9]';
     const _range = range.slice(1, range.length-1).split(",").map(Number);
     const _sort = searchParams.get('sort') ?? '';
@@ -25,13 +25,14 @@ export async function GET(request: NextRequest) {
     } else if(!page) {
         page = '1'
     }
-    console.log('API ADMINISTRATORS GET: params', limit, page, sort)
+    const filter = _filter ?  JSON.parse(_filter) : null
+    // console.log('API ADMINISTRATORS GET: params', limit, page, sort)
 
-    let admins: DBAdminUser[] | null = []
+    let admins: DBUser[] | null = []
     let total: number = 0;
     try {
-        admins = await getAdministrators(page, limit, sort)
-        total = await getTotalAdministrators()
+        admins = await getAdministrators(page, limit, sort, filter)
+        total = await getTotalAdministrators(filter)
     } catch(err) {
         console.error("(ERROR)API ADMINISTRATORS GET: ", (err as Error).message)
         return NextResponse.json(
@@ -43,16 +44,16 @@ export async function GET(request: NextRequest) {
     const header_str = _range[0] + '-' + _range[1] + '/' + total
     response.headers.set("Content-Range", "administrators " + header_str)
     response.headers.set("X-Total-Count", total.toString())
-    console.log('API ADMINISTRATORS GET: result', admins)
+    // console.log('API ADMINISTRATORS GET: result', admins)
     return response 
 }
 
 export async function POST(request: Request) {
     // console.log("API ADMINISTRATORS POST: request", request)
-    const insertedAdmin: DBAdminUser = await request.json();
+    const insertedAdmin: DBUser = await request.json();
     console.log("API ADMINISTRATORS POST: insertedAdmin", insertedAdmin)
 
-    let admin: DBAdminUser | null = null
+    let admin: DBUser | null = null
     try {
         const admins = await addAdministrator(insertedAdmin)
         // console.log('API ADMINISTRATORS POST: admins', admins)

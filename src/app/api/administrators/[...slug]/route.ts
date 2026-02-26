@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {getAdministratorsByIds, saveAdministrator, deleteAdministrator} from "@/src/repositories/administrators/repo"
-import {DBAdminUser} from "@/src/interfaces/db"
+import {DBUser} from "@/src/interfaces/db"
 
 export const dynamic = 'force-dynamic'; // defaults to auto
 export async function GET(request: NextRequest) {
@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
     const requestUrlId = parseInt(request.url.split('/api/administrators/')[1]);
     console.log(msg + 'requestUrlId', requestUrlId, typeof requestUrlId)
 
-    let admin: DBAdminUser | null = null
+    let admin: DBUser | null = null
     try {
         const admins = await getAdministratorsByIds([requestUrlId.toString()])
         console.log(msg + 'admins', admins)
@@ -37,9 +37,9 @@ export async function PUT(request: Request) {
     const msg = "API ADMINISTRATOR PUT: "
     // console.log(msg + "request", request)
     const requestUrlId = request.url.split('/api/administrators/')[1];
-    const updatedAdmin: DBAdminUser = await request.json(); 
+    const updatedAdmin: DBUser = await request.json(); 
 
-    let admin: DBAdminUser | null = null
+    let admin: DBUser | null = null
     try {
         const admins = await saveAdministrator(requestUrlId, updatedAdmin)
         console.log(msg + 'admins', admins)
@@ -68,7 +68,7 @@ export async function DELETE(request: Request) {
     // console.log(msg + "request", request)
     const requestUrlId = request.url.split('/api/administrators/')[1];
 
-    let admin: DBAdminUser | null = null
+    let admin: DBUser | null = null
     try {
         const admins = await deleteAdministrator(requestUrlId)
         console.log(msg + 'admins', admins)

@@ -11,4 +11,6 @@ export interface NextAuthJWTInput {
   user: User;
   account: Account | null;
   profile?: Profile | undefined;
+  trigger?: string;
+  session?: Session;
 }

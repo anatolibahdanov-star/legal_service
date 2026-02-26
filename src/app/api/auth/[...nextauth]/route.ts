@@ -1,13 +1,9 @@
 import NextAuth from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
-import pool from '@/src/libs/db';
-import { createHash } from 'crypto';
-import {DBAdminUser} from "@/src/interfaces/db"
+import {getAdministratorByEmail} from "@/src/repositories/administrators/repo"
+import {login} from "@/src/repositories/users/repo"
+import {DBUser} from "@/src/interfaces/db"
 import {NextAuthSessionInput, NextAuthJWTInput} from "@/src/interfaces/custom-next-auth"
-
-export const md5 = (str: string): string => {
-  return createHash('md5').update(str).digest('hex');
-};
 
 export const authOptions = {
   // Configure one or more authentication providers
@@ -24,73 +20,63 @@ export const authOptions = {
             password: { label: "Password", type: "password" }
         },
 
-        async authorize(credentials: Record<string, string> | undefined, req): Promise<DBAdminUser | null> {
-            // You need to provide your own logic here that takes the credentials
-            // submitted and returns either a object representing a user or value
-            // that is false/null if the credentials are invalid.
-            // e.g. return { id: 1, name: 'J Smith', email: 'jsmith@example.com' }
-            // You can also use the `req` object to obtain additional parameters
-            // (i.e., the request IP address)
-            // const res = await fetch("/your/endpoint", {
-            //     method: 'POST',
-            //     body: JSON.stringify(credentials),
-            //     headers: { "Content-Type": "application/json" }
-            // })
-            // const user = await res.json()
-
-            // // If no error and we have user data, return it
-            // if (res.ok && user) {
-            //     return user
-            // }
+        async authorize(credentials: Record<string, string> | undefined, req): Promise<DBUser | null> {
             console.log("auth credentials", credentials)
             if(credentials !== undefined && "username" in credentials && "password" in credentials) {
               try {
-                const [rows] = await pool.query<DBAdminUser[]>({
-                  sql: 'SELECT id, name, email, username, password, is_super, status FROM administrator WHERE username=?',
-                  values: [credentials?.username]
-                });
-                if (rows.length === 1) {
-                  const user: DBAdminUser = rows[0];
-                  if (user.status === 1) {
-                    if(md5(credentials?.password) === user.password) {
-                      return user
-                    } else {
-                      console.error("Incorrect password: ", credentials)
-                      throw new Error("Incorrect credentials.");
-                    }
-                  } else {
-                    console.error("User status - blocked: ", credentials)
-                    throw new Error("The user is blocked because they are not a direct member of a group with access, nor had access directly assigned by an administrator.");
+                const admin: DBUser | null | undefined = await getAdministratorByEmail(credentials?.username, credentials?.password)
+                let user: DBUser | null = null
+                if(!admin) {
+                  const _user: DBUser | null | undefined = await login(credentials?.username, credentials?.password)
+                  if(_user){
+                    user = _user
                   }
                 } else {
-                  if (rows.length === 0) {
-                    console.error("User not found by username: ", credentials)
-                    throw new Error("User not found.");
-                  } else {
-                    console.error("To many users found by credentials: ", credentials)
-                    throw new Error("Incorrect username spelling, or system synchronization issues.");
-                  }
+                  user = admin
                 }
+                if (user) {
+                  if (user.status && user.status !== 1) {
+                    console.error("User status - blocked: ", credentials)
+                    throw new Error("Данный Юрист был заблокирован. Обратитесь к администратору.");
+                  } else if (!user.status) {
+                    user.status = 1
+                    user.admin_id = 0
+                    user.is_super = false
+                    user.role = 'user'
+                  } else if(user.status) {
+                    user.role = user.is_super ? 'admin' : 'lowyer'
+                  }
+
+                  return user
+                }
+
+                if (user === null) {
+                  console.error("User not found by username: ", credentials)
+                  throw new Error("Пользователь с таким E-mail не найден.");
+                }
+
+                console.error("Incorrect password: ", credentials)
+                throw new Error("Некорректные введенные E-mail/Password.");
+                
               } catch (error) {
                 console.error("Failed to fetch SQL select user credentials: ", error)
-                throw new Error("We're sorry, something went wrong on our end. Please try reloading the page in a minute(1).");
+                throw new Error("Ошибка авторизации: " + (error as Error).message);
               }
             } else {
-              console.error("Credentials incorrect: ", credentials)
-              throw new Error("Authentication failed! Please, check credentials and try again.");
+              console.error("Credentials empty: ", credentials)
+              throw new Error("Ошибка авторизации: Некорректные введенные E-mail/Password.");
             }
         },
     })
-    // ...add more providers here
   ],
 
   callbacks: {
-    async jwt({ token, user, account, profile }: NextAuthJWTInput) {
+    async jwt({ token, user }: NextAuthJWTInput) {
       if (user) {
         // 'user' is only present on the first sign-in
         token.id = user.id;
         token.role = user.role; // Add custom field from your user model
-        token.is_super = user.is_super; 
+        token.is_super = user.is_super !== undefined ? user.is_super : false; 
       }
       return token;
     },
@@ -99,7 +85,7 @@ export const authOptions = {
       if (token) {
         // Explicitly forward properties from the token to the session object
         session.user.id = token.id;
-        session.user.role = token.is_super ? "admin" : "lowyer";
+        session.user.role = token.role;
         session.user.is_super = token.is_super
       }
       return session;

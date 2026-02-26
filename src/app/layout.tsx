@@ -16,7 +16,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" dir="ltr">
-      <body>
+      <body style={{"margin":"0px"}}>
         <div className="min-h-screen bg-[#fefdf9]">
           <NextAuthProvider>
             <Header />

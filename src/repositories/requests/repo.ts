@@ -3,22 +3,30 @@ import { OkPacket, FieldPacket } from 'mysql2/promise';
 import {addUser} from "@/src/repositories/users/repo"
 import { randomUUID } from 'crypto';
 import {CountResult, DBQuestions, DBUser} from "@/src/interfaces/db"
+import {DBFilterQuestions} from "@/src/interfaces/filters"
 import {UserRequest} from "@/src/interfaces/api"
 import {getCategoryByName} from "@/src/repositories/categories/repo"
 
-export async function getQuestions(page: string = '1', _limit: string = '10', _sorter: string[] = ['id', 'DESC']): Promise<DBQuestions[] | null> {
+export async function getQuestions(
+    page: string = '1', 
+    _limit: string = '10', 
+    _sorter: string[] = ['id', 'DESC'], 
+    filter: DBFilterQuestions | null = null
+): Promise<DBQuestions[] | null> {
     const orderBy = getAdminQuestionOrder(_sorter);
+    const where = getAdminQuestionFilter(filter)
     const sql: string =  `SELECT q.id id, u.name username, q.question question,
     q.status status, q.created_at as created_at, BIN_TO_UUID(q.uuid) uuid, u.email email,
     c.id category_id, c.name category_name, q.email_status email_status 
     FROM question q JOIN user u ON q.user_id=u.id 
-    LEFT JOIN category c ON q.category_id=c.id
-    ORDER BY ` + orderBy +
+    LEFT JOIN category c ON q.category_id=c.id `
+     + where +
+    ` ORDER BY ` + orderBy +
     ` LIMIT ?
     OFFSET ?`;
     const limit = parseInt(_limit) ?? 10
     const offset = ((parseInt(page) ?? 1) - 1) * limit
-    console.log('sql ', sql)
+    // console.log('sql ', sql)
     const [rows] = await pool.query<DBQuestions[]>({sql: sql, values: [limit, offset]});
     if (rows.length === 0) {
         return []
@@ -26,8 +34,9 @@ export async function getQuestions(page: string = '1', _limit: string = '10', _s
     return rows
 }
 
-export async function getTotalQuestions(): Promise<number> {
-    const sql: string =  `SELECT COUNT(q.id) as counter FROM question q JOIN user u ON q.user_id=u.id`;
+export async function getTotalQuestions(filter: DBFilterQuestions | null = null): Promise<number> {
+    const where = getAdminQuestionFilter(filter)
+    const sql: string =  `SELECT COUNT(q.id) as counter FROM question q JOIN user u ON q.user_id=u.id ` + where;
     const [rows] = await pool.query<CountResult[]>({sql: sql});
     console.log('sql counter ', rows)
     if (rows.length === 0) {
@@ -83,6 +92,53 @@ export function getAdminQuestionOrder(orderBy:string[]): string {
         return field + ' ' + sorter
     }
     return "q.id DESC"
+}
+
+export function getAdminQuestionFilter(filter: DBFilterQuestions | null = null): string {
+    if(filter === null) {
+        return ''
+    }
+    let result = 'WHERE ', isFilter = false;
+    if (filter.published_at_lte) {
+        result += 'q.created_at<="' + filter.published_at_lte + '" '
+        isFilter = true
+    }
+    if (filter.published_at_gte) {
+        const resultAnd = isFilter ? 'AND ' : ''
+        result += (resultAnd + 'q.created_at>="' + filter.published_at_gte + '" ')
+        isFilter = true
+    }
+    if (filter.username) {
+        const resultAnd = isFilter ? 'AND ' : ''
+        result += (resultAnd + 'u.username LIKE "%' + filter.username + '%" ')
+        isFilter = true
+    }
+    if (filter.user_id) {
+        const resultAnd = isFilter ? 'AND ' : ''
+        result += (resultAnd + 'q.user_id=' + filter.user_id + ' ')
+        isFilter = true
+    }
+    if (filter.question) {
+        const resultAnd = isFilter ? 'AND ' : ''
+        result += (resultAnd + 'q.question LIKE "%' + filter.question + '%" ')
+        isFilter = true
+    }
+    if (filter.category) {
+        const resultAnd = isFilter ? 'AND ' : ''
+        result += (resultAnd + 'q.category_id=' + filter.category + ' ')
+        isFilter = true
+    }
+    if (filter.status) {
+        const resultAnd = isFilter ? 'AND ' : ''
+        result += (resultAnd + 'q.status=' + filter.status + ' ')
+        isFilter = true
+    }
+    if (filter.email) {
+        const resultAnd = isFilter ? 'AND ' : ''
+        result += (resultAnd + 'q.email_status=' + filter.email + ' ')
+        isFilter = true
+    }
+    return isFilter ? result : ''
 }
 
 export async function addQuestion(question: DBQuestions): Promise<DBQuestions[] | null> {

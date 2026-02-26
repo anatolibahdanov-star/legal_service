@@ -1,6 +1,7 @@
 import pool from '@/src/libs/db';
 import { OkPacket, FieldPacket } from 'mysql2/promise';
 import {CountResult, DBUser} from "@/src/interfaces/db"
+import {md5} from "@/src/helpers/tools"
 
 export async function getUsers(page: string = '1', _limit: string = '10', _sorter: string[] = ['id', 'DESC']): Promise<DBUser[] | null> {
     const orderBy = getAdminUserOrder(_sorter);
@@ -96,4 +97,25 @@ export async function deleteUser(id: string): Promise<DBUser[] | null> {
     console.log(msg + 'deleted', resultUserDelete)
 
     return [user]
+}
+
+export async function login(email: string, password: string): Promise<DBUser | null | undefined> {
+    const msg = "REPO login: "
+    const sql: string =  `SELECT * FROM user WHERE email=?`;
+    const [rows] = await pool.query<DBUser[]>({sql: sql, values: [email]});
+    if (rows.length === 0) {
+        console.error(msg + 'User with email/password not found', email, password)
+        return null
+    }
+    if (rows.length > 1) {
+        console.error(msg + 'Double User found', email, password)
+        return null
+    }
+    const user = rows[0]
+    if(md5(password) !== user.password) {
+        console.error(msg + 'Incorrect login/password', email, password, user)
+        return undefined
+    }
+    console.log(msg + "Successfull login", user)
+    return user
 }

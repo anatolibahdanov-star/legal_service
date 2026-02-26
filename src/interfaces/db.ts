@@ -6,19 +6,6 @@ export interface CountResult extends RowDataPacket {
   counter: number; // The alias from the SQL query
 }
 
-export interface DBAdminUser extends RowDataPacket, User {
-  id: string;
-  name: string;
-  email: string;
-  password: string;
-  admin_id: number;
-  username: string;
-  is_super: boolean;
-  is_super_bool: string;
-  status: number;
-  created_at: DateTime;
-}
-
 export interface DBQuestions extends RowDataPacket, User {
   id: string;
   username: string;
@@ -44,7 +31,14 @@ export interface DBUser extends RowDataPacket, User {
   id: string;
   name: string;
   email: string;
-  created_at?: DateTime;
+  password: string;
+  username: string;
+  admin_id?: number;
+  is_super?: boolean;
+  is_super_bool?: string;
+  is_register?: boolean;
+  status?: number;
+  created_at: DateTime;
 }
 
 export interface DBCategory extends RowDataPacket {
