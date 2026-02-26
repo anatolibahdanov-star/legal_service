@@ -110,7 +110,7 @@ export function AuthForm({ isOpen, onClose, onSwitchToRegister, onSwitchToReset 
       if(user?.role !== "user") {
         redirect('/admin');
       } else {
-        redirect('/en/profile?msg=1');
+        redirect('/profile');
       }
       
     }
