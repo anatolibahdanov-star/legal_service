@@ -1,6 +1,5 @@
 'use client'; 
 
-// import 'bootstrap/dist/css/bootstrap.min.css';
 import "./globals.css";
 // import Header from "@/src/components/Header";
 import { Header } from "@/src/app/components/Header";
