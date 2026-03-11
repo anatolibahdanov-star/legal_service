@@ -55,7 +55,7 @@ export async function getAdministratorByEmail(email: string, password: string): 
     const msg = 'REPO getAdministratorByEmail: '
     const sql: string =  `SELECT name, email, id, username, password, is_super, status, created_at 
     FROM administrator WHERE email=?`;
-    console.log(msg + "params", email, password)
+    // console.log(msg + "params", email, password)
     const [rows] = await pool.query<DBUser[]>({sql: sql, values: [email]});
     if (rows.length === 0) {
         console.error(msg + 'User with email/password not found', email, password)

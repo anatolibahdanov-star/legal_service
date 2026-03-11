@@ -25,6 +25,7 @@ export interface DBQuestions extends RowDataPacket, User {
   final_reply_duration?: number;
   created_at: DateTime;
   chat?: number;
+  isGenerate?: boolean;
 }
 
 export interface DBUser extends RowDataPacket, User {

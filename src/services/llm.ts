@@ -40,10 +40,12 @@ interface ConsultantPostResponseI {
 
 export async function sendIIBot(question: string): Promise<string | null | undefined> {
     const msg = "SEND Consultant PLUS: "
-    let hints = '\nResponse translate to Russian language.\nLimit response with 1500 symbols.'
+    // let hints = '\nResponse translate to Russian language.\nLimit response with 1500 symbols.'
+    let hints = '\nОграничить текст 2000 символов.\n Разделить текст на разделы.'
     const filePath: string = path.join(process.cwd(), 'src/services/prompt_7.1.md');
     try {
-        hints = fs.readFileSync(filePath, 'utf-8');
+        // hints = fs.readFileSync(filePath, 'utf-8');
+        hints = hints + '\nСохранить ссылки на статьи. \nСделать текст более читабельным для обычного человека. \nАдаптировать как сценарий действий.';
     } catch (error) {
       console.error("(ERROR)" + msg + "Error reading PROMPT file:", error, filePath);
     }

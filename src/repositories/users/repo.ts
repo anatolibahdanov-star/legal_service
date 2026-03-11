@@ -1,7 +1,9 @@
 import pool from '@/src/libs/db';
 import { OkPacket, FieldPacket } from 'mysql2/promise';
+import logger from "@/src/services/logger"
 import {CountResult, DBUser} from "@/src/interfaces/db"
-import {md5} from "@/src/helpers/tools"
+import {RegUser} from "@/src/interfaces/api"
+import {md5, passGenerator} from "@/src/helpers/tools"
 
 export async function getUsers(page: string = '1', _limit: string = '10', _sorter: string[] = ['id', 'DESC']): Promise<DBUser[] | null> {
     const orderBy = getAdminUserOrder(_sorter);
@@ -25,26 +27,26 @@ export async function getTotalUsers(): Promise<number> {
     return totalCount
 }
 
-export async function getUsersByIds(ids: string[]): Promise<DBUser[] | null> {
+export async function getUsersByIds(ids: string[]): Promise<DBUser | null> {
     const msg = "REPO getUsersByIds: "
     const sql: string =  `SELECT * FROM user WHERE id IN (?)`;
-    console.log(msg + "params", ids)
+    logger.info(msg + "params", ids)
     const [rows] = await pool.query<DBUser[]>({sql: sql, values: [ids]});
     if (rows.length === 0) {
-        return []
+        return null
     }
-    return rows
+    return rows[0]
 }
 
-export async function getUserByEmail(email: string): Promise<DBUser[] | null> {
+export async function getUserByEmail(email: string): Promise<DBUser | null> {
     const msg = "REPO getUserByEmail: "
     const sql: string =  `SELECT * FROM user WHERE email=?`;
-    console.log(msg + "params", email)
+    // logger.info(msg + "params", email)
     const [rows] = await pool.query<DBUser[]>({sql: sql, values: [email]});
     if (rows.length === 0) {
-        return []
+        return null
     }
-    return rows
+    return rows[0]
 }
 
 export function getAdminUserOrder(orderBy:string[]): string {
@@ -56,66 +58,149 @@ export function getAdminUserOrder(orderBy:string[]): string {
     return "id DESC"
 }
 
-export async function addUser(user: DBUser): Promise<DBUser[] | null> {
-    const msg = "REPO addUser: "
+export async function addAnonymousUser(user: DBUser): Promise<DBUser | null> {
+    const msg = "REPO addAnonymousUser: "
     const userByEmail = await getUserByEmail(user.email)
-    if(userByEmail === null || userByEmail.length === 0) {
+    if(userByEmail === null) {
         const userInsertSQL = `INSERT INTO user(name, email) VALUES(?, ?)`
         const [resultUserInsert, ufields] = await pool.execute(userInsertSQL, 
             [user.name, user.email]) as [OkPacket, FieldPacket[]];
         const insertedUserId = resultUserInsert?.insertId
         if (!insertedUserId) {
-            console.error("(ERROR)" + msg + "empty inserted user id", user, ufields)
+            logger.error("(ERROR)" + msg + "empty inserted user id", user, ufields)
             return null
         }
-        console.log(msg + 'inserted', resultUserInsert, ufields)
+        logger.info(msg + 'inserted', resultUserInsert, ufields)
 
-        return getUsersByIds([insertedUserId.toString()])
+        return await getUsersByIds([insertedUserId.toString()])
     }
     return userByEmail
+}
+
+export async function addUser(user: RegUser): Promise<DBUser | null> {
+    const msg = "REPO addUser: "
+    const userInsertSQL = `INSERT INTO user(name, email, password, is_register) VALUES(?, ?, MD5(?), 1)`
+    const [resultUserInsert, ufields] = await pool.execute(userInsertSQL, 
+        [user.name, user.email, user.password]) as [OkPacket, FieldPacket[]];
+    const insertedUserId = resultUserInsert?.insertId
+    if (!insertedUserId) {
+        logger.error("(ERROR)" + msg + "empty inserted user id", user, ufields)
+        return null
+    }
+    logger.info(msg + 'inserted', resultUserInsert, ufields)
+
+    return await getUsersByIds([insertedUserId.toString()])
 }
 
 export async function saveUser(id: string, user: DBUser): Promise<DBUser[] | null> {
     const msg = "REPO getUserByEmail: "
     const userUpdateSQL = `UPDATE user SET name=?, email=? WHERE id=?`
     const [resultUserUpdate, ufields] = await pool.execute(userUpdateSQL, [user.name, user.email, id]);
-    console.log(msg + 'updated', resultUserUpdate, ufields)
+    logger.info(msg + 'updated', resultUserUpdate, ufields)
 
     return [user]
 }
 
-export async function deleteUser(id: string): Promise<DBUser[] | null> {
+export async function deleteUser(id: string): Promise<DBUser | null> {
     const msg = "REPO deleteUser: "
-    const users = await getUsersByIds([id])
-    if(users === null) {
-        console.error("(ERROR)" + msg + "user not found", id)
+    const user = await getUsersByIds([id])
+    if(user === null) {
+        logger.warn("(ERROR)" + msg + "user not found", id)
         return null
     }
-    const user: DBUser = users[0]
     const userDeleteSQL = `DELETE FROM user WHERE id=?`
     const [resultUserDelete] = await pool.execute(userDeleteSQL, [id]);
-    console.log(msg + 'deleted', resultUserDelete)
+    logger.info(msg + 'deleted', resultUserDelete)
 
-    return [user]
+    return user
 }
 
 export async function login(email: string, password: string): Promise<DBUser | null | undefined> {
-    const msg = "REPO login: "
+    const msg = "REPO login - "
     const sql: string =  `SELECT * FROM user WHERE email=?`;
     const [rows] = await pool.query<DBUser[]>({sql: sql, values: [email]});
     if (rows.length === 0) {
-        console.error(msg + 'User with email/password not found', email, password)
+        logger.error(msg + 'User with email/password not found', email, password)
         return null
     }
     if (rows.length > 1) {
-        console.error(msg + 'Double User found', email, password)
+        logger.error(msg + 'Double User found', email, password)
         return null
     }
     const user = rows[0]
     if(md5(password) !== user.password) {
-        console.error(msg + 'Incorrect login/password', email, password, user)
+        logger.error(msg + 'Incorrect login/password', email, password, user)
         return undefined
     }
-    console.log(msg + "Successfull login", user)
+    logger.debug(msg + "Successfull login", user)
+    return user
+}
+
+export async function profile(id: string, name: string, password: string, oldPassword: string): Promise<DBUser | null | undefined> {
+    const msg = "REPO profile: "
+    const sql: string =  `SELECT * FROM user WHERE id=?`;
+    const [rows] = await pool.query<DBUser[]>({sql: sql, values: [id]});
+    if (rows.length === 0) {
+        logger.warn(msg + 'User not found by id', id, name)
+        return null
+    }
+
+    const user = rows[0]
+    if(oldPassword && md5(oldPassword) !== user.password) {
+        logger.error(msg + 'Incorrect login/password', id, name, oldPassword, user)
+        return undefined
+    }
+
+    let userUpdateSQL: string = 'UPDATE user SET name=?'
+    const params = [name]
+    if(password) {
+        userUpdateSQL += ', password=MD5(?)'
+        params.push(password)
+    }
+    userUpdateSQL += ' WHERE id=?'
+    params.push(id)
+
+    const [resultUserUpdate, ufields] = await pool.execute(userUpdateSQL, params);
+    logger.info(msg + 'updated', resultUserUpdate, ufields)
+
+    return user
+}
+
+export async function register(name: string, email: string, password: string): Promise<DBUser | null | undefined> {
+    const msg = "REPO register: "
+
+    const user = await getUserByEmail(email)
+    if (user !== null) {
+        logger.error(msg + 'User exists', email, name)
+        return undefined
+    }
+    const regUser: RegUser = {
+        name: name,
+        email: email,
+        password: password,
+    }
+
+    const userInserted = await addUser(regUser)
+    if(userInserted === null) {
+        logger.error(msg + 'Can not add user', regUser)
+        return null
+    }
+
+    return userInserted
+}
+
+export async function reset(email: string): Promise<DBUser | undefined> {
+    const msg = "REPO reset - "
+    const user = await getUserByEmail(email)
+    if(user === null) {
+        logger.error(msg + 'User not found by email', email)
+        return undefined
+    }
+    const newPass = passGenerator(10)
+    const userUpdateSQL: string = 'UPDATE user SET password=MD5(?) WHERE id=?'
+    const [resultUserUpdate, ufields] = await pool.execute(userUpdateSQL, [newPass, user.id]);
+    logger.info(msg + 'updated', resultUserUpdate, ufields)
+    user.password = newPass
+
     return user
 }

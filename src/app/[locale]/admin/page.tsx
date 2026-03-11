@@ -1,7 +1,7 @@
 "use client"; // This page should be a Client Component
 
 import { useSession, getSession } from "next-auth/react"
-import AdminApp from "@/src/components/Admin"; // Adjust the import path as necessary
+import AdminApp from "@/src/app/components/Admin"; // Adjust the import path as necessary
 
 export default function AdminPage() {
   const { data: session, status } = useSession()

@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { locales, defaultLocale, localizedPath, Locale } from "@/i18n.config";
-import { Award, Users, Target, TrendingUp, Shield, Clock, MapPin, CheckCircle, Phone, FileText, MessageSquare, Building2 } from 'lucide-react';
+import { Award, TrendingUp, Clock, CheckCircle, Building2 } from 'lucide-react';
 import { initI18next } from "@/src/app/i18n/server";
 import Image from 'next/image'
-import Link from '@/src/imports/Link';
+import OriginalLink from 'next/link';
+import { Yandex } from "../../components/ui/yandex";
 
 export async function generateMetadata({
   params,
@@ -92,7 +93,9 @@ export default async function AboutPage({
                 </div>
 
                 <div className="pt-4">
-                  <Link />
+                  <div className="bg-[#3d4b5e] relative rounded-[16px] size-full" data-name="Link">
+                    <p className="absolute css-ew64yg font-['Inter:Medium',sans-serif] font-medium leading-[24px] left-[32px] not-italic text-[16px] text-white top-[15px]">Онлайн консультация</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -192,9 +195,9 @@ export default async function AboutPage({
             <p className="font-['Inter:Regular',sans-serif] text-[20px] leading-[1.6] text-[rgba(41,40,43,0.7)] mb-8">
               Получите бесплатную консультацию и узнайте, как мы можем помочь в вашей ситуации
             </p>
-            <button className="bg-[#87b7ce] hover:bg-[#6fa3bb] transition-colors rounded-[16px] px-12 py-4 font-['Inter:Medium',sans-serif] font-medium text-[18px] text-white shadow-lg">
+            <OriginalLink href="/" className="bg-[#87b7ce] hover:bg-[#6fa3bb] transition-colors rounded-[16px] px-12 py-4 font-['Inter:Medium',sans-serif] font-medium text-[18px] text-white shadow-lg">
               Задать вопрос адвокату
-            </button>
+            </OriginalLink>
 
             <div className="mt-8 flex flex-wrap justify-center gap-8 text-[rgba(41,40,43,0.6)]">
               <div className="flex items-center gap-2">
@@ -222,32 +225,8 @@ export default async function AboutPage({
               </h2>
             </div>
 
-            {/* Contact Info */}
-            <div className="flex flex-wrap justify-center gap-8 mb-12 text-[#29282b]">
-              <div className="flex items-center gap-3">
-                <MapPin className="w-5 h-5 text-[#87b7ce]" />
-                <span className="font-['Inter:Regular',sans-serif] text-[16px]">г. Москва, ул. Юридическая, д. 1</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <Phone className="w-5 h-5 text-[#87b7ce]" />
-                <span className="font-['Inter:Regular',sans-serif] text-[16px]">+7 (999) 123-45-67</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <FileText className="w-5 h-5 text-[#87b7ce]" />
-                <span className="font-['Inter:Regular',sans-serif] text-[16px]">info@urconsult.ru</span>
-              </div>
-            </div>
-
-            {/* Map */}
-            <div className="rounded-[24px] overflow-hidden shadow-lg">
-              <Image
-                src="/assets/3c51396355c47d641799181b140721641be0b1c3.png"
-                width={958}
-                height={239}
-                className="w-full h-auto"
-                alt="LLLMS Карта с местоположением офиса"
-              />
-            </div>
+            {/* Карта Яндекс */}
+            <Yandex />
           </div>
         </section>
       </> 

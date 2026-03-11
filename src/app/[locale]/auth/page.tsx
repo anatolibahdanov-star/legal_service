@@ -2,7 +2,7 @@ import { getProviders } from "next-auth/react"
 import { getServerSession } from "next-auth/next"
 import { redirect } from 'next/navigation';
 import { authOptions } from "@/src/app/api/auth/[...nextauth]/route"
-import SigninFormComponent from "@/src/components/login-form"
+import SigninFormComponent from "@/src/app/components/SigninFormComponent"
 
 export default async function SignInPage(){
   const session = await getServerSession(authOptions)

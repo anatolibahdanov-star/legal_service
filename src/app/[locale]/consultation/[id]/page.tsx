@@ -1,6 +1,6 @@
 'use client';
 
-import { StatusPage } from "@/src/app/components/status-page";
+import { StatusPage } from "@/src/app/components/StatusPage";
 import { useParams } from "next/navigation";
 
 

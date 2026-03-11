@@ -1,98 +1,8 @@
 'use client'; 
 
-import svgPaths from "../../../imports/svg-kwtal3bey7";
-import svgPathsWhatsApp from "../../../imports/svg-i8lyx75iop";
 import { useState } from 'react';
 import Image from 'next/image'
-
-function EmailIcon() {
-  return (
-    <div className="size-[24px]" data-name="Icon">
-      <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 20 20">
-        <g id="Icon">
-          <path d={svgPaths.pd919a80} id="Vector" stroke="var(--stroke-0, #87B7CE)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" />
-          <path d={svgPaths.p189c1170} id="Vector_2" stroke="var(--stroke-0, #87B7CE)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" />
-        </g>
-      </svg>
-    </div>
-  );
-}
-
-function PhoneIcon() {
-  return (
-    <div className="size-[24px]" data-name="Icon">
-      <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 20 20">
-        <g clipPath="url(#clip0_phone)" id="Icon">
-          <path d={svgPaths.p149d6300} id="Vector" stroke="var(--stroke-0, #87B7CE)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" />
-        </g>
-        <defs>
-          <clipPath id="clip0_phone">
-            <rect fill="white" height="20" width="20" />
-          </clipPath>
-        </defs>
-      </svg>
-    </div>
-  );
-}
-
-function LocationIcon() {
-  return (
-    <div className="size-[24px]" data-name="Icon">
-      <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 20 20">
-        <g id="Icon">
-          <path d={svgPaths.p26ddc800} id="Vector" stroke="var(--stroke-0, #87B7CE)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" />
-          <path d={svgPaths.p35ba4680} id="Vector_2" stroke="var(--stroke-0, #87B7CE)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.66667" />
-        </g>
-      </svg>
-    </div>
-  );
-}
-
-function TelegramIcon() {
-  return (
-    <div className="relative shrink-0 size-[30px]" data-name="Icon">
-      <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 30 30">
-        <g id="Icon">
-          <path d={svgPaths.p10dccc00} fill="var(--fill-0, #87B7CE)" id="Vector" />
-        </g>
-      </svg>
-    </div>
-  );
-}
-
-function WhatsAppIcon() {
-  return (
-    <div className="relative shrink-0 size-[30px]" data-name="Icon">
-      <svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 30 30">
-        <g clipPath="url(#clip0_whatsapp)" id="Icon">
-          <path d={svgPathsWhatsApp.p31122e00} fill="var(--fill-0, #87B7CE)" id="Vector" />
-        </g>
-        <defs>
-          <clipPath id="clip0_whatsapp">
-            <rect fill="white" height="30" width="30" />
-          </clipPath>
-        </defs>
-      </svg>
-    </div>
-  );
-}
-
-function MaxIcon() {
-  return (
-    <div className="relative shrink-0 size-[34px]" data-name="Icon">
-      <Image
-        src="/assets/23b5fcc1166b9ae2664ffb6c2acaa7de6ed7a768.png"
-        width={500}
-        height={298}
-        className="w-full h-full object-contain"
-        alt="LLLMS Max"
-        style={{
-          filter: 'brightness(0) saturate(100%) invert(64%) sepia(17%) saturate(780%) hue-rotate(156deg) brightness(91%) contrast(87%)'
-        }}
-      />
-    </div>
-  );
-}
+import {Yandex} from "@/src/app/components/ui/yandex"
 
 export default function ContactInfo() {
   const [formData, setFormData] = useState({
@@ -146,7 +56,15 @@ export default function ContactInfo() {
               {/* Телефоны */}
               <div>
                 <div className="flex items-start gap-3 mb-3">
-                  <PhoneIcon />
+                  <div className="size-[24px]" data-name="Icon">
+                    <Image
+                      src="/design/phonef.svg"
+                      width={24}
+                      height={24}
+                      className="block size-full"
+                      alt="LLLMS Телефон"
+                    />
+                  </div>
                   <div>
                     <p className="font-['Inter:Medium',sans-serif] font-medium text-[14px] text-[#87b7ce] mb-1">Телефоны</p>
                     <a href="tel:+79991234567" className="font-['Inter:Bold',sans-serif] font-bold text-[18px] text-[#29282b] hover:text-[#87b7ce] transition-colors">
@@ -163,7 +81,15 @@ export default function ContactInfo() {
 
               {/* Email */}
               <div className="flex items-start gap-3">
-                <EmailIcon />
+                <div className="size-[24px]" data-name="Icon">
+                  <Image
+                    src="/design/email.png"
+                    width={24}
+                    height={24}
+                    className="block size-full"
+                    alt="LLLMS Email"
+                  />
+                </div>
                 <div>
                   <p className="font-['Inter:Medium',sans-serif] font-medium text-[14px] text-[#87b7ce] mb-1">Email</p>
                   <a href="mailto:info@urconsult.ru" className="font-['Inter:Bold',sans-serif] font-bold text-[18px] text-[#29282b] hover:text-[#87b7ce] transition-colors">
@@ -174,7 +100,15 @@ export default function ContactInfo() {
 
               {/* Адрес */}
               <div className="flex items-start gap-3">
-                <LocationIcon />
+                <div className="size-[24px]" data-name="Icon">
+                  <Image
+                    src="/design/nav.svg"
+                    width={24}
+                    height={24}
+                    className="block size-full"
+                    alt="LLLMS Навигация"
+                  />
+                </div>
                 <div>
                   <p className="font-['Inter:Medium',sans-serif] font-medium text-[14px] text-[#87b7ce] mb-1">Адрес офиса</p>
                   <p className="font-['Inter:Bold',sans-serif] font-bold text-[18px] text-[#29282b] mb-2">
@@ -200,7 +134,15 @@ export default function ContactInfo() {
                     className="relative rounded-[33554400px] shrink-0 size-[40px] flex items-center justify-center hover:bg-gray-100 transition-colors"
                     title="Telegram"
                   >
-                    <TelegramIcon />
+                    <div className="relative shrink-0 size-[30px]" data-name="Icon">
+                      <Image
+                        src="/design/telegram.svg"
+                        width={30}
+                        height={30}
+                        className="block size-full"
+                        alt="LLLMS Telegram"
+                      />
+                    </div>
                   </a>
                   <a 
                     href="https://wa.me/79991234567" 
@@ -209,7 +151,15 @@ export default function ContactInfo() {
                     className="relative rounded-[33554400px] shrink-0 size-[40px] flex items-center justify-center hover:bg-gray-100 transition-colors"
                     title="WhatsApp"
                   >
-                    <WhatsAppIcon />
+                    <div className="relative shrink-0 size-[30px]" data-name="Icon">
+                      <Image
+                        src="/design/whatsapp.svg"
+                        width={30}
+                        height={30}
+                        className="block size-full"
+                        alt="LLLMS Telegram"
+                      />
+                    </div>
                   </a>
                   <a 
                     href="https://max.com/example" 
@@ -218,7 +168,15 @@ export default function ContactInfo() {
                     className="relative rounded-[33554400px] shrink-0 size-[40px] flex items-center justify-center hover:bg-gray-100 transition-colors"
                     title="Max"
                   >
-                    <MaxIcon />
+                    <div className="relative shrink-0 size-[34px]" data-name="Icon">
+                      <Image
+                        src="/design/facebook.png"
+                        width={34}
+                        height={34}
+                        className="block size-full"
+                        alt="LLLMS Max"
+                      />
+                    </div>
                   </a>
                 </div>
               </div>
@@ -331,19 +289,7 @@ export default function ContactInfo() {
         </div>
 
         {/* Карта Яндекс */}
-        <div className="bg-white rounded-[24px] overflow-hidden shadow-lg border border-[#87b7ce]/20">
-          <div className="h-full min-h-[500px]">
-            <iframe
-              src="https://yandex.ru/map-widget/v1/?um=constructor%3A5c9e1a0b0f0a0e0a0b0f0a0e0a0b0f0a&amp;source=constructor"
-              width="100%"
-              height="100%"
-              frameBorder="0"
-              style={{ minHeight: '500px' }}
-              title="Карта офиса"
-              className="w-full h-full"
-            />
-          </div>
-        </div>
+        <Yandex />
       </div>
     </div>
   );

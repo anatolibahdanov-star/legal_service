@@ -6,7 +6,7 @@ export async function getCategories(page: string = '1', _limit: string = '10', _
     // const orderBy = getAdminCategoryOrder(_sorter);
     const orderBy = "id DESC";
     const sql: string =  `SELECT * FROM category ORDER BY ` + orderBy + ` LIMIT ? OFFSET ?`;
-    console.log("sql", sql)
+    // console.log("sql", sql)
     const limit = parseInt(_limit) ?? 10
     const offset = ((parseInt(page) ?? 1) - 1) * limit
     const [rows] = await pool.query<DBCategory[]>({sql: sql, values: [limit, offset]});

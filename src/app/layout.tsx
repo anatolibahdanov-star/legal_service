@@ -3,9 +3,9 @@
 // import 'bootstrap/dist/css/bootstrap.min.css';
 import "./globals.css";
 // import Header from "@/src/components/Header";
-import { Header } from "@/src/app/components/header";
+import { Header } from "@/src/app/components/Header";
 // import Footer from "@/src/components/Footer";
-import { Footer } from "@/src/app/components/footer";
+import { Footer } from "@/src/app/components/Footer";
 import {NextAuthProvider} from "@/src/app/providers/NextAuthProvider"
 import '@/src/styles/index.css';
 

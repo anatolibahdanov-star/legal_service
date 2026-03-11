@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {getStatistics, getTotalStatistics, DBStatistic} from "@/src/repositories/statistics/repo"
+import logger from "@/src/services/logger"
 
 export const dynamic = 'force-dynamic'; // defaults to auto
 export async function GET(request: NextRequest) {
-    console.log("STATISTICS GET request", request)
+    logger.info("STATISTICS GET request", request)
     const searchParams = request.nextUrl.searchParams;
     const filter = searchParams.getAll('filter') ?? [];
     const range = searchParams.get('range') ?? '[0,9]';
@@ -23,7 +24,7 @@ export async function GET(request: NextRequest) {
     } else if(!page) {
         page = '1'
     }
-    console.log('STATISTICS GET limit/offset', limit, page, filter)
+    logger.info('STATISTICS GET limit/offset', limit, page, filter)
 
     let statistics: DBStatistic[] | null = []
     let total: number = 0;
@@ -31,7 +32,7 @@ export async function GET(request: NextRequest) {
         statistics = await getStatistics(page, limit, sort)
         total = await getTotalStatistics()
     } catch(err) {
-        console.error("Exception(statistics) in GET: ", (err as Error).message)
+        logger.error("Exception(statistics) in GET: ", (err as Error).message)
         return NextResponse.json(
             { success: false, message: 'Exception(statistics) in GET.' },
             { status: 401 }

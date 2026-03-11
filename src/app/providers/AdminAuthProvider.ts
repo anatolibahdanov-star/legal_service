@@ -1,5 +1,5 @@
 // in src/authProvider.ts
-import { AuthProvider, UserIdentity } from 'react-admin';
+import { AuthProvider } from 'react-admin';
 
 // Assume the user identity is stored in localStorage after login
 const authProvider: AuthProvider = {

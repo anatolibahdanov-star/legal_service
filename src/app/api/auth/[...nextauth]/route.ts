@@ -4,6 +4,7 @@ import {getAdministratorByEmail} from "@/src/repositories/administrators/repo"
 import {login} from "@/src/repositories/users/repo"
 import {DBUser} from "@/src/interfaces/db"
 import {NextAuthSessionInput, NextAuthJWTInput} from "@/src/interfaces/custom-next-auth"
+import logger from "@/src/services/logger"
 
 export const authOptions = {
   // Configure one or more authentication providers
@@ -21,7 +22,8 @@ export const authOptions = {
         },
 
         async authorize(credentials: Record<string, string> | undefined, req): Promise<DBUser | null> {
-            console.log("auth credentials", credentials)
+          const msg = "API next-auth ROUTE - "
+            logger.info(msg + "auth credentials", credentials)
             if(credentials !== undefined && "username" in credentials && "password" in credentials) {
               try {
                 const admin: DBUser | null | undefined = await getAdministratorByEmail(credentials?.username, credentials?.password)
@@ -36,7 +38,7 @@ export const authOptions = {
                 }
                 if (user) {
                   if (user.status && user.status !== 1) {
-                    console.error("User status - blocked: ", credentials)
+                    logger.error(msg + "User status - blocked: ", credentials)
                     throw new Error("Данный Юрист был заблокирован. Обратитесь к администратору.");
                   } else if (!user.status) {
                     user.status = 1
@@ -51,19 +53,19 @@ export const authOptions = {
                 }
 
                 if (user === null) {
-                  console.error("User not found by username: ", credentials)
+                  logger.error(msg + "User not found by username: ", credentials)
                   throw new Error("Пользователь с таким E-mail не найден.");
                 }
 
-                console.error("Incorrect password: ", credentials)
+                logger.error(msg + "Incorrect password: ", credentials)
                 throw new Error("Некорректные введенные E-mail/Password.");
                 
               } catch (error) {
-                console.error("Failed to fetch SQL select user credentials: ", error)
+                logger.error(msg + "Failed to fetch SQL select user credentials: ", error)
                 throw new Error("Ошибка авторизации: " + (error as Error).message);
               }
             } else {
-              console.error("Credentials empty: ", credentials)
+              logger.error(msg + "Credentials empty: ", credentials)
               throw new Error("Ошибка авторизации: Некорректные введенные E-mail/Password.");
             }
         },

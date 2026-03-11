@@ -1,11 +1,12 @@
 import pool from '@/src/libs/db';
 import { OkPacket, FieldPacket } from 'mysql2/promise';
-import {addUser} from "@/src/repositories/users/repo"
+import {addAnonymousUser} from "@/src/repositories/users/repo"
 import { randomUUID } from 'crypto';
 import {CountResult, DBQuestions, DBUser} from "@/src/interfaces/db"
 import {DBFilterQuestions} from "@/src/interfaces/filters"
 import {UserRequest} from "@/src/interfaces/api"
 import {getCategoryByName} from "@/src/repositories/categories/repo"
+import logger from "@/src/services/logger"
 
 export async function getQuestions(
     page: string = '1', 
@@ -26,7 +27,7 @@ export async function getQuestions(
     OFFSET ?`;
     const limit = parseInt(_limit) ?? 10
     const offset = ((parseInt(page) ?? 1) - 1) * limit
-    // console.log('sql ', sql)
+    // logger.info('sql ', sql)
     const [rows] = await pool.query<DBQuestions[]>({sql: sql, values: [limit, offset]});
     if (rows.length === 0) {
         return []
@@ -38,7 +39,7 @@ export async function getTotalQuestions(filter: DBFilterQuestions | null = null)
     const where = getAdminQuestionFilter(filter)
     const sql: string =  `SELECT COUNT(q.id) as counter FROM question q JOIN user u ON q.user_id=u.id ` + where;
     const [rows] = await pool.query<CountResult[]>({sql: sql});
-    console.log('sql counter ', rows)
+    logger.info('sql counter ', rows)
     if (rows.length === 0) {
         return 0
     }
@@ -61,14 +62,14 @@ export async function getQuestionsByIds(ids: string[], is_number: boolean = true
 
     try {
         sql += is_number ? 'q.id IN (?)' : 'q.uuid = UUID_TO_BIN(?)' 
-        console.log(msg + "params", ids, sql)
+        logger.info(msg + "params", ids, sql)
         const [rows] = await pool.query<DBQuestions[]>({sql: sql, values: [ids]});
         if (rows.length === 0) {
             return []
         }
         return rows
     } catch(error) {
-        console.error("(ERROR)" + msg, (error as Error).message, sql)
+        logger.error("(ERROR)" + msg, (error as Error).message, sql)
     }
     
     return []
@@ -149,10 +150,10 @@ export async function addQuestion(question: DBQuestions): Promise<DBQuestions[] 
             [question.name, question.email, myUuid]) as [OkPacket, FieldPacket[]];
     const insertedQuestionId = resultQuestionInsert?.insertId
     if (!insertedQuestionId) {
-        console.error("(ERROR)" + msg + ": empty inserted question id", question, ufields)
+        logger.error("(ERROR)" + msg + ": empty inserted question id", question, ufields)
         return null
     }
-    console.log(msg + 'inserted', resultQuestionInsert, ufields)
+    logger.info(msg + 'inserted', resultQuestionInsert, ufields)
 
     // @TO-DO other logic
 
@@ -166,12 +167,11 @@ export async function addClientQuestion(data: UserRequest): Promise<DBQuestions[
         name: data.name,
         email: data.email
     } as DBUser
-    const users = await addUser(_user)
-    if(users === null) {
-        console.error("(ERROR)" + msg + ": can not create user", _user)
+    const user = await addAnonymousUser(_user)
+    if(user === null) {
+        logger.error("(ERROR)" + msg + ": can not create user", _user)
         return null
     }
-    const user = users[0]
     const categories = await getCategoryByName(data.topic)
     let categoryId = null
     if(categories !== null && categories.length > 0 ) {
@@ -182,10 +182,10 @@ export async function addClientQuestion(data: UserRequest): Promise<DBQuestions[
     const questionInsertSQL = `INSERT INTO question(user_id, question, status, uuid, category_id) VALUES(?, ?, ?, UUID_TO_BIN(?), ?)`
     const [resultQuestionInsert, ufields] = await pool.execute(questionInsertSQL, 
         [user.id, data.question, 1, myUuid, categoryId]) as [OkPacket, FieldPacket[]];
-    console.log('CLIENT ADD QUESTION inserted data ', resultQuestionInsert, ufields)
+    logger.info('CLIENT ADD QUESTION inserted data ', resultQuestionInsert, ufields)
     const insertedQuestionId = resultQuestionInsert?.insertId
     if (!insertedQuestionId) {
-        console.log("CLIENT ADD QUESTION: empty inserted question id", data, ufields)
+        logger.error("CLIENT ADD QUESTION: empty inserted question id", data, ufields)
         return null
     }
 
@@ -193,19 +193,19 @@ export async function addClientQuestion(data: UserRequest): Promise<DBQuestions[
 
     const replyInsertSQL = `INSERT INTO reply(question_id, reply, status) VALUES(?, ?, ?)`
     const [resultReplyInsert, rfields] = await pool.execute(replyInsertSQL, [insertedQuestionId, data.llm, reply_status]) as [OkPacket, FieldPacket[]];
-    console.log('CLIENT ADD REPLY inserted data ', resultReplyInsert, rfields)
+    logger.info('CLIENT ADD REPLY inserted data ', resultReplyInsert, rfields)
     const insertedReplyId = resultReplyInsert?.insertId
     if (!insertedReplyId) {
-        console.log("CLIENT ADD REPLY: empty inserted reply id", data, rfields)
+        logger.error("CLIENT ADD REPLY: empty inserted reply id", data, rfields)
         return null
     }
 
     const finalReplyInsertSQL = `INSERT INTO final_reply(reply_id, admin_id, final_reply, status) VALUES(?, ?, ?, ?)`
     const [resultFinalReplyInsert, frfields] = await pool.execute(finalReplyInsertSQL, [insertedReplyId, 2, '', 0]) as [OkPacket, FieldPacket[]];
-    console.log('CLIENT ADD FINAL REPLY inserted data ', resultFinalReplyInsert, frfields)
+    logger.info('CLIENT ADD FINAL REPLY inserted data ', resultFinalReplyInsert, frfields)
     const insertedFinalReplyId = resultFinalReplyInsert?.insertId
     if (!insertedFinalReplyId) {
-        console.log("CLIENT ADD FINAL REPLY: empty inserted final reply id", data, frfields)
+        logger.warn("CLIENT ADD FINAL REPLY: empty inserted final reply id", data, frfields)
         return null
     }
     return getQuestionsByIds([insertedQuestionId.toString()])
@@ -215,7 +215,7 @@ export async function addLLMReply(id: string, llm: string, duration: number): Pr
     const replyUpdateSQL = `UPDATE reply SET reply=?, status=?, duration=? WHERE question_id=?`
     const [resultReplyUpdate, ufields] = await pool.execute(replyUpdateSQL, 
         [llm, 1, duration, id]);
-    console.log('UPDATED DATA reply ', resultReplyUpdate, ufields)
+    logger.info('UPDATED DATA reply ', resultReplyUpdate, ufields)
     return getQuestionsByIds([id])
 }
 
@@ -224,57 +224,67 @@ export async function updateEmailStatus(id: string, email_status: number): Promi
     const updateSQL = `UPDATE question SET email_status=? WHERE id=?`
     const [updateResult, fields] = await pool.execute(updateSQL, 
             [email_status, id]);
-    console.log(msg + 'UPDATED question ', updateResult, fields)
+    logger.info(msg + 'UPDATED question ', updateResult, fields)
     return getQuestionsByIds([id])
 }
 
-export async function saveQuestion(id: string, questionIn: DBQuestions): Promise<DBQuestions[] | null> {
+export async function saveQuestion(id: string, questionIn: DBQuestions): Promise<DBQuestions | null> {
 
     const questions = await getQuestionsByIds([id])
     if(questions === null) {
-        console.error('UPDATED DATA question not found ', id)
+        logger.error('UPDATED DATA question not found ', id)
         return null
     }
     const question = questions[0]
 
-    let fr_status: number = 1
+    // let fr_status: number = 1
     let q_status: number = 2
     if(question.final_reply === null && questionIn.final_reply!==null) {
-        fr_status = 2
+        // fr_status = 2
         q_status = 4
     } else if(question.final_reply !== questionIn.final_reply) {
-        fr_status = 3
+        // fr_status = 3
         q_status = 4
     }
-    const finalReplyUpdateSQL = `UPDATE final_reply SET final_reply=?, status=? WHERE id=?`
-    const [resultFinalReplyUpdate, ufields] = await pool.execute(finalReplyUpdateSQL, 
-        [questionIn.final_reply, fr_status, question.final_reply_id]);
-    console.log('UPDATED DATA final reply ', resultFinalReplyUpdate, ufields)
+    if(questionIn.reply && question.reply !== questionIn.reply) {
+        const replyUpdateSQL = `UPDATE reply SET reply=?, status=? WHERE id=?`
+        const [resultReplyUpdate, rfields] = await pool.execute(replyUpdateSQL, 
+            [questionIn.reply, 1, question.reply_id]);
+        logger.info('UPDATED DATA final reply ', resultReplyUpdate, rfields)
+    }
+
+    if(questionIn.final_reply && question.final_reply !== questionIn.final_reply) {
+        const finalReplyUpdateSQL = `UPDATE final_reply SET final_reply=?, status=? WHERE id=?`
+        const [resultFinalReplyUpdate, ufields] = await pool.execute(finalReplyUpdateSQL, 
+            [questionIn.final_reply, 2, question.final_reply_id]);
+        logger.info('UPDATED DATA final reply ', resultFinalReplyUpdate, ufields)
+    }
 
     if(question.status !== questionIn.status) {
         q_status = questionIn.status
+        const questionUpdateSQL = `UPDATE question SET status=? WHERE id=?`
+        const [resultQuestionUpdate, qfields] = await pool.execute(questionUpdateSQL, 
+            [q_status, id]);
+        logger.info('UPDATED DATA question ', resultQuestionUpdate, qfields)
     }
-    const questionUpdateSQL = `UPDATE question SET status=? WHERE id=?`
-    const [resultQuestionUpdate, qfields] = await pool.execute(questionUpdateSQL, 
-        [q_status, id]);
-    console.log('UPDATED DATA question ', resultQuestionUpdate, qfields)
+    
     question.status = q_status
 
-    return [question]
+    return question
 }
 
 export async function deleteQuestion(id: string): Promise<DBQuestions[] | null> {
 
     const questions = await getQuestionsByIds([id])
     if(questions === null) {
-        console.error('DELETE REQUEST: request not found ', id)
+        logger.error('DELETE REQUEST: request not found ', id)
         return null
     }
     const question: DBQuestions = questions[0]
 
     const questionDeleteSQL = `DELETE FROM question WHERE id=?`
     const [resultQuestionDelete] = await pool.execute(questionDeleteSQL, [question.id]);
-    console.log('DELETE REQUEST ', resultQuestionDelete)
+    logger.info('DELETE REQUEST ', resultQuestionDelete)
 
     return [question]
 }

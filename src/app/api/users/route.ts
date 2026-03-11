@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "../auth/[...nextauth]/route"
+import logger from "@/src/services/logger"
 
 // Example data source (e.g., a database query result)
 const users = [
@@ -14,7 +15,7 @@ export async function GET() {
   const session = await getServerSession(authOptions)
   if (session) {
     // Signed in
-    console.log("Session", JSON.stringify(session, null, 2))
+    logger.info("Session", session)
     return NextResponse.json(users, { status: 200 });
   } else {
     // Not Signed in
