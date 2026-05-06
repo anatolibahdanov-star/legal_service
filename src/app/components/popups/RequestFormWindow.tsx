@@ -1,16 +1,14 @@
-import { FormWindowProps } from "@/src/interfaces/form";
-import RegisterForm from "./forms/register";
+import { RequestFormPropsI } from "@/src/interfaces/form";
+import RequestForm from "@/src/app/components/forms/request"
 
-export function RegisterFormWindow({ isOpen, onClose, onSwitchToLogin }: FormWindowProps) {
+export default function RequestFormWindow({ isOpen, onClose, setCurrent, setPage }: RequestFormPropsI) {
   if (!isOpen) return null;
 
   return (
-    <div 
-      className="fixed inset-0 bg-black/50 flex items-center justify-center p-8 z-50"
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-8 z-50"
       onClick={onClose}
     >
-      <div 
-        className="bg-[#3d4b5e] rounded-[24px] p-[40px] w-full max-w-[540px] relative max-h-[90vh] overflow-y-auto"
+      <div className="bg-[#3d4b5e] rounded-[24px] p-[40px] w-full max-w-[540px] relative"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Кнопка закрытия */}
@@ -24,7 +22,7 @@ export function RegisterFormWindow({ isOpen, onClose, onSwitchToLogin }: FormWin
           </svg>
         </button>
 
-        <RegisterForm onSwitchToLogin={onSwitchToLogin} onClose={onClose} />
+        <RequestForm setCurrent={setCurrent} onClose={onClose} setPage={setPage} isProfile={true}/>
       </div>
     </div>
   );

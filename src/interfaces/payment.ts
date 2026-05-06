@@ -1,0 +1,90 @@
+import { User } from "next-auth";
+import { DBOrder } from "./db";
+
+export enum OrderTypeE {
+  OneTime = 0,
+  Balance = 1,
+}
+
+export enum OrderStatusE {
+  Unknown = 0,
+  New = 1,
+  InProgress = 2,
+  Error = 3,
+  Paid = 4,
+  Unpaid = 5,
+}
+
+export enum BalanceTypeE {
+  Increase = 0,
+  Decrease = 1,
+}
+
+export enum BalanceStatusE {
+  Unknown = 0,
+  Success = 1,
+  Error = 2,
+}
+
+export enum TransTypeE {
+  Manual = 0,
+  Auto = 1,
+}
+
+export enum TransStatusE {
+  Unknown = 0,
+  Success = 1,
+  Error = 2,
+}
+
+export enum AlfaOrderStatusE {
+  Register = 0,
+  Hold = 1,
+  Auth = 2,  // final status - success
+  CancelAuth = 3,  // final status - bad
+  Returned = 4,  // final status - bad
+  ACS = 5,  // final status - bad
+  DeclineAuth = 6,  // final status - bad
+  New = 7,
+}
+
+export interface BalanceTransactionI {
+  user_id: number;
+  order_id: number|null;
+  balance_type: BalanceTypeE;
+  amount: number;
+  status: BalanceStatusE;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  data: any;
+}
+
+export interface TransactionI {
+  order_id: number;
+  trans_type: TransTypeE;
+  status: TransStatusE;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  data: any;
+}
+
+export interface BalanceI {
+  amount: number;
+  user: User;
+  order: DBOrder|null;
+  balance_type: BalanceTypeE;
+  status: BalanceStatusE|null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  data: any;
+}
+
+export interface ServiceResponse {
+  status: boolean;
+  errors: string[]|null;
+}
+
+export interface newOrderResponse extends ServiceResponse {
+  order: DBOrder|null;
+}
+
+export interface checkOrderResponse extends ServiceResponse {
+  order: DBOrder|null;
+}

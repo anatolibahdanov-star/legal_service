@@ -1,7 +1,6 @@
 // in src/posts/PostDiagram.jsx
 import * as React from 'react';
 import { useListContext } from 'react-admin'; // Use useListContext hook in modern RA versions
-import { DBStatistic } from '@/src/repositories/statistics/repo';
 
 import {
   Chart as ChartJS,

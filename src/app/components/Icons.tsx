@@ -6,7 +6,18 @@ export const AdministratorAdminIcon = () => {
   return (
     <Image
       src="/icons/administrators.png"
-      alt="Administrator icon"
+      alt="Administrators icon"
+      width={24}
+      height={24}
+    />
+  );
+};
+
+export const UserAdminIcon = () => {
+  return (
+    <Image
+      src="/icons/users.png"
+      alt="Users icon"
       width={24}
       height={24}
     />
@@ -28,7 +39,7 @@ export const QuestionAdminIcon = () => {
   return (
     <Image
       src="/icons/questions.png"
-      alt="User Question icon"
+      alt="Requests icon"
       width={24}
       height={24}
     />

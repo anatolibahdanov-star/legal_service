@@ -4,45 +4,83 @@ import {
     saveQuestion,
     deleteQuestion,
     addLLMReply,
-    updateEmailStatus
+    updateEmailStatus,
+    getJobById,
+    saveQuestionRating,
 } from "@/src/repositories/requests/repo"
-import {DBQuestions} from "@/src/interfaces/db"
-import {EmailDataI} from "@/src/interfaces/email"
-import {sendIIBot, sendConsultantPlusBot} from "@/src/services/llm";
-import {SendSendGridEmail} from "@/src/services/sendgrid"
-import logger from "@/src/services/logger"
+import {DBQuestion} from "@/src/interfaces/db"
+import {EmailDataI, EmailLawRatingDataI} from "@/src/interfaces/email"
+import {sendIIBot, sendConsultantPlusBot} from "@/src/libs/llm";
+import {sendEmailLowRating, SendSendGridEmail} from "@/src/libs/sendgrid"
+import logger from "@/src/libs/logger"
+import { UserRatingRequest } from '@/src/interfaces/api';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '../../auth/[...nextauth]/route';
 
 export const dynamic = 'force-dynamic'; // defaults to auto
+const LOW_RATING_RATE = 3
+
 export async function GET(request: NextRequest) {
     const msg = "API QUESTION GET: "
-    // logger.info("API QUESTION GET: request in", request)
+    logger.info("API QUESTION GET: request in (GET QUESTION BY ID)", request)
+    const searchParams = request.nextUrl.searchParams;
     const requestUrlId = request.url.split('/api/requests/')[1];
     // logger.info('API QUESTION GET: requestUrlId', requestUrlId, typeof requestUrlId)
 
-    let question: DBQuestions | null = null
+    const _parent = searchParams.get('parent_id');
+    const parent_id = _parent ? parseInt(_parent): null
+    
+    let question: DBQuestion | null = null
     try {
-        const is_number = !isNaN(Number(requestUrlId))
-        const questions = await getQuestionsByIds([requestUrlId], is_number)
-        logger.info(msg + 'questions', questions)
-        if (questions !== null) {
-            question = questions[0]
+        if(!parent_id) {
+            const is_number = !isNaN(Number(requestUrlId))
+            const questions = await getQuestionsByIds([requestUrlId], is_number)
+            logger.info(msg + 'questions', questions)
+            if (questions !== null) {
+                question = questions[0]
 
-            // if(question.reply_status === 0 && question.reply === '' && is_number) {
-            //     const start = performance.now();
-            //     const llm = await sendIIBot(question.question)
-            //     const duration = start - performance.now();
-            //     if(llm) {
-            //         logger.info("(LLM)" + msg + "reply length/duration ", llm.length, duration)
-            //         logger.info("(LLM)" + msg + "reply ", llm)
-            //         const _questions = await addLLMReply(requestUrlId.toString(), llm, duration)
-            //         if (_questions !== null) {
-            //             question = _questions[0]
-            //         }
-            //     }
-            // } else {
-            //     logger.info(msg + "no llm request!!!")
-            // }
-            
+                // if(question.reply_status === 0 && question.reply === '' && is_number) {
+                //     const start = performance.now();
+                //     const llm = await sendIIBot(question.question)
+                //     const duration = start - performance.now();
+                //     if(llm) {
+                //         logger.info("(LLM)" + msg + "reply length/duration ", llm.length, duration)
+                //         logger.info("(LLM)" + msg + "reply ", llm)
+                //         const _questions = await addLLMReply(requestUrlId.toString(), llm, duration)
+                //         if (_questions !== null) {
+                //             question = _questions[0]
+                //         }
+                //     }
+                // } else {
+                //     logger.info(msg + "no llm request!!!")
+                // }
+
+                logger.info(msg + 'response out', question)
+                const response = NextResponse.json(question, { status: 200 });
+                response.headers.set("X-Total-Count", "1")
+                return response 
+            } else {
+                logger.error("(ERROR)" + msg + 'unknown error in get request.')
+                return NextResponse.json(
+                    { success: false, message: '(ERROR)' + msg + 'error during get question info.' },
+                    { status: 404 }
+                );
+            }
+        } else {
+            const questions = await getJobById(parent_id)
+            logger.info(msg + 'parent questions', questions)
+            if (questions !== null) {
+                logger.info(msg + 'response out', questions)
+                const response = NextResponse.json(questions, { status: 200 });
+                response.headers.set("X-Total-Count", questions.length.toString())
+                return response 
+            } else {
+                logger.error("(ERROR)" + msg + 'unknown error in get job.')
+                return NextResponse.json(
+                    { success: false, message: '(ERROR)' + msg + 'error during get question info.' },
+                    { status: 404 }
+                );
+            }
         }
     } catch(err) {
         logger.error("(ERROR)" + msg, (err as Error).message)
@@ -51,23 +89,63 @@ export async function GET(request: NextRequest) {
             { status: 401 }
         );
     }
-    logger.info(msg + 'response out', question)
-    const response = NextResponse.json(question, { status: 200 });
-    response.headers.set("X-Total-Count", "1")
-    return response 
 }
 
 export async function POST(request: Request) {
-    return handler(request);
+    const msg = "API QUESTION(Rating) POST: "
+    // logger.info(msg + "request in", request)
+    const requestUrlId = request.url.split('/api/requests/')[1];
+    const updatedRating: UserRatingRequest = await request.json();
+    logger.info(msg + "request in updatedRating", updatedRating)
+
+    let question: DBQuestion | null = null
+    try {
+        question = await saveQuestionRating(requestUrlId, updatedRating)
+        logger.info(msg + 'question', question)
+        if (question === null) {
+            return NextResponse.json(
+                { success: false, message: '(ERROR)' + msg + ': not found.' },
+                { status: 404 }
+            );
+        }
+    } catch(err) {
+        logger.info("(ERROR)" + msg, (err as Error).message)
+        return NextResponse.json(
+            { success: false, message: '(ERROR)' + msg + ': during save data process.' },
+            { status: 401 }
+        );
+    }
+    logger.info(msg + 'response out', updatedRating, question)
+    if(question.rating && question.rating <= LOW_RATING_RATE) {
+        const sendData: EmailLawRatingDataI = {
+            user_id: question.user_id,
+            user_name: question.username,
+            admin_id: question.admin_id ?? null,
+            admin_name: question.owner ?? '',
+            question_id: question.id,
+            question_rating: question.rating,
+            question_rating_comment: question.comment ?? "",
+            created_at: question.updated_at,
+        }
+        const isSendEmail = await sendEmailLowRating(sendData)
+        if(!isSendEmail) {
+            logger.error("(ERROR)" + msg + "E-mail on update rating for question was not sent", sendData)
+        }
+    }
+    const response = NextResponse.json(question, { status: 200 });
+    response.headers.set("X-Total-Count", "1")
+    return response
 }
 
 export async function PUT(request: Request) {
     const msg = "API QUESTION PUT: "
     // logger.info(msg + "request in", request)
     const requestUrlId = request.url.split('/api/requests/')[1];
-    const updatedQuestion: DBQuestions = await request.json();
+    const updatedQuestion: DBQuestion = await request.json();
     logger.info(msg + "request in updatedQuestion", updatedQuestion)
 
+    const session = await getServerSession(authOptions);
+    logger.info(msg + "session in updatedQuestion", session)
     /* if(updatedQuestion.chat === 1) {
         const consultantReply = await sendConsultantPlusBot(updatedQuestion.question)
         logger.info(msg + " Consultant+ response", consultantReply)
@@ -92,9 +170,9 @@ export async function PUT(request: Request) {
         logger.info(msg + "no llm request!!!")
     }
 
-    let question: DBQuestions | null = null
+    let question: DBQuestion | null = null
     try {
-        question = await saveQuestion(requestUrlId, updatedQuestion)
+        question = await saveQuestion(requestUrlId, updatedQuestion, session?.user.id)
         logger.info(msg + 'question', question)
         if (question === null) {
             return NextResponse.json(
@@ -140,7 +218,7 @@ export async function DELETE(request: Request) {
     // logger.info(msg + "request in", request)
     const requestUrlId = request.url.split('/api/requests/')[1];
 
-    let question: DBQuestions | null = null
+    let question: DBQuestion | null = null
     try {
         const questions = await deleteQuestion(requestUrlId)
         logger.info(msg + 'questions', questions)

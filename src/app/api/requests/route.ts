@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {addClientQuestion, getQuestions, getTotalQuestions} from "@/src/repositories/requests/repo"
-import {DBQuestions} from "@/src/interfaces/db"
+import {DBQuestion} from "@/src/interfaces/db"
 import {UserRequest} from "@/src/interfaces/api"
-import logger from "@/src/services/logger"
+import logger from "@/src/libs/logger"
+import { SendSendGridEmailNewRequest } from '@/src/libs/sendgrid';
+import {EmailDataNewRequestI} from "@/src/interfaces/email"
 
 export const dynamic = 'force-dynamic'; // defaults to auto
 
@@ -13,7 +15,7 @@ export async function GET(request: NextRequest) {
     const range = searchParams.get('range') ?? '[0,9]';
     const _range = range.slice(1, range.length-1).split(",").map(Number);
     const _sort = searchParams.get('sort') ?? '';
-    const sort = _sort.slice(1, _sort.length-1).split(",").map(param => param.slice(1, param.length-1));
+    const sort = _sort ?  JSON.parse(_sort) : null
     // if
     let limit = searchParams.get('limit');
     if (!limit && _range.length > 0) {
@@ -30,7 +32,7 @@ export async function GET(request: NextRequest) {
     const filter = _filter ?  JSON.parse(_filter) : null
     logger.info('API QUESTIONS GET: params', limit, page, sort, filter)
 
-    let questions: DBQuestions[] | null = []
+    let questions: DBQuestion[] | null = []
     let total: number = 0;
     try {
         questions = await getQuestions(page, limit, sort, filter)
@@ -50,26 +52,46 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: Request) {
-    // logger.info("API QUESTIONS POST: request ", request)
+    const msg = "API QUESTIONS POST - "
+    // logger.info(msg + "request", request)
     const insertedQuestion: UserRequest = await request.json(); 
-    logger.info("API QUESTIONS POST: request json", insertedQuestion)
+    logger.info(msg + "request json", insertedQuestion)
     insertedQuestion.llm = ''
 
-    let question: DBQuestions | null = null
+    let question: DBQuestion | null = null
     try {
-        const questions = await addClientQuestion(insertedQuestion)
-        // logger.info('API QUESTIONS POST: questions ', questions)
-        if (questions !== null) {
-            question = questions[0]
+        question = await addClientQuestion(insertedQuestion)
+        // logger.info(msg + 'questions ', questions)
+        if(question === null) {
+            logger.error(msg + "Empty response from addClientQuestion", insertedQuestion)
+            return NextResponse.json(
+                { success: false, message: 'Error during add question(1).' },
+                { status: 404 }
+            );
         }
+
     } catch(err) {
-        logger.error("(ERROR)API QUESTIONS POST: ", (err as Error).message)
+        logger.error(msg + "error during add question", (err as Error).message)
         return NextResponse.json(
-            { success: false, message: '(ERROR)API QUESTIONS POST: error during add question.' },
+            { success: false, message: 'Error during add question(2).' },
             { status: 401 }
         );
     }
-    logger.info('API QUESTIONS POST: created ', question)
+
+    if(question !== null) {
+        const sendData: EmailDataNewRequestI = {
+            id: question.id,
+            username: question.username,
+            email: question.email,
+            admin_id: question.admin_id,
+        }
+        const isSendEmail = await SendSendGridEmailNewRequest(sendData)
+        if(!isSendEmail) {
+            logger.error(msg + "email on new request event was not sent", sendData)
+        }
+    }
+    
+    // logger.info(msg + 'created ', question)
     const response = NextResponse.json(question, { status: 200 });
     response.headers.set("X-Total-Count", "1")
     return response

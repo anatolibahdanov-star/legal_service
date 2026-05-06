@@ -3,9 +3,9 @@
 import { useSession, signOut } from "next-auth/react"
 import { useState } from "react";
 import Link from 'next/link';
-import { AuthFormWindow } from "@/src/app/components/AuthFormWindow";
-import { RegisterFormWindow } from "@/src/app/components/RegisterFormWindow";
-import { ResetPasswordFormWindow } from "@/src/app/components/ResetPasswordFormWindow";
+import { AuthFormWindow } from "@/src/app/components/popups/AuthFormWindow";
+import { RegisterFormWindow } from "@/src/app/components/popups/RegisterFormWindow";
+import { ResetPasswordFormWindow } from "@/src/app/components/popups/ResetPasswordFormWindow";
 
 export default function SignInComponent() {
   const [activeForm, setActiveForm] = useState<"login" | "register" | "reset" | null>(null);

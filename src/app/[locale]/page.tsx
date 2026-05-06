@@ -5,7 +5,6 @@ import { Hero } from "@/src/app/components/Hero";
 import { AboutUs } from "@/src/app/components/AboutUs";
 import { HowItWorks } from "@/src/app/components/HowItWorks";
 import { Services } from "@/src/app/components/Services";
-import {SelectCategories} from "@/src/app/components/data/select-category"
 
 export default async function Home({
   params,
@@ -21,7 +20,7 @@ export default async function Home({
   return (
     <>
       <StatsBar />
-      <Hero><SelectCategories /></Hero>
+      <Hero />
       <AboutUs />
       <HowItWorks />
       <Services />

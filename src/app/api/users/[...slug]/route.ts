@@ -1,33 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server';
-import {login, profile, register, reset} from "@/src/repositories/users/repo"
+import {login, profile, register, reset, getUsersByIds, saveUser, deleteUser} from "@/src/repositories/users/repo"
 import {DBUser} from "@/src/interfaces/db"
-import logger from "@/src/services/logger"
-import { SendSendGridEmailForgot } from '@/src/services/sendgrid';
+import logger from "@/src/libs/logger"
+import { SendSendGridEmailForgot } from '@/src/libs/sendgrid';
 import { EmailDataForgotI } from '@/src/interfaces/email';
 
+export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
   const msg = "API USER GET: "
-  const requestUrlId = request.url.split('/api/users/')[1];
-  let result: boolean = false
+  // console.log(msg + "request", request)
+  const requestUrlId = parseInt(request.url.split('/api/users/')[1]);
+  console.log(msg + 'requestUrlId', requestUrlId, typeof requestUrlId)
+
+  let user: DBUser | null = null
   try {
-    switch(requestUrlId) {
-      case "logout":
-        result = true
-        break;
-      default:
-        break;
-    }
+      user = await getUsersByIds([requestUrlId.toString()])
+      console.log(msg + 'get user', user)
+      if (user === null) {
+          console.error(msg + "User not found", requestUrlId)
+          return NextResponse.json(
+              { success: false, message: msg + 'User not found.' },
+              { status: 404 }
+          );
+      }
   } catch(err) {
-      logger.error("(ERROR)" + msg, (err as Error).message)
+      console.error("(ERROR)" + msg, (err as Error).message)
       return NextResponse.json(
-          { success: false, message: '(ERROR)' + msg + 'error during get question info.' },
+          { success: false, message: '(ERROR)' + msg + 'error during get data.' },
           { status: 401 }
       );
   }
-  logger.info(msg + 'response out', result, requestUrlId)
-  const response = NextResponse.json(result, { status: 200 });
+  console.log(msg + 'user out', user)
+  const response = NextResponse.json(user, { status: 200 });
   response.headers.set("X-Total-Count", "1")
-  return response 
+  return response
 }
 
 export async function POST(request: Request) {
@@ -49,7 +55,7 @@ export async function POST(request: Request) {
         } else if(user === null) {
           logger.error("(ERROR)" + msg + 'not found.', requestUrlId, data)
           return NextResponse.json(
-              { success: false, message: '(ERROR)' + msg + 'not found.', requestUrlId, data},
+              { success: false, message: '(ERROR)' + msg + 'not found or blocked.', requestUrlId, data},
               { status: 404 }
           );
         }
@@ -151,4 +157,63 @@ export async function POST(request: Request) {
   const response = NextResponse.json(user, { status: 200 });
   response.headers.set("X-Total-Count", "1")
   return response 
+}
+
+export async function PUT(request: Request) {
+    const msg = "API USER PUT: "
+    // console.log(msg + "request", request)
+    const requestUrlId = request.url.split('/api/users/')[1];
+    const updatedUser: DBUser = await request.json(); 
+
+    let user: DBUser | null = null
+    try {
+        user = await saveUser(requestUrlId, updatedUser)
+        console.log(msg + 'user', user)
+        if (user === null) {
+            console.error(msg + "User not found", requestUrlId)
+            return NextResponse.json(
+                { success: false, message: msg + 'User not found.' },
+                { status: 404 }
+            );
+        }
+    } catch(err) {
+        console.error("(ERROR)" + msg, (err as Error).message)
+        return NextResponse.json(
+            { success: false, message: '(ERROR)' + msg + 'error during save data.' },
+            { status: 401 }
+        );
+    }
+    console.log(msg + 'updated', user)
+    const response = NextResponse.json(user, { status: 200 });
+    response.headers.set("X-Total-Count", "1")
+    return response
+}
+
+export async function DELETE(request: Request) {
+    const msg = "API USER DELETE: "
+    // console.log(msg + "request", request)
+    const requestUrlId = request.url.split('/api/users/')[1];
+
+    let user: DBUser | null = null
+    try {
+        user = await deleteUser(requestUrlId)
+        console.log(msg + 'deleted', user)
+        if (user === null) {
+            console.error(msg + "User not found", requestUrlId)
+            return NextResponse.json(
+                { success: false, message: msg + 'User not found.' },
+                { status: 404 }
+            );
+        }
+    } catch(err) {
+        console.error("(ERROR)" + msg, (err as Error).message)
+        return NextResponse.json(
+            { success: false, message: '(ERROR)' + msg + 'error during deleting data.' },
+            { status: 401 }
+        );
+    }
+    console.log(msg + 'deleted', user)
+    const response = NextResponse.json(user, { status: 200 });
+    response.headers.set("X-Total-Count", "1")
+    return response
 }

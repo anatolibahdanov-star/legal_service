@@ -1,0 +1,15 @@
+
+.enki-profile-list ul.pagination-list {
+	padding-top: 20px;
+}
+
+.enki-profile-list ul.pagination-list li button {
+	color: #fffc;
+}
+
+.enki-profile-list ul.pagination-list li button:not([data-state='active']) {
+	color: #6fa2b8;
+}
+.enki-profile-btn {
+    padding: 10px 20px;
+}

@@ -14,6 +14,7 @@ declare module "next-auth" {
       id: string; // The default user in the adapter has an id, but the session user does not by default
       /** Custom field for user role */
       role: 'admin' | 'lowyer' | 'user';
+      username: string;
       is_super: boolean;
       // Add other custom fields here
     } & DefaultSession["user"];
@@ -26,6 +27,7 @@ declare module "next-auth" {
     /** Custom field for user role */
     role: 'admin' | 'lowyer' | 'user';
     id: string;
+    username: string;
     is_super?: boolean;
   }
 }
@@ -37,6 +39,7 @@ declare module "next-auth/jwt" {
     /** Custom field for user role */
     role: 'admin' | 'lowyer' | 'user';
     id: string;
+    username: string;
     is_super: boolean;
     // Add other custom fields here
   }

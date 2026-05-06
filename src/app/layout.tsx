@@ -7,6 +7,7 @@ import { Header } from "@/src/app/components/Header";
 import { Footer } from "@/src/app/components/Footer";
 import {NextAuthProvider} from "@/src/app/providers/NextAuthProvider"
 import '@/src/styles/index.css';
+import "./enki.css";
 
 export default function RootLayout({
   children,
@@ -15,7 +16,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" dir="ltr">
-      <body style={{"margin":"0px"}}>
+      <body>
         <div className="min-h-screen bg-[#fefdf9]">
           <NextAuthProvider>
             <Header />

@@ -4,7 +4,8 @@ import {getAdministratorByEmail} from "@/src/repositories/administrators/repo"
 import {login} from "@/src/repositories/users/repo"
 import {DBUser} from "@/src/interfaces/db"
 import {NextAuthSessionInput, NextAuthJWTInput} from "@/src/interfaces/custom-next-auth"
-import logger from "@/src/services/logger"
+import logger from "@/src/libs/logger"
+import { UserStatusesE } from "@/src/interfaces/data"
 
 export const authOptions = {
   // Configure one or more authentication providers
@@ -37,13 +38,14 @@ export const authOptions = {
                   user = admin
                 }
                 if (user) {
-                  if (user.status && user.status !== 1) {
+                  if (user.status && user.status !== UserStatusesE.Activated) {
                     logger.error(msg + "User status - blocked: ", credentials)
                     throw new Error("Данный Юрист был заблокирован. Обратитесь к администратору.");
-                  } else if (!user.status) {
-                    user.status = 1
+                  } else if (user.is_super === undefined && user.is_register !== undefined) {
+                    user.status = UserStatusesE.Activated
                     user.admin_id = 0
                     user.is_super = false
+                    user.username = ''
                     user.role = 'user'
                   } else if(user.status) {
                     user.role = user.is_super ? 'admin' : 'lowyer'
@@ -54,7 +56,7 @@ export const authOptions = {
 
                 if (user === null) {
                   logger.error(msg + "User not found by username: ", credentials)
-                  throw new Error("Пользователь с таким E-mail не найден.");
+                  throw new Error("Пользователь с таким E-mail не найден или был заблокирован.");
                 }
 
                 logger.error(msg + "Incorrect password: ", credentials)
@@ -78,6 +80,7 @@ export const authOptions = {
         // 'user' is only present on the first sign-in
         token.id = user.id;
         token.role = user.role; // Add custom field from your user model
+        token.username = user.username
         token.is_super = user.is_super !== undefined ? user.is_super : false; 
       }
       return token;
@@ -88,6 +91,7 @@ export const authOptions = {
         // Explicitly forward properties from the token to the session object
         session.user.id = token.id;
         session.user.role = token.role;
+        session.user.username = token.username;
         session.user.is_super = token.is_super
       }
       return session;

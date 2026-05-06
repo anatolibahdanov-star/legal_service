@@ -1,34 +1,48 @@
-import pool from '@/src/libs/db';
-import { OkPacket, FieldPacket } from 'mysql2/promise';
+import logger from "@/src/libs/logger"
+import {find, findOne, insert, queryTransactionWrapper, executeTransactionWrapper, update, remove} from '@/src/libs/db';
+import { ResultSetHeader } from 'mysql2/promise';
 import {addAnonymousUser} from "@/src/repositories/users/repo"
-import { randomUUID } from 'crypto';
-import {CountResult, DBQuestions, DBUser} from "@/src/interfaces/db"
+import { randomUUID } from 'node:crypto';
+import {CountResult, DBQuestion, DBUser} from "@/src/interfaces/db"
 import {DBFilterQuestions} from "@/src/interfaces/filters"
-import {UserRequest} from "@/src/interfaces/api"
+import {UserRatingRequest, UserRequest} from "@/src/interfaces/api"
 import {getCategoryByName} from "@/src/repositories/categories/repo"
-import logger from "@/src/services/logger"
+import { ReplyStatusesE, FinalReplyStatusesE, QuestionStatusesE, QuestionInfoStatusesE } from '@/src/interfaces/data';
+
+const msgGlobal = "REPO QUESTION "
 
 export async function getQuestions(
-    page: string = '1', 
-    _limit: string = '10', 
-    _sorter: string[] = ['id', 'DESC'], 
-    filter: DBFilterQuestions | null = null
-): Promise<DBQuestions[] | null> {
+    page: string = '1', _limit: string = '10', _sorter: string[] = ['id', 'DESC'], filter: DBFilterQuestions | null = null, isChild: boolean = false,
+): Promise<DBQuestion[] | null> {
+    const msg = msgGlobal + "getQuestions - "
+    if(isChild === false) {
+        if(filter) {
+            filter.is_child = filter.is_child === undefined ? false : filter.is_child
+        } else {
+            filter = {is_child: false}
+        }
+    }
     const orderBy = getAdminQuestionOrder(_sorter);
     const where = getAdminQuestionFilter(filter)
-    const sql: string =  `SELECT q.id id, u.name username, q.question question,
-    q.status status, q.created_at as created_at, BIN_TO_UUID(q.uuid) uuid, u.email email,
-    c.id category_id, c.name category_name, q.email_status email_status 
-    FROM question q JOIN user u ON q.user_id=u.id 
-    LEFT JOIN category c ON q.category_id=c.id `
+    const query =  `SELECT q.*, u.name username, BIN_TO_UUID(q.uuid) uuid, u.email email,
+    c.id category_id, c.name category_name, adi.name owner 
+    FROM question q JOIN user u ON q.user_id=u.id  
+    LEFT JOIN category c ON q.category_id=c.id 
+    LEFT JOIN administrator adi ON q.admin_id=adi.id  `
      + where +
     ` ORDER BY ` + orderBy +
     ` LIMIT ?
     OFFSET ?`;
     const limit = parseInt(_limit) ?? 10
     const offset = ((parseInt(page) ?? 1) - 1) * limit
-    // logger.info('sql ', sql)
-    const [rows] = await pool.query<DBQuestions[]>({sql: sql, values: [limit, offset]});
+    const params = [limit, offset]
+    const findFunc = find({ query, values: params });
+    const executedQueries = await queryTransactionWrapper<DBQuestion>([findFunc], msg);
+    if (!executedQueries) {
+        logger.error(msg + "SQL not results from execution", query)
+        return null
+    }
+    const [[rows]] = executedQueries;
     if (rows.length === 0) {
         return []
     }
@@ -36,43 +50,73 @@ export async function getQuestions(
 }
 
 export async function getTotalQuestions(filter: DBFilterQuestions | null = null): Promise<number> {
+    const msg = msgGlobal + "getTotalQuestions - ";
     const where = getAdminQuestionFilter(filter)
-    const sql: string =  `SELECT COUNT(q.id) as counter FROM question q JOIN user u ON q.user_id=u.id ` + where;
-    const [rows] = await pool.query<CountResult[]>({sql: sql});
-    logger.info('sql counter ', rows)
+    const query = `SELECT COUNT(q.id) as counter FROM question q JOIN user u ON q.user_id=u.id AND q.parent_id IS NULL ` + where;
+    const calcFunc = findOne({ query: query, values: [] });
+    const executedQueries = await queryTransactionWrapper<CountResult>([calcFunc], msg);
+    if (!executedQueries) {
+        logger.error(msg + "SQL not results from execution", query)
+        return 0
+    }
+    const [[rows]] = executedQueries;
     if (rows.length === 0) {
         return 0
     }
-    const totalCount = rows[0].counter;
-    return totalCount
+    return rows[0].counter;
 }
 
-export async function getQuestionsByIds(ids: string[], is_number: boolean = true): Promise<DBQuestions[] | null> {
-    const msg = "REPO getQuestionsByIds: "
-    let sql: string =  `SELECT q.id id, u.name username, q.question question,
-    q.status status, q.created_at created_at, r.reply reply, IF(fr.final_reply = '', r.reply, fr.final_reply) final_reply,
+export async function getQuestionsByIds(ids: string[], is_number: boolean = true): Promise<DBQuestion[] | null> {
+    const msg = msgGlobal + "getQuestionsByIds - ";
+    let query =  `SELECT q.*, u.name username, r.reply reply, IF(fr.final_reply = '', r.reply, fr.final_reply) final_reply,
     r.id reply_id, fr.id final_reply_id, r.status reply_status, BIN_TO_UUID(q.uuid) uuid, ad.name lawyer,
-    u.email as email, c.id category_id, c.name category_name, q.email_status email_status  
-    FROM question q JOIN user u ON q.user_id=u.id 
+    u.email as email, c.id category_id, c.name category_name, fr.updated_at final_reply_date, adi.name owner
+    FROM question q JOIN user u ON q.user_id=u.id
+    LEFT JOIN administrator adi ON q.admin_id=adi.id 
     LEFT JOIN reply r ON q.id=r.question_id 
     LEFT JOIN final_reply fr ON r.id=fr.reply_id 
     LEFT JOIN administrator ad ON fr.admin_id=ad.id 
     LEFT JOIN category c ON q.category_id=c.id
     WHERE `;
-
-    try {
-        sql += is_number ? 'q.id IN (?)' : 'q.uuid = UUID_TO_BIN(?)' 
-        logger.info(msg + "params", ids, sql)
-        const [rows] = await pool.query<DBQuestions[]>({sql: sql, values: [ids]});
-        if (rows.length === 0) {
-            return []
-        }
-        return rows
-    } catch(error) {
-        logger.error("(ERROR)" + msg, (error as Error).message, sql)
+    query += is_number ? 'q.id IN (?)' : 'q.uuid = UUID_TO_BIN(?)' 
+    const params = [ids]
+    const findFunc = find({ query, values: params });
+    const executedQueries = await queryTransactionWrapper<DBQuestion>([findFunc], msg);
+    if (!executedQueries) {
+        logger.error(msg + "SQL not results from execution", query)
+        return null
     }
-    
-    return []
+    const [[rows]] = executedQueries;
+    if (rows.length === 0) {
+        return []
+    }
+    return rows
+}
+
+export async function getJobById(id: number): Promise<DBQuestion[] | null> {
+    const msg = msgGlobal + "getJobById - ";
+    const query =  `SELECT q.*, u.name username, r.reply reply, IF(fr.final_reply = '', r.reply, fr.final_reply) final_reply,
+    r.id reply_id, fr.id final_reply_id, r.status reply_status, BIN_TO_UUID(q.uuid) uuid, ad.name lawyer,
+    u.email as email, c.id category_id, c.name category_name, fr.updated_at final_reply_date, adi.name owner 
+    FROM question q JOIN user u ON q.user_id=u.id 
+    LEFT JOIN administrator adi ON q.admin_id=adi.id 
+    LEFT JOIN reply r ON q.id=r.question_id 
+    LEFT JOIN final_reply fr ON r.id=fr.reply_id 
+    LEFT JOIN administrator ad ON fr.admin_id=ad.id 
+    LEFT JOIN category c ON q.category_id=c.id
+    WHERE q.id=? OR q.parent_id=? ORDER BY q.id ASC`;
+    const params = [id, id]
+    const findFunc = find({ query, values: params });
+    const executedQueries = await queryTransactionWrapper<DBQuestion>([findFunc], msg);
+    if (!executedQueries) {
+        logger.error(msg + "SQL not results from execution", query)
+        return null
+    }
+    const [[rows]] = executedQueries;
+    if (rows.length === 0) {
+        return []
+    }
+    return rows
 }
 
 export function getAdminQuestionOrder(orderBy:string[]): string {
@@ -86,6 +130,7 @@ export function getAdminQuestionOrder(orderBy:string[]): string {
         "final_reply": "fr.final_reply",
         "status": "q.status",
         "created_at": "q.created_at",
+        "updated_at": "q.updated_at",
     }
     if(orderBy && orderBy.length>0) {
         const field = orderBy[0] in tablesFields ? tablesFields[orderBy[0]] : "q.id"
@@ -111,7 +156,12 @@ export function getAdminQuestionFilter(filter: DBFilterQuestions | null = null):
     }
     if (filter.username) {
         const resultAnd = isFilter ? 'AND ' : ''
-        result += (resultAnd + 'u.username LIKE "%' + filter.username + '%" ')
+        result += (resultAnd + 'u.name LIKE "%' + filter.username + '%" ')
+        isFilter = true
+    }
+    if (filter.email) {
+        const resultAnd = isFilter ? 'AND ' : ''
+        result += (resultAnd + 'u.email LIKE "%' + filter.email + '%" ')
         isFilter = true
     }
     if (filter.user_id) {
@@ -129,47 +179,66 @@ export function getAdminQuestionFilter(filter: DBFilterQuestions | null = null):
         result += (resultAnd + 'q.category_id=' + filter.category + ' ')
         isFilter = true
     }
-    if (filter.status) {
+    if (!filter.is_child) {
         const resultAnd = isFilter ? 'AND ' : ''
-        result += (resultAnd + 'q.status=' + filter.status + ' ')
+        result += (resultAnd + ' q.parent_id IS NULL ')
         isFilter = true
     }
-    if (filter.email) {
+    if (filter.status || filter.status === 0) {
         const resultAnd = isFilter ? 'AND ' : ''
-        result += (resultAnd + 'q.email_status=' + filter.email + ' ')
+        result += (resultAnd + 'q.job_status=' + filter.status + ' ')
+        isFilter = true
+    }
+    if (filter.is_rating) {
+        const resultAnd = isFilter ? 'AND ' : ''
+        result += (resultAnd + 'q.rating>0 ')
+        isFilter = true
+    }
+    if (filter.email_status || filter.email_status === 0) {
+        const resultAnd = isFilter ? 'AND ' : ''
+        result += (resultAnd + 'q.email_status=' + filter.email_status + ' ')
+        isFilter = true
+    }
+    if (filter.lost) {
+        const resultAnd = isFilter ? 'AND ' : ''
+        result += (resultAnd + 'q.info_status=0 AND q.job_status IN(' + QuestionStatusesE.InProgress + ', ' + QuestionStatusesE.New + ') AND DATE_ADD(q.created_at, INTERVAL ' + filter.lost + ' HOUR) <= NOW() ')
+        isFilter = true
+    }
+    if (filter.admin_id) {
+        const resultAnd = isFilter ? 'AND ' : ''
+        result += (resultAnd + 'q.admin_id=' + filter.admin_id + ' ')
         isFilter = true
     }
     return isFilter ? result : ''
 }
 
-export async function addQuestion(question: DBQuestions): Promise<DBQuestions[] | null> {
-    const msg = "REPO addQuestion: "
+export async function addQuestion(question: DBQuestion): Promise<DBQuestion[] | null> {
+    const msg = msgGlobal + "addQuestion - ";
     const myUuid: string = randomUUID();
-    const questionInsertSQL = `INSERT INTO question(name, email, uuid) VALUES(?, ?, UUID_TO_BIN(?))`
-    const [resultQuestionInsert, ufields] = await pool.execute(questionInsertSQL, 
-            [question.name, question.email, myUuid]) as [OkPacket, FieldPacket[]];
-    const insertedQuestionId = resultQuestionInsert?.insertId
-    if (!insertedQuestionId) {
-        logger.error("(ERROR)" + msg + ": empty inserted question id", question, ufields)
+    const query = `INSERT INTO question(name, email, uuid) VALUES(?, ?, UUID_TO_BIN(?))`;
+    const params = [question.name, question.email, myUuid];
+    const insertFunc = insert({ query, values: params});
+    const executedQueries = await executeTransactionWrapper<ResultSetHeader>([insertFunc], msg);
+    if (!executedQueries) {
+        logger.error(msg + "SQL not results from execution", query)
         return null
     }
-    logger.info(msg + 'inserted', resultQuestionInsert, ufields)
+    const [resultInsert] = executedQueries;
+    const insertedId = resultInsert[0]?.insertId
+    if (!insertedId) {
+        logger.error(msg + "Empty inserted id", resultInsert[0])
+        return null
+    }
 
-    // @TO-DO other logic
-
-    return getQuestionsByIds([insertedQuestionId.toString()])
+    return getQuestionsByIds([insertedId.toString()])
 }
 
-export async function addClientQuestion(data: UserRequest): Promise<DBQuestions[] | null> {
-    const msg = "REPO addClientQuestion: "
-    const _user: DBUser = {
-        id: '',
-        name: data.name,
-        email: data.email
-    } as DBUser
+export async function addClientQuestion(data: UserRequest): Promise<DBQuestion | null> {
+    const msg = msgGlobal + "addClientQuestion - ";
+    const _user = {id: '', name: data.name, email: data.email} as DBUser
     const user = await addAnonymousUser(_user)
     if(user === null) {
-        logger.error("(ERROR)" + msg + ": can not create user", _user)
+        logger.error(msg + "Can not create user", _user)
         return null
     }
     const categories = await getCategoryByName(data.topic)
@@ -179,112 +248,330 @@ export async function addClientQuestion(data: UserRequest): Promise<DBQuestions[
     }
     
     const myUuid: string = randomUUID();
-    const questionInsertSQL = `INSERT INTO question(user_id, question, status, uuid, category_id) VALUES(?, ?, ?, UUID_TO_BIN(?), ?)`
-    const [resultQuestionInsert, ufields] = await pool.execute(questionInsertSQL, 
-        [user.id, data.question, 1, myUuid, categoryId]) as [OkPacket, FieldPacket[]];
-    logger.info('CLIENT ADD QUESTION inserted data ', resultQuestionInsert, ufields)
-    const insertedQuestionId = resultQuestionInsert?.insertId
+    const parent = data.parent && data.parent !== 0 ? data.parent : null
+    const questionInsertSQL = `INSERT INTO question(user_id, question, status, uuid, category_id, parent_id) VALUES(?, ?, ?, UUID_TO_BIN(?), ?, ?)`
+    const insertedData = [user.id, data.question, QuestionStatusesE.New, myUuid, categoryId, parent, ]
+
+    const insertFunc = insert({ query: questionInsertSQL, values: insertedData});
+    const executedQueries = await executeTransactionWrapper<ResultSetHeader>([insertFunc], msg);
+    if (!executedQueries) {
+        logger.error(msg + "SQL not results from execution", questionInsertSQL)
+        return null
+    }
+    const [resultInsert] = executedQueries;
+    const insertedQuestionId = resultInsert[0]?.insertId
     if (!insertedQuestionId) {
-        logger.error("CLIENT ADD QUESTION: empty inserted question id", data, ufields)
+        logger.error(msg + "Empty inserted id", resultInsert[0])
         return null
     }
 
-    const reply_status = data.llm !== '' ? 1 : 0 
+
+    if(parent) {
+        const questionUpdateSQL = `UPDATE question SET job_status=?, updated_at=NOW() WHERE id=?`
+        const questionUpdateData = [QuestionStatusesE.InProgress, parent]
+
+        const updateFunc = update({ query: questionUpdateSQL, values: questionUpdateData});
+        const executedQueries = await executeTransactionWrapper<ResultSetHeader>([updateFunc], msg);
+        if (!executedQueries) {
+            logger.error(msg + "SQL not results from execution", questionUpdateSQL)
+            return null
+        }
+        const [result] = executedQueries;
+        const updated = result[0]?.affectedRows
+        if (updated > 0) {
+            logger.info(msg + 'updated', result)
+        } else { 
+            logger.warn(msg + "No updates", result[0])
+        }
+    }
+
+
+    const reply_status = data.llm !== '' ? ReplyStatusesE.Auto : ReplyStatusesE.New 
 
     const replyInsertSQL = `INSERT INTO reply(question_id, reply, status) VALUES(?, ?, ?)`
-    const [resultReplyInsert, rfields] = await pool.execute(replyInsertSQL, [insertedQuestionId, data.llm, reply_status]) as [OkPacket, FieldPacket[]];
-    logger.info('CLIENT ADD REPLY inserted data ', resultReplyInsert, rfields)
-    const insertedReplyId = resultReplyInsert?.insertId
+    const replyInsertData = [insertedQuestionId, data.llm, reply_status]
+    const insertFunc2 = insert({ query: replyInsertSQL, values: replyInsertData});
+    const executedQueries2 = await executeTransactionWrapper<ResultSetHeader>([insertFunc2], msg);
+    if (!executedQueries2) {
+        logger.error(msg + "SQL not results from execution", replyInsertSQL)
+        return null
+    }
+    const [resultInsert2] = executedQueries2;
+    const insertedReplyId = resultInsert2[0]?.insertId
     if (!insertedReplyId) {
-        logger.error("CLIENT ADD REPLY: empty inserted reply id", data, rfields)
+        logger.error(msg + "Empty inserted id", resultInsert2[0])
         return null
     }
 
-    const finalReplyInsertSQL = `INSERT INTO final_reply(reply_id, admin_id, final_reply, status) VALUES(?, ?, ?, ?)`
-    const [resultFinalReplyInsert, frfields] = await pool.execute(finalReplyInsertSQL, [insertedReplyId, 2, '', 0]) as [OkPacket, FieldPacket[]];
-    logger.info('CLIENT ADD FINAL REPLY inserted data ', resultFinalReplyInsert, frfields)
-    const insertedFinalReplyId = resultFinalReplyInsert?.insertId
+    const finalReplyInsertSQL = `INSERT INTO final_reply(reply_id, final_reply, status) VALUES(?, ?, ?)`
+    const FRData = [insertedReplyId, '', FinalReplyStatusesE.New]
+
+    const insertFunc3 = insert({ query: finalReplyInsertSQL, values: FRData});
+    const executedQueries3 = await executeTransactionWrapper<ResultSetHeader>([insertFunc3], msg);
+    if (!executedQueries3) {
+        logger.error(msg + "SQL not results from execution", finalReplyInsertSQL)
+        return null
+    }
+    const [resultInsert3] = executedQueries3;
+    const insertedFinalReplyId = resultInsert3[0]?.insertId
     if (!insertedFinalReplyId) {
-        logger.warn("CLIENT ADD FINAL REPLY: empty inserted final reply id", data, frfields)
+        logger.error(msg + "Empty inserted id", resultInsert3[0])
         return null
     }
-    return getQuestionsByIds([insertedQuestionId.toString()])
+
+    const resQuestions = await getQuestionsByIds([insertedQuestionId.toString()])
+    if(resQuestions === null) {
+        logger.warn(msg + "Can't get new question from DB", resQuestions, insertedQuestionId.toString())
+        return null
+    }
+    return resQuestions[0]
 }
 
-export async function addLLMReply(id: string, llm: string, duration: number): Promise<DBQuestions[] | null> {
-    const replyUpdateSQL = `UPDATE reply SET reply=?, status=?, duration=? WHERE question_id=?`
-    const [resultReplyUpdate, ufields] = await pool.execute(replyUpdateSQL, 
-        [llm, 1, duration, id]);
-    logger.info('UPDATED DATA reply ', resultReplyUpdate, ufields)
+export async function addLLMReply(id: string, llm: string, duration: number): Promise<DBQuestion[] | null> {
+    const msg = msgGlobal + "addLLMReply - ";
+    const replyUpdateSQL = `UPDATE reply SET reply=?, status=?, duration=?, updated_at=NOW() WHERE question_id=?`;
+    const params = [llm, ReplyStatusesE.Auto, duration, id]
+
+    const updateFunc = update({ query: replyUpdateSQL, values: params});
+    const executedQueries = await executeTransactionWrapper<ResultSetHeader>([updateFunc], msg);
+    if (!executedQueries) {
+        logger.error(msg + "SQL not results from execution", replyUpdateSQL)
+        return null
+    }
+    const [result] = executedQueries;
+    const updated = result[0]?.affectedRows
+    if (updated > 0) {
+        logger.info(msg + 'updated', result)
+    } else { 
+        logger.warn(msg + "No updates", result[0])
+    }
+
     return getQuestionsByIds([id])
 }
 
-export async function updateEmailStatus(id: string, email_status: number): Promise<DBQuestions[] | null> {
-    const msg = "REPO updateEmailStatus: "
-    const updateSQL = `UPDATE question SET email_status=? WHERE id=?`
-    const [updateResult, fields] = await pool.execute(updateSQL, 
-            [email_status, id]);
-    logger.info(msg + 'UPDATED question ', updateResult, fields)
+export async function updateEmailStatus(id: string, email_status: number): Promise<DBQuestion[] | null> {
+    const msg = msgGlobal + "updateEmailStatus - ";
+    const query = `UPDATE question SET email_status=?, updated_at=NOW() WHERE id=?`;
+    const params = [email_status, id]
+    const updateFunc = update({ query, values: params});
+    const executedQueries = await executeTransactionWrapper<ResultSetHeader>([updateFunc], msg);
+    if (!executedQueries) {
+        logger.error(msg + "SQL not results from execution", query)
+        return null
+    }
+    const [result] = executedQueries;
+    const updated = result[0]?.affectedRows
+    if (updated > 0) {
+        logger.info(msg + 'updated', result)
+    } else { 
+        logger.warn(msg + "No updates", result[0])
+    }
+    
     return getQuestionsByIds([id])
 }
 
-export async function saveQuestion(id: string, questionIn: DBQuestions): Promise<DBQuestions | null> {
+export async function saveQuestion(id: string, questionIn: DBQuestion, adminId: string|null = null): Promise<DBQuestion | null> {
+    const msg = "REPO saveQuestion - "
+    if(adminId === null) {
+        logger.error(msg + 'UPDATED DATA admin not found', adminId)
+        return null
+    }
+
+    if(!questionIn.child_id) {
+        logger.error(msg + 'UPDATED DATA child ID not found', questionIn.child_id)
+        return null
+    }
 
     const questions = await getQuestionsByIds([id])
     if(questions === null) {
-        logger.error('UPDATED DATA question not found ', id)
+        logger.error(msg + 'Question not found', id)
         return null
     }
     const question = questions[0]
 
-    // let fr_status: number = 1
-    let q_status: number = 2
-    if(question.final_reply === null && questionIn.final_reply!==null) {
-        // fr_status = 2
-        q_status = 4
-    } else if(question.final_reply !== questionIn.final_reply) {
-        // fr_status = 3
-        q_status = 4
-    }
+    const updateStatus = {isReply: false, isFinalReply: false, isSubQuestion: false,}
+
     if(questionIn.reply && question.reply !== questionIn.reply) {
-        const replyUpdateSQL = `UPDATE reply SET reply=?, status=? WHERE id=?`
-        const [resultReplyUpdate, rfields] = await pool.execute(replyUpdateSQL, 
-            [questionIn.reply, 1, question.reply_id]);
-        logger.info('UPDATED DATA final reply ', resultReplyUpdate, rfields)
+        const replyUpdateSQL = `UPDATE reply SET reply=?, status=?, updated_at=NOW() WHERE id=?`;
+        const replyUpdateData = [questionIn.reply, ReplyStatusesE.Filled, questionIn.reply_id]
+        const updateFunc = update({ query: replyUpdateSQL, values: replyUpdateData});
+        const executedQueries = await executeTransactionWrapper<ResultSetHeader>([updateFunc], msg);
+        if (!executedQueries) {
+            logger.error(msg + "SQL not results from execution", replyUpdateSQL)
+            return null
+        }
+        const [result] = executedQueries;
+        const updated = result[0]?.affectedRows
+        if (updated > 0) {
+            logger.info(msg + 'updated', result)
+        } else { 
+            logger.warn(msg + "No updates", result[0])
+        }
+        updateStatus.isReply = true
     }
 
     if(questionIn.final_reply && question.final_reply !== questionIn.final_reply) {
-        const finalReplyUpdateSQL = `UPDATE final_reply SET final_reply=?, status=? WHERE id=?`
-        const [resultFinalReplyUpdate, ufields] = await pool.execute(finalReplyUpdateSQL, 
-            [questionIn.final_reply, 2, question.final_reply_id]);
-        logger.info('UPDATED DATA final reply ', resultFinalReplyUpdate, ufields)
+        const finalReplyUpdateSQL = `UPDATE final_reply SET final_reply=?, status=?, admin_id=?, updated_at=NOW() WHERE id=?`;
+        const finalReplyUpdateData = [questionIn.final_reply, FinalReplyStatusesE.Filled, adminId, questionIn.final_reply_id];
+        const updateFunc = update({ query: finalReplyUpdateSQL, values: finalReplyUpdateData});
+        const executedQueries = await executeTransactionWrapper<ResultSetHeader>([updateFunc], msg);
+        if (!executedQueries) {
+            logger.error(msg + "SQL not results from execution", finalReplyUpdateSQL)
+            return null
+        }
+        const [result] = executedQueries;
+        const updated = result[0]?.affectedRows
+        if (updated > 0) {
+            logger.info(msg + 'updated', result)
+        } else { 
+            logger.warn(msg + "No updates", result[0])
+        }
+        updateStatus.isFinalReply = true
     }
 
-    if(question.status !== questionIn.status) {
-        q_status = questionIn.status
-        const questionUpdateSQL = `UPDATE question SET status=? WHERE id=?`
-        const [resultQuestionUpdate, qfields] = await pool.execute(questionUpdateSQL, 
-            [q_status, id]);
-        logger.info('UPDATED DATA question ', resultQuestionUpdate, qfields)
+    if(parseInt(question.id) !== questionIn.child_id) {
+        const subQuestions = await getQuestionsByIds([questionIn.child_id.toString()])
+        if(subQuestions === null) {
+            logger.error(msg + 'Question not found', questionIn.child_id)
+            return null
+        }
+        const subQuestion = subQuestions[0]
+        if(subQuestion.status !== questionIn.job_status) {
+            let questionUpdateSQL = `UPDATE question SET status=?, updated_at=NOW() `
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const questionUpdateData: Array<any> = [questionIn.job_status,]
+            if(subQuestion.admin_id === null) {
+                questionUpdateSQL += ', admin_id=? '
+                questionUpdateData.push(adminId)
+            }
+            questionUpdateSQL += ' WHERE id=? OR (parent_id=? AND status IN(?,?))'
+            questionUpdateData.push(questionIn.child_id, id, QuestionStatusesE.New, QuestionStatusesE.InProgress)
+
+            const updateFunc = update({ query: questionUpdateSQL, values: questionUpdateData});
+            const executedQueries = await executeTransactionWrapper<ResultSetHeader>([updateFunc], msg);
+            if (!executedQueries) {
+                logger.error(msg + "SQL not results from execution", questionUpdateSQL)
+                return null
+            }
+            const [result] = executedQueries;
+            const updated = result[0]?.affectedRows
+            if (updated > 0) {
+                logger.info(msg + 'updated', result)
+            } else { 
+                logger.warn(msg + "No updates", result[0])
+            }
+            updateStatus.isSubQuestion = true
+        }
+    }
+
+    let currentStatus = question.job_status
+    if(currentStatus !== questionIn.job_status) {
+        currentStatus = questionIn.job_status
+        let questionUpdateSQL = `UPDATE question SET job_status=?, updated_at=NOW() `
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const questionUpdateData: Array<any> = [currentStatus,]
+        if(question.admin_id === null) {
+            questionUpdateSQL += ', admin_id=? '
+            questionUpdateData.push(adminId)
+        }
+        questionUpdateSQL += ' WHERE id=?'
+        questionUpdateData.push(id)
+        const updateFunc = update({ query: questionUpdateSQL, values: questionUpdateData});
+        const executedQueries = await executeTransactionWrapper<ResultSetHeader>([updateFunc], msg);
+        if (!executedQueries) {
+            logger.error(msg + "SQL not results from execution", questionUpdateSQL)
+            return null
+        }
+        const [result] = executedQueries;
+        const updated = result[0]?.affectedRows
+        if (updated > 0) {
+            logger.info(msg + 'updated', result)
+        } else { 
+            logger.warn(msg + "No updates", result[0])
+        }
     }
     
-    question.status = q_status
+    question.status = currentStatus
 
     return question
 }
 
-export async function deleteQuestion(id: string): Promise<DBQuestions[] | null> {
-
+export async function saveQuestionRating(id: string, ratingInfo: UserRatingRequest): Promise<DBQuestion | null> {
+    const msg = msgGlobal + "saveQuestionRating - ";
     const questions = await getQuestionsByIds([id])
     if(questions === null) {
-        logger.error('DELETE REQUEST: request not found ', id)
+        logger.error(msg + 'Question not found ', id)
         return null
     }
-    const question: DBQuestions = questions[0]
 
-    const questionDeleteSQL = `DELETE FROM question WHERE id=?`
-    const [resultQuestionDelete] = await pool.execute(questionDeleteSQL, [question.id]);
-    logger.info('DELETE REQUEST ', resultQuestionDelete)
+    const questionUpdateSQL = `UPDATE question SET rating=?, comment=?, rating_date=NOW(), updated_at=NOW() WHERE id=?`
+    const ratingData = [ratingInfo.rating, ratingInfo.comment, id]
 
+    const updateFunc = update({ query: questionUpdateSQL, values: ratingData});
+    const executedQueries = await executeTransactionWrapper<ResultSetHeader>([updateFunc], msg);
+    if (!executedQueries) {
+        logger.error(msg + "SQL not results from execution", questionUpdateSQL)
+        return null
+    }
+    const [result] = executedQueries;
+    const updated = result[0]?.affectedRows
+    if (updated > 0) {
+        logger.info(msg + 'updated', result)
+    } else { 
+        logger.warn(msg + "No updates", result[0])
+    }
+    
+    const _questions = await getQuestionsByIds([id])
+    if(_questions === null) {
+        logger.error(msg + 'Question not found new', id)
+        return null
+    }
+    return _questions[0]
+}
+
+export async function deleteQuestion(id: string): Promise<DBQuestion[] | null> {
+    const msg = msgGlobal + "deleteQuestion - ";
+    const questions = await getQuestionsByIds([id])
+    if(questions === null) {
+        logger.error(msg + 'Question not found ', id)
+        return null
+    }
+    const question: DBQuestion = questions[0]
+
+    const questionDeleteSQL = `DELETE FROM question WHERE id=?`;
+    const params = [question.id];
+    const deleteFunc = remove({ query: questionDeleteSQL, values: params});
+    const executedQueries = await executeTransactionWrapper<ResultSetHeader>([deleteFunc], msg);
+    if (!executedQueries) {
+        logger.error(msg + "SQL not results from execution", questionDeleteSQL)
+        return null
+    }
+    const [result] = executedQueries;
+    const deleted = result[0]?.affectedRows
+    if (deleted > 0) {
+        logger.info(msg + 'deleted', result)
+    } else { 
+        logger.warn(msg + "No updates", result[0])
+    }
     return [question]
+}
+
+export async function updateInfoStatus(id: string, info_status: QuestionInfoStatusesE): Promise<DBQuestion[] | null> {
+    const msg = msgGlobal + "updateInfoStatus - ";
+    const query = `UPDATE question SET info_status=?, updated_at=NOW() WHERE id=? OR parent_id=?`
+    const params = [info_status, id, id]
+    const updateFunc = update({ query, values: params});
+    const executedQueries = await executeTransactionWrapper<ResultSetHeader>([updateFunc], msg);
+    if (!executedQueries) {
+        logger.error(msg + "SQL not results from execution", query)
+        return null
+    }
+    const [result] = executedQueries;
+    const updated = result[0]?.affectedRows
+    if (updated > 0) {
+        logger.info(msg + 'updated', result)
+    } else { 
+        logger.warn(msg + "No updates", result[0])
+    }
+    return getQuestionsByIds([id])
 }

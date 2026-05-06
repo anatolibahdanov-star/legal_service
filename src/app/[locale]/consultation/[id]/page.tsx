@@ -6,7 +6,5 @@ import { useParams } from "next/navigation";
 
 export default function ResultPage() {
   const params = useParams()
-  return (
-    <StatusPage caseDescription={params.id as string} />
-  );
+  return (<StatusPage slug={params.id as string} />);
 }

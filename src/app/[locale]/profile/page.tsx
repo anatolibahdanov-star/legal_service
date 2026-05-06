@@ -1,38 +1,35 @@
+'use client';
 
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/src/app/api/auth/[...nextauth]/route"; 
-import { redirect } from 'next/navigation';
-import {ProfileQuestionList} from "@/src/app/components/data/profile-question-list"
+import { useRouter } from 'next/navigation';
+import { useSession } from "next-auth/react"
 import ProfileForm from "@/src/app/components/forms/profile"
-import ProfileList from "@/src/app/components/ProfileList"
+import {ProfileQuestionList} from "@/src/app/components/data/profile-question-list"
+import {ProfileScreen} from '@/src/app/components/screen/Profile';
 
-export default async function App() {
-  const session = await getServerSession(authOptions);
+export default function ProfilePage() {
+  const router = useRouter();
+  const { data: session, status } = useSession()
+ 
+  if (status === 'loading') {
+      return <p>Загружается...</p>;
+  }
+  
   if(!session || !session?.user) {
-    redirect('/')
+    router.push('/');
+    return null;
   }
   const user = session.user
   
   return (
-    <main className="flex-1 w-full max-w-[1216px] mx-auto px-[159px] py-[48px]">
-      <div className="inset-0 bg-[#2d3b4e]">
-        <div className="min-h-full p-8">
-          <div className="max-w-[1200px] mx-auto">
-            {/* Шапка */}
-            <div className="flex items-center justify-between mb-[40px]">
-              <h1 className="font-['Inter:Bold',sans-serif] font-bold leading-[48px] text-[36px] text-white">
-                Личный кабинет пользователя
-              </h1>
-            </div>
-
-            {/* Блок 1: Учетная запись */}
-            <ProfileForm />
-
-            {/* Блок 2: Мои вопросы */}
-            <ProfileList><ProfileQuestionList id={parseInt(user.id)} /></ProfileList>
-          </div>
+    <main className="flex-1 w-full max-w-7xl mx-auto px-[20px] py-[48px]">
+        <div className="mb-[32px]">
+          <h1 className="font-['Inter:Bold',sans-serif] font-bold text-[48px] leading-[48px] text-[#29282b] text-center mb-[24px]">
+            Личный кабинет пользователя
+          </h1>
         </div>
-      </div>
+
+        <ProfileScreen is_user={true} />
+
     </main>
   );
 }
