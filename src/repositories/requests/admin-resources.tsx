@@ -147,7 +147,7 @@ export const RequestEdit = (props: EditControllerProps<any, Error> | undefined) 
                             <TextInput source="child_id" style={{ display: 'none' }} />
                             <TextInput source="reply_id" style={{ display: 'none' }} />
                             <TextInput source="final_reply_id" style={{ display: 'none' }} />
-                            <MyCustomHtmlInput source="https://ai106579:g2B6IS2hmoe4@ai.conslegal.ru/" label="Консультант+ AI" />
+                            <MyCustomHtmlInput source="https://ai.conslegal.ru/" label="Консультант+ AI" />
                             <RichTextInput source="reply" validate={[required()]} />
                             <CustomSaveButton />
                             <RichTextInput source="final_reply" />
