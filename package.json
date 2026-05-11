@@ -89,7 +89,8 @@
     "zod": "^4.3.6",
     "nodemailer": "^8.0.5",
     "@react-email/components": "^1.0.12",
-    "libphonenumber-js": "^1.12.42"
+    "libphonenumber-js": "^1.12.42",
+    "sweetalert2": "^11.26.24"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

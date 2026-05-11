@@ -8,8 +8,10 @@ const ALFA_API_URL_DYN = 'https://alfa.rbsuat.com/payment/rest/sbp/c2b/qr/dynami
 const USERNAME = process.env.ALFA_USERNAME;
 const PASSWORD = process.env.ALFA_PASSWORD;
 
+const msgGlobal = "LIBS ALFA.PAY "
+
 export const createAlfaOrder = async (amount: number, orderId: string, user: User): Promise<CustomResponseDataI> => {
-  const msg = "SERVICE ALFA createAlfaOrder - "
+  const msg = msgGlobal + "createAlfaOrder - "
   // const ALFA_API_URL = 'https://pay.alfabank.ru/payment/rest'; // Или тестовый URL
   const ALFA_API_URL = 'https://alfa.rbsuat.com/payment/rest';
   const domainUrl = process.env.NEXT_PUBLIC_URL
@@ -107,7 +109,7 @@ export const getAlfaOrderQR = async (alfaOrderId: string, user: User): Promise<C
     }
 }
 
-export const getAlfaOrderStatus = async (alfaOrderId: string,user: User): Promise<CustomResponseDataI> => {
+export const getAlfaOrderStatus = async (alfaOrderId: string, user: User): Promise<CustomResponseDataI> => {
   const msg = "SERVICE ALFA getAlfaOrderStatus - "
   const ALFA_API_URL = 'https://alfa.rbsuat.com/payment/rest/getOrderStatusExtended.do';
 
@@ -126,7 +128,7 @@ export const getAlfaOrderStatus = async (alfaOrderId: string,user: User): Promis
     const data = await response.json();
     logger.info(msg + "Response from Alpha", data)
 
-    if (data.errorCode) {
+    if (data.errorCode && data.errorCode !== "0") {
         logger.error(msg + "Error during Alfa payment request create order: " + data.errorMessage, user.id, alfaOrderId)
         return {
             status: false,

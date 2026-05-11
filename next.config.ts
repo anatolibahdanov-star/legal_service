@@ -11,6 +11,10 @@ const nextConfig: NextConfig = {
   //   ]
   // },
   reactCompiler: true,
+  compiler: {
+    // Remove console.* in production, but keep it in development
+    removeConsole: process.env.NODE_ENV === 'production',
+  },
   // cacheComponents: true,
   experimental: {
     // turbopackFileSystemCacheForDev: true,

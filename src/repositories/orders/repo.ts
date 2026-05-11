@@ -48,10 +48,11 @@ export async function getTotalOrders(filter: DBFilterOrders | null = null): Prom
     return rows[0].counter;
 }
 
-export async function getOrderById(id: string): Promise<DBOrder | null> {
+export async function getOrderById(id: string, isId: boolean = true): Promise<DBOrder | null> {
     const msg = msgGlobal + "getOrderById - ";
-    const query =  `SELECT po.*, po.order_type ptype, u.name user_name FROM porder po INNER JOIN user u ON po.user_id=u.id WHERE po.id=? OR po.alpha_id=?`;
-    const params = [id, id]
+    let query =  `SELECT po.*, po.order_type ptype, u.name user_name FROM porder po INNER JOIN user u ON po.user_id=u.id WHERE `;
+    query += (isId ? 'po.id=?' : 'po.alpha_id=?')
+    const params = [id]
     const findFunc = find({ query, values: params });
     const executedQueries = await queryTransactionWrapper<DBOrder>([findFunc], msg);
     if (!executedQueries) {
@@ -237,7 +238,7 @@ export async function getActiveOrderByUserId(userId: string): Promise<DBOrder | 
     const msg = msgGlobal + "getActiveOrderByUserId - "
     const query =  `SELECT po.*, po.order_type ptype, u.name user_name FROM porder po INNER JOIN user u ON po.user_id=u.id 
         WHERE po.user_id=? AND po.status=? AND po.alpha_status IN (?) AND po.created_at > NOW() - INTERVAL 1 DAY`;
-    const statuses = [AlfaOrderStatusE.New, AlfaOrderStatusE.Hold, AlfaOrderStatusE.Register].join(",")
+    const statuses = [AlfaOrderStatusE.New, AlfaOrderStatusE.Hold, AlfaOrderStatusE.Register]
     const params = [userId, OrderStatusE.InProgress, statuses]
     const findFunc = find({ query, values: params });
     const executedQueries = await queryTransactionWrapper<DBOrder>([findFunc], msg);
