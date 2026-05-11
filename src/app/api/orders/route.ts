@@ -10,6 +10,8 @@ import { initNewOrder } from '@/src/services/order';
 
 export const dynamic = 'force-dynamic'; // defaults to auto
 
+const cmnMsg = "API ORDER "
+
 export async function GET(request: NextRequest) {
     const msg = 'API ORDERS GET - '
     // logger.info("ORDERS GET request", request)
@@ -55,8 +57,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: Request) {
-    const msg = "API ORDERS POST - "
-    // logger.info(msg + "request", request)
+    const msg = cmnMsg + "POST - "
     const balanceRequest: UserBalanceRequest = await request.json(); 
     logger.info(msg + "request json", balanceRequest)
 

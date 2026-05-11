@@ -9,13 +9,11 @@ import { createAlfaOrder, getAlfaOrderQR, getAlfaOrderStatus } from '@/src/libs/
 import { balanceIncrement } from "./balance";
 import { addTransaction } from "../repositories/transactions/repo";
 
+const msgGlobal = "SERVICE ORDER "
+
 export const initNewOrder = async (balanceRequest: UserBalanceRequest, user: User): Promise<newOrderResponse> => {
-    const msg = "SERVICE ORDER initNewOrder";
-    const result: newOrderResponse = {
-        status: false,
-        order: null,
-        errors: null,
-    }
+    const msg = msgGlobal + "initNewOrder - ";
+    const result: newOrderResponse = {status: false, order: null, errors: null,}
     let order: DBOrder | null = null
     try {
     
@@ -62,7 +60,6 @@ export const initNewOrder = async (balanceRequest: UserBalanceRequest, user: Use
                 status: OrderStatusE.InProgress,
             }
 
-            logger.info("Before update ", updateOrder)
             order = await updateClientOrder(updateOrder)
             if(order === null) {
                 const error = "Empty response from updateClientOrder"
@@ -112,16 +109,13 @@ export const initNewOrder = async (balanceRequest: UserBalanceRequest, user: Use
 }
 
 export const checkOrderStatus = async (slug:string, user: User): Promise<checkOrderResponse> => {
-    const msg = "SERVICE ORDER checkOrderStatus";
-    const result: newOrderResponse = {
-        status: false,
-        order: null,
-        errors: null,
-    }
+    const msg = "SERVICE ORDER checkOrderStatus ";
+    const result: newOrderResponse = {status: false, order: null, errors: null,}
     let order: DBOrder | null = null
+    logger.info(msg + "params", slug, user)
     try {
-        order = await getOrderById(slug)
-        // console.log(msg + 'order', order)
+        order = await getOrderById(slug, false)
+        logger.info(msg + 'order', order)
         if (order === null) {
             const errorMsg = 'order not found.'
             logger.error(msg + errorMsg, user.id, slug)
@@ -170,6 +164,11 @@ export const checkOrderStatus = async (slug:string, user: User): Promise<checkOr
             ip: alfaOrder.data.ip,
             payment_system: alfaOrder.data.paymentSystem,
             payment_way: alfaOrder.data.paymentWay,
+            message: alfaOrder.data.errorMessage,
+            order_number: alfaOrder.data.orderNumber,
+            order_status: alfaOrder.data.orderStatus,
+            action_code: alfaOrder.data.actionCode,
+            payment_amount_info: alfaOrder.data.paymentAmountInfo,
         }
         transaction.data = transaction_info
         await setDBTransaction(transaction, user)

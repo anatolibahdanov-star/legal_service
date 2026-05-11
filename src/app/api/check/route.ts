@@ -8,10 +8,10 @@ import { getActiveOrderByUserId } from '@/src/repositories/orders/repo';
 
 export const dynamic = 'force-dynamic'; // defaults to auto
 
-const cmnMsg = "API ORDER "
+const cmnMsg = "API ORDER CHECK "
 
 export async function GET(request: NextRequest) {
-    const msg = "API ORDER CHECK GET - "
+    const msg = cmnMsg + "GET - "
     logger.info(msg + "request", request)
     const session = await getServerSession(authOptions);
     if (!session || !session.user) {

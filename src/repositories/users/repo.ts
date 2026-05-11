@@ -16,7 +16,7 @@ export async function getUsers(
     const where = getAdminUserFilter(filter);
     const limit = parseInt(_limit) ?? 10
     const offset = ((parseInt(page) ?? 1) - 1) * limit
-    const query =  `SELECT * FROM user `+ where +` ORDER BY ` + orderBy + ` LIMIT ? OFFSET ?`;
+    const query =  `SELECT *, ROUND(balance / 100, 0) balance FROM user `+ where +` ORDER BY ` + orderBy + ` LIMIT ? OFFSET ?`;
     const params = [limit, offset]
     const findFunc = find({ query, values: params });
     const executedQueries = await queryTransactionWrapper<DBUser>([findFunc], msg);
@@ -50,7 +50,7 @@ export async function getTotalUsers(filter: DBFilterUsers | null = null): Promis
 
 export async function getUsersByIds(ids: string[]): Promise<DBUser | null> {
     const msg = msgGlobal + "getUsersByIds - ";
-    const query =  `SELECT * FROM user WHERE id IN (?)`;
+    const query =  `SELECT *, ROUND(balance / 100, 0) balance FROM user WHERE id IN (?)`;
     const params = [ids]
     const findFunc = find({ query, values: params });
     const executedQueries = await queryTransactionWrapper<DBUser>([findFunc], msg);
@@ -67,7 +67,7 @@ export async function getUsersByIds(ids: string[]): Promise<DBUser | null> {
 
 export async function getUserByEmail(email: string): Promise<DBUser | null> {
     const msg = msgGlobal + "getUserByEmail - ";
-    const query =  `SELECT * FROM user WHERE email=?`;
+    const query =  `SELECT *, ROUND(balance / 100, 0) balance FROM user WHERE email=?`;
     const params = [email]
     const findFunc = find({ query, values: params });
     const executedQueries = await queryTransactionWrapper<DBUser>([findFunc], msg);
