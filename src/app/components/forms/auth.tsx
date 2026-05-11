@@ -19,7 +19,7 @@ type PhoneStep = "phone" | "code";
 
 const FIELD_BG = "bg-[#EFE7D8]";
 const PILL_BG = "bg-[#EFE7D8]";
-const PASSWORD_MIN_LENGTH = 8;
+const PASSWORD_MIN_LENGTH = 6;
 const HAS_LATIN_LETTER = /[a-zA-Z]/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -61,14 +61,16 @@ export default function AuthForm({
   const [attemptsLeft, setAttemptsLeft] = useState<number | null>(null);
 
   const emailValid = useMemo(() => EMAIL_REGEX.test(email), [email]);
+  // const passwordValid =
+  //   password.length >= PASSWORD_MIN_LENGTH && HAS_LATIN_LETTER.test(password);
   const passwordValid =
-    password.length >= PASSWORD_MIN_LENGTH && HAS_LATIN_LETTER.test(password);
+    password.length >= PASSWORD_MIN_LENGTH;
   const canSubmitEmail = emailValid && passwordValid && !!emailCaptchaToken && !emailSubmitting;
 
   const passwordPolicyError = (value: string): string => {
     if (!value) return "";
     if (value.length < PASSWORD_MIN_LENGTH) return `Минимум ${PASSWORD_MIN_LENGTH} символов`;
-    if (!HAS_LATIN_LETTER.test(value)) return "Должна быть хотя бы одна латинская буква";
+    // if (!HAS_LATIN_LETTER.test(value)) return "Должна быть хотя бы одна латинская буква";
     return "";
   };
 
