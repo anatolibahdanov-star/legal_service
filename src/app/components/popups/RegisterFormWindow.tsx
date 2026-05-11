@@ -1,30 +1,66 @@
+"use client";
+import { useState } from "react";
+import { Mail, Phone, X } from "lucide-react";
 import { FormWindowProps } from "@/src/interfaces/form";
 import RegisterForm from "@/src/app/components/forms/register";
+import RegisterPhoneForm from "@/src/app/components/forms/register-phone";
+
+type Mode = "phone" | "email";
+
+const PILL_BG = "bg-[#EFE7D8]";
 
 export function RegisterFormWindow({ isOpen, onClose, onSwitchToLogin }: FormWindowProps) {
+  const [mode, setMode] = useState<Mode>("phone");
+
   if (!isOpen) return null;
 
   return (
-    <div 
-      className="fixed inset-0 bg-black/50 flex items-center justify-center p-8 z-50"
+    <div
+      className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50"
       onClick={onClose}
     >
-      <div 
-        className="bg-[#3d4b5e] rounded-[24px] p-[40px] w-full max-w-[540px] relative max-h-[90vh] overflow-y-auto"
+      <div
+        className="bg-white rounded-[24px] pt-[64px] px-[32px] pb-[32px] w-full max-w-[480px] relative max-h-[92vh] overflow-y-auto shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Кнопка закрытия */}
         <button
           onClick={onClose}
-          className="absolute top-[20px] right-[20px] text-white/60 hover:text-white transition-colors"
+          className="absolute top-[16px] right-[16px] w-[36px] h-[36px] rounded-full flex items-center justify-center text-[#0F1B2D]/60 hover:text-[#0F1B2D] hover:bg-[#EFE7D8] transition-colors"
           aria-label="Закрыть"
         >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
+          <X className="w-5 h-5" />
         </button>
 
-        <RegisterForm onSwitchToLogin={onSwitchToLogin} onClose={onClose} />
+        <div className={`flex gap-[4px] mb-[24px] p-[6px] ${PILL_BG} rounded-full`}>
+          <button
+            type="button"
+            onClick={() => setMode("phone")}
+            className={`flex-1 h-[44px] rounded-full text-[15px] font-medium transition-all flex items-center justify-center gap-[8px] ${
+              mode === "phone"
+                ? "bg-white text-[#0F1B2D] shadow-sm"
+                : "text-[#0F1B2D]/70 hover:text-[#0F1B2D]"
+            }`}
+          >
+            <Phone className="w-4 h-4" /> Телефон
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode("email")}
+            className={`flex-1 h-[44px] rounded-full text-[15px] font-medium transition-all flex items-center justify-center gap-[8px] ${
+              mode === "email"
+                ? "bg-white text-[#0F1B2D] shadow-sm"
+                : "text-[#0F1B2D]/70 hover:text-[#0F1B2D]"
+            }`}
+          >
+            <Mail className="w-4 h-4" /> Email
+          </button>
+        </div>
+
+        {mode === "phone" ? (
+          <RegisterPhoneForm onSwitchToLogin={onSwitchToLogin} onClose={onClose} />
+        ) : (
+          <RegisterForm onSwitchToLogin={onSwitchToLogin} onClose={onClose} />
+        )}
       </div>
     </div>
   );

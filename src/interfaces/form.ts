@@ -2,8 +2,12 @@
 import { DBCategory, DBQuestion, DBUser } from './db';
 import { User } from 'next-auth';
 
+export interface SwitchToLoginPrefill {
+  phone?: string;
+}
+
 export interface FormProps {
-  onSwitchToLogin: () => void;
+  onSwitchToLogin: (prefill?: SwitchToLoginPrefill) => void;
 }
 
 export interface FormContainerProps extends FormProps {
@@ -18,6 +22,7 @@ export interface AuthFormPropsI {
   onSwitchToRegister: () => void;
   onSwitchToReset: () => void;
   onClose: () => void;
+  prefillPhone?: string;
 }
 
 export interface AuthWindowProps extends AuthFormPropsI  {

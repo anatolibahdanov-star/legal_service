@@ -20,3 +20,16 @@ export const emptyValidator = (value: string): boolean => {
     }
     return true;
 }
+
+const PASSWORD_MIN_LENGTH = 8;
+const HAS_LATIN_LETTER = /[a-zA-Z]/;
+
+export const validatePasswordPolicy = (password: string): string | null => {
+    if (password.length < PASSWORD_MIN_LENGTH) {
+        return `Минимум ${PASSWORD_MIN_LENGTH} символов`;
+    }
+    if (!HAS_LATIN_LETTER.test(password)) {
+        return "Должна быть хотя бы одна латинская буква";
+    }
+    return null;
+};

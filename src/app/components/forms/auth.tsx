@@ -1,171 +1,479 @@
-import { useState } from "react";
-import { useSession, getSession } from "next-auth/react"
-import { redirect } from 'next/navigation';
-import { signIn } from 'next-auth/react';
-import { validateAuthForm } from "@/src/app/components/forms/validation/auth";
-import { AuthFormPropsI, AuthFormI } from "@/src/interfaces/form";
+"use client";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useSession, getSession, signIn } from "next-auth/react";
+import { useGoogleReCaptcha } from "react-google-recaptcha-v3";
+import { AlertCircle, ArrowRight, Eye, EyeOff, Lock, Mail, Phone } from "lucide-react";
+import { AuthFormPropsI } from "@/src/interfaces/form";
+import { PHONE_MASK_TEMPLATE, formatPhoneInput, isPhoneComplete } from "@/src/libs/phoneMask";
+import {
+  sendLoginPhoneOtpAction,
+  verifyLoginPhoneOtpAction,
+} from "@/src/app/components/forms/action/login-phone";
+import { signInWithPhoneOtp } from "@/src/app/components/forms/action/register-phone";
+import { RecaptchaCheckbox } from "@/src/app/components/forms/RecaptchaCheckbox";
+import OtpCodeStep, { OtpStepResult } from "@/src/app/components/forms/OtpCodeStep";
 
-export default function AuthForm({ onClose, onSwitchToRegister, onSwitchToReset }: AuthFormPropsI) {
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [errors, setErrors] = useState({ email: "", password: "", common: "" });
-    const { data: session, update } = useSession()
+type Tab = "email" | "phone";
+type PhoneStep = "phone" | "code";
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        const data: AuthFormI = {email: email, password: password}
-        
-        const validResult = validateAuthForm(data)
-        if (validResult.is_success) {
-            console.log("Вход:", { email, password });
-            const credentials = {username: email, password: password}
-            const newErrors = { email: "", password: "", common: "" };
-            const response = await signIn('credentials', {
-                ...credentials,
-                redirect: false,
-            });
-            if(response?.error) {
-                console.error("Incorrect response", response?.error)
-                newErrors.common = response?.error ? response.error : "Произошла техническая ошибка(1). Попробуйте авторизироваться еще раз.";
-                setErrors(newErrors);
-                return false
-            }
+const FIELD_BG = "bg-[#EFE7D8]";
+const PILL_BG = "bg-[#EFE7D8]";
+const PASSWORD_MIN_LENGTH = 8;
+const HAS_LATIN_LETTER = /[a-zA-Z]/;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-            await update();
-            const session = await getSession();
-            const user = session?.user
-            if(user === null) {
-                console.error("Incorrect session creation")
-                newErrors.common = "Произошла техническая ошибка(2). Попробуйте авторизироваться еще раз.";
-                setErrors(newErrors);
-                return false
-            }
+interface ParsedAuthError {
+  message: string;
+  code?: string;
+  attemptsLeft?: number;
+}
 
-            console.log('handleSubmit user', user)
-            onClose()
-            if(user?.role !== "user") {
-                redirect('/admin');
-            } else {
-                redirect('/profile');
-            }
-        }
-    };
+const parseAuthError = (raw: string | undefined | null): ParsedAuthError => {
+  if (!raw) return { message: "Ошибка авторизации." };
+  try {
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === "object" && typeof parsed.message === "string") {
+      return parsed as ParsedAuthError;
+    }
+  } catch {}
+  return { message: raw };
+};
+
+export default function AuthForm({
+  onClose,
+  onSwitchToRegister,
+  onSwitchToReset,
+  prefillPhone,
+}: AuthFormPropsI) {
+  const router = useRouter();
+  const { update } = useSession();
+  const { executeRecaptcha } = useGoogleReCaptcha();
+
+  const [tab, setTab] = useState<Tab>(prefillPhone ? "phone" : "email");
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [emailCaptchaToken, setEmailCaptchaToken] = useState<string | null>(null);
+  const [emailErrors, setEmailErrors] = useState({ email: "", password: "", common: "" });
+  const [emailSubmitting, setEmailSubmitting] = useState(false);
+  const [attemptsLeft, setAttemptsLeft] = useState<number | null>(null);
+
+  const emailValid = useMemo(() => EMAIL_REGEX.test(email), [email]);
+  const passwordValid =
+    password.length >= PASSWORD_MIN_LENGTH && HAS_LATIN_LETTER.test(password);
+  const canSubmitEmail = emailValid && passwordValid && !!emailCaptchaToken && !emailSubmitting;
+
+  const passwordPolicyError = (value: string): string => {
+    if (!value) return "";
+    if (value.length < PASSWORD_MIN_LENGTH) return `Минимум ${PASSWORD_MIN_LENGTH} символов`;
+    if (!HAS_LATIN_LETTER.test(value)) return "Должна быть хотя бы одна латинская буква";
+    return "";
+  };
+
+  const handleEmailChange = (value: string) => {
+    setEmail(value);
+    setEmailErrors((prev) => ({
+      ...prev,
+      email: !value || EMAIL_REGEX.test(value) ? "" : "Некорректный формат email",
+      common: "",
+    }));
+    setAttemptsLeft(null);
+  };
+
+  const handlePasswordChange = (value: string) => {
+    setPassword(value);
+    setEmailErrors((prev) => ({
+      ...prev,
+      password: passwordPolicyError(value),
+      common: "",
+    }));
+    setAttemptsLeft(null);
+  };
+
+  const [phoneStep, setPhoneStep] = useState<PhoneStep>("phone");
+  const [phone, setPhone] = useState(prefillPhone ? formatPhoneInput(prefillPhone) : "");
+  const [phoneCaptchaToken, setPhoneCaptchaToken] = useState<string | null>(null);
+  const [normalizedPhone, setNormalizedPhone] = useState("");
+  const [phoneErrors, setPhoneErrors] = useState({ phone: "", code: "", common: "" });
+  const [phoneSubmitting, setPhoneSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (prefillPhone) {
+      setTab("phone");
+      setPhone(formatPhoneInput(prefillPhone));
+    }
+  }, [prefillPhone]);
+
+  const phoneValid = useMemo(() => isPhoneComplete(phone), [phone]);
+  const canSubmitPhone = phoneValid && !!phoneCaptchaToken && !phoneSubmitting;
+
+  const handlePhoneChange = (raw: string) => {
+    const formatted = formatPhoneInput(raw);
+    setPhone(formatted);
+    setPhoneErrors((prev) => ({
+      ...prev,
+      phone:
+        !formatted || isPhoneComplete(formatted)
+          ? ""
+          : "Введите корректный номер телефона",
+      common: "",
+    }));
+  };
+
+  const finishSignInRedirect = async () => {
+    await update();
+    const session = await getSession();
+    const user = session?.user;
+    onClose();
+    if (user && user.role !== "user") {
+      router.push("/admin");
+    } else {
+      router.push("/profile");
+    }
+    router.refresh();
+  };
+
+  const handleEmailSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!canSubmitEmail) return;
+    setEmailSubmitting(true);
+    setEmailErrors({ email: "", password: "", common: "" });
+    const response = await signIn("credentials", {
+      username: email,
+      password,
+      captchaToken: emailCaptchaToken,
+      redirect: false,
+    });
+    if (response?.error) {
+      setEmailSubmitting(false);
+      setEmailCaptchaToken(null);
+      const parsed = parseAuthError(response.error);
+      setEmailErrors((prev) => ({ ...prev, common: parsed.message }));
+      setAttemptsLeft(typeof parsed.attemptsLeft === "number" ? parsed.attemptsLeft : null);
+      return;
+    }
+    await finishSignInRedirect();
+    setEmailSubmitting(false);
+  };
+
+  const handleSendPhoneOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!canSubmitPhone) return;
+    setPhoneErrors({ phone: "", code: "", common: "" });
+    setPhoneSubmitting(true);
+    const response = await sendLoginPhoneOtpAction({
+      phone,
+      captchaToken: phoneCaptchaToken ?? "",
+    });
+    setPhoneSubmitting(false);
+    setPhoneCaptchaToken(null);
+    if (!response.status) {
+      setPhoneErrors((prev) => ({ ...prev, common: response.error || "Не удалось отправить код." }));
+      return;
+    }
+    const data = response.data as { phone: string; expiresInSec: number; devCode?: string };
+    setNormalizedPhone(data.phone);
+    if (data.devCode) console.info("[DEV] OTP code:", data.devCode);
+    setPhoneStep("code");
+  };
+
+  const handlePhoneResend = useCallback(async (): Promise<OtpStepResult> => {
+    if (!executeRecaptcha) {
+      return { ok: false, message: "Сервис проверки недоступен. Обновите страницу." };
+    }
+    const targetPhone = normalizedPhone || phone;
+    if (!targetPhone) {
+      return { ok: false, message: "Не удалось определить номер телефона." };
+    }
+    try {
+      const token = await executeRecaptcha("login_phone");
+      const response = await sendLoginPhoneOtpAction({
+        phone: targetPhone,
+        captchaToken: token,
+      });
+      if (!response.status) {
+        const errData = response.data as
+          | { cooldownUntil?: string | null; lockedUntil?: string | null }
+          | null;
+        return {
+          ok: false,
+          message: response.error,
+          cooldownUntil: errData?.cooldownUntil ?? null,
+          lockedUntil: errData?.lockedUntil ?? null,
+        };
+      }
+      const data = response.data as { phone: string; expiresInSec: number; devCode?: string };
+      setNormalizedPhone(data.phone);
+      if (data.devCode) console.info("[DEV] OTP code:", data.devCode);
+      return { ok: true };
+    } catch {
+      return { ok: false, message: "Не удалось отправить код. Попробуйте позже." };
+    }
+  }, [executeRecaptcha, normalizedPhone, phone]);
+
+  const handlePhoneVerify = async (otpCode: string): Promise<OtpStepResult> => {
+    const response = await verifyLoginPhoneOtpAction({ phone: normalizedPhone, code: otpCode });
+    if (!response.status) {
+      const errData = response.data as
+        | { cooldownUntil?: string | null; lockedUntil?: string | null; attemptsLeft?: number | null }
+        | null;
+      return {
+        ok: false,
+        message: response.error,
+        cooldownUntil: errData?.cooldownUntil ?? null,
+        lockedUntil: errData?.lockedUntil ?? null,
+        attemptsLeft: errData?.attemptsLeft ?? null,
+      };
+    }
+    const data = response.data as { phone: string; verifyToken: string };
+    const signInResult = await signInWithPhoneOtp(data.phone, data.verifyToken);
+    if (!signInResult.status) {
+      return { ok: false, message: signInResult.error || "Ошибка авторизации. Попробуйте позже." };
+    }
+    await finishSignInRedirect();
+    return { ok: true };
+  };
+
+  const goBackToPhoneStep = (): OtpStepResult => {
+    setPhoneStep("phone");
+    setPhoneErrors({ phone: "", code: "", common: "" });
+    return { ok: true };
+  };
+
+  if (tab === "phone" && phoneStep === "code") {
     return (
-        <>
-            {/* Заголовок */}
-            <div className="mb-[32px]">
-                <h1 className="font-['Inter:Bold',sans-serif] font-bold leading-[32px] text-[24px] text-white mb-[12px]">
-                    Вход в систему
-                </h1>
-                <p className="font-['Inter:Regular',sans-serif] font-normal leading-[22.75px] text-[14px] text-[rgba(255,255,255,0.8)]">
-                    Войдите в свою учетную запись для доступа к личному кабинету и консультациям с юристами.
+      <OtpCodeStep
+        phone={normalizedPhone}
+        onVerify={handlePhoneVerify}
+        onResend={handlePhoneResend}
+        onChangePhone={() => {
+          goBackToPhoneStep();
+        }}
+        initialResendCooldown={30}
+      />
+    );
+  }
+
+  return (
+    <>
+      <div className="mb-[24px] pr-[24px]">
+        <h1 className="font-bold text-[26px] leading-[32px] text-[#0F1B2D] mb-[10px]">
+          Вход в систему
+        </h1>
+        <p className="font-normal text-[14px] leading-[22px] text-[#6B7280]">
+          Войдите в свою учетную запись для доступа к личному кабинету и консультациям с юристами.
+        </p>
+      </div>
+
+      <div className={`flex gap-[4px] mb-[24px] p-[6px] ${PILL_BG} rounded-full`}>
+        <button
+          type="button"
+          onClick={() => setTab("email")}
+          className={`flex-1 h-[44px] rounded-full text-[15px] font-medium transition-all flex items-center justify-center gap-[8px] ${
+            tab === "email"
+              ? "bg-white text-[#0F1B2D] shadow-sm"
+              : "text-[#0F1B2D]/70 hover:text-[#0F1B2D]"
+          }`}
+        >
+          <Mail className="w-4 h-4" /> Email
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab("phone")}
+          className={`flex-1 h-[44px] rounded-full text-[15px] font-medium transition-all flex items-center justify-center gap-[8px] ${
+            tab === "phone"
+              ? "bg-white text-[#0F1B2D] shadow-sm"
+              : "text-[#0F1B2D]/70 hover:text-[#0F1B2D]"
+          }`}
+        >
+          <Phone className="w-4 h-4" /> Телефон
+        </button>
+      </div>
+
+      {tab === "email" && (
+        <form onSubmit={handleEmailSubmit} className="flex flex-col gap-[18px]" noValidate>
+          {emailErrors.common && (
+            <div className="px-[16px] py-[12px] rounded-[12px] bg-red-50 border border-red-200 flex items-start gap-[10px]">
+              <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-px" />
+              <div>
+                <p className="font-semibold text-[14px] text-red-700 leading-[18px]">
+                  Не удалось войти
                 </p>
-                {errors.common && (
-                <p className="font-['Inter:Regular',sans-serif] font-normal text-[12px] text-red-400 ml-[4px]">
-                    {errors.common}
-                </p>
-                )}
+                <p className="text-[13px] text-red-600 leading-[18px]">{emailErrors.common}</p>
+              </div>
             </div>
+          )}
 
-            {/* Форма */}
-            <form onSubmit={handleSubmit} className="flex flex-col gap-[16px]" noValidate>
-            {/* Email поле */}
-            <div className="flex flex-col gap-[8px]">
-                
-                <label className="font-['Inter:Medium',sans-serif] font-medium leading-[20px] text-[14px] text-[rgba(255,255,255,0.9)]">
-                    Электронная почта: *
-                </label>
-                <div className="relative h-[60px] rounded-[16px]">
-                    <input
-                        type="text"
-                        value={email}
-                        onChange={(e) => {
-                        setEmail(e.target.value);
-                        if (errors.email) {
-                            setErrors({ ...errors, email: "" });
-                        }
-                        }}
-                        placeholder="example@example.com"
-                        className={`w-full h-full px-[20px] py-[16px] bg-transparent font-['Inter:Regular',sans-serif] font-normal text-[16px] text-white placeholder:text-[rgba(255,255,255,0.4)] rounded-[16px] border-2 ${
-                        errors.email 
-                            ? "border-red-400 focus:border-red-500" 
-                            : "border-[rgba(255,255,255,0.2)] focus:border-[rgba(255,255,255,0.4)]"
-                        } focus:outline-none transition-colors`}
-                    />
-                </div>
-                {errors.email && (
-                <p className="font-['Inter:Regular',sans-serif] font-normal text-[12px] text-red-400 ml-[4px]">
-                    {errors.email}
-                </p>
-                )}
+          <div className="flex flex-col gap-[8px]">
+            <label className="font-semibold text-[14px] text-[#0F1B2D]">Email</label>
+            <div className={`relative h-[52px] rounded-[14px] ${FIELD_BG}`}>
+              <Mail className="w-4 h-4 absolute left-[16px] top-1/2 -translate-y-1/2 text-[#0F1B2D]/60" />
+              <input
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => handleEmailChange(e.target.value)}
+                placeholder="you@company.com"
+                className={`w-full h-full pl-[44px] pr-[16px] bg-transparent text-[15px] text-[#0F1B2D] placeholder:text-[#0F1B2D]/40 rounded-[14px] outline-none ring-2 ${
+                  emailErrors.email ? "ring-red-400" : "ring-transparent focus:ring-[#9BB7C9]"
+                } transition-all`}
+              />
             </div>
+            {emailErrors.email && (
+              <p className="text-[12px] text-red-500 ml-[4px]">{emailErrors.email}</p>
+            )}
+          </div>
 
-            {/* Пароль поле */}
-            <div className="flex flex-col gap-[8px]">
-                <label className="font-['Inter:Medium',sans-serif] font-medium leading-[20px] text-[14px] text-[rgba(255,255,255,0.9)]">
-                Пароль: *
-                </label>
-                <div className="relative h-[60px] rounded-[16px]">
-                <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => {
-                    setPassword(e.target.value);
-                    if (errors.password) {
-                        setErrors({ ...errors, password: "" });
-                    }
-                    }}
-                    placeholder="Введите пароль"
-                    className={`w-full h-full px-[20px] py-[16px] bg-transparent font-['Inter:Regular',sans-serif] font-normal text-[16px] text-white placeholder:text-[rgba(255,255,255,0.4)] rounded-[16px] border-2 ${
-                    errors.password 
-                        ? "border-red-400 focus:border-red-500" 
-                        : "border-[rgba(255,255,255,0.2)] focus:border-[rgba(255,255,255,0.4)]"
-                    } focus:outline-none transition-colors`}
-                />
-                </div>
-                {errors.password && (
-                <p className="font-['Inter:Regular',sans-serif] font-normal text-[12px] text-red-400 ml-[4px]">
-                    {errors.password}
-                </p>
-                )}
-            </div>
-
-            {/* Кнопка входа */}
-            <button
-                type="submit"
-                className="bg-[#87b7ce] h-[60px] rounded-[16px] font-['Inter:Medium',sans-serif] font-medium leading-[28px] text-[18px] text-center text-white mt-[8px] hover:bg-[#6fa2b8] transition-colors"
-            >
-                Войти
-            </button>
-
-            {/* Дополнительные ссылки */}
-            <div className="flex flex-col gap-[12px] mt-[12px]">
-                <button
+          <div className="flex flex-col gap-[8px]">
+            <div className="flex items-center justify-between">
+              <label className="font-semibold text-[14px] text-[#0F1B2D]">Пароль</label>
+              <button
                 type="button"
                 onClick={onSwitchToReset}
-                className="font-['Inter:Regular',sans-serif] font-normal text-[14px] text-[rgba(255,255,255,0.6)] hover:text-[rgba(255,255,255,0.9)] text-center transition-colors"
-                >
+                className="text-[13px] text-[#9BB7C9] hover:text-[#7DA0B7] font-medium transition-colors"
+              >
                 Забыли пароль?
-                </button>
-                <div className="flex items-center justify-center gap-[8px]">
-                <p className="font-['Inter:Regular',sans-serif] font-normal text-[14px] text-[rgba(255,255,255,0.6)]">
-                    Нет аккаунта?
-                </p>
-                <button
-                    type="button"
-                    onClick={onSwitchToRegister}
-                    className="font-['Inter:Medium',sans-serif] font-medium text-[14px] text-[#87b7ce] hover:text-[#6fa2b8] transition-colors"
-                >
-                    Зарегистрироваться
-                </button>
-                </div>
+              </button>
             </div>
+            <div className={`relative h-[52px] rounded-[14px] ${FIELD_BG}`}>
+              <Lock className="w-4 h-4 absolute left-[16px] top-1/2 -translate-y-1/2 text-[#0F1B2D]/60" />
+              <input
+                type={showPassword ? "text" : "password"}
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => handlePasswordChange(e.target.value)}
+                placeholder="Минимум 8 символов"
+                className={`w-full h-full pl-[44px] pr-[44px] bg-transparent text-[15px] text-[#0F1B2D] placeholder:text-[#0F1B2D]/40 rounded-[14px] outline-none ring-2 ${
+                  emailErrors.password ? "ring-red-400" : "ring-transparent focus:ring-[#9BB7C9]"
+                } transition-all`}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
+                className="absolute right-[14px] top-1/2 -translate-y-1/2 text-[#0F1B2D]/60 hover:text-[#0F1B2D] transition-colors"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+            {emailErrors.password && (
+              <p className="text-[12px] text-red-500 ml-[4px]">{emailErrors.password}</p>
+            )}
+          </div>
 
-            {/* Примечание о конфиденциальности */}
-            <p className="font-['Inter:Regular',sans-serif] font-normal leading-[19.5px] text-[12px] text-[rgba(255,255,255,0.6)] text-center mt-[8px]">
-                Нажимая кнопку «Войти», я принимаю условия Пользовательского соглашения и условия Политики конфиденциальности.
+          <RecaptchaCheckbox
+            action="login_email"
+            token={emailCaptchaToken}
+            onChange={setEmailCaptchaToken}
+            disabled={emailSubmitting}
+          />
+
+          {attemptsLeft !== null && attemptsLeft > 0 && (
+            <p className="text-center text-[13px] text-[#6B7280]">
+              Осталось попыток: <span className="font-bold text-[#0F1B2D]">{attemptsLeft}</span>
             </p>
-            </form>
-        </>
-    )
+          )}
+
+          <button
+            type="submit"
+            disabled={!canSubmitEmail}
+            className={`h-[52px] rounded-[14px] font-semibold text-[15px] flex items-center justify-center gap-[8px] transition-all ${
+              canSubmitEmail
+                ? "bg-[#5A8FB5] text-white hover:bg-[#4A7EA3]"
+                : "bg-[#D6E3EF] text-[#0F1B2D]/50 cursor-not-allowed"
+            }`}
+          >
+            {emailSubmitting ? "Входим…" : "Войти"}
+            {!emailSubmitting && <ArrowRight className="w-4 h-4" />}
+          </button>
+
+          <div className="flex items-center justify-center gap-[6px]">
+            <p className="text-[14px] text-[#6B7280]">Нет аккаунта?</p>
+            <button
+              type="button"
+              onClick={onSwitchToRegister}
+              className="text-[14px] font-semibold text-[#3B82F6] hover:text-[#2563EB] transition-colors"
+            >
+              Зарегистрироваться
+            </button>
+          </div>
+        </form>
+      )}
+
+      {tab === "phone" && phoneStep === "phone" && (
+        <form onSubmit={handleSendPhoneOtp} className="flex flex-col gap-[18px]" noValidate>
+          {phoneErrors.common && (
+            <div className="px-[16px] py-[12px] rounded-[12px] bg-red-50 border border-red-200 flex items-start gap-[10px]">
+              <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-px" />
+              <div>
+                <p className="font-semibold text-[14px] text-red-700 leading-[18px]">
+                  Не удалось отправить код
+                </p>
+                <p className="text-[13px] text-red-600 leading-[18px]">{phoneErrors.common}</p>
+              </div>
+            </div>
+          )}
+
+          <div className="flex flex-col gap-[8px]">
+            <label className="font-semibold text-[14px] text-[#0F1B2D]">Номер телефона</label>
+            <div className={`relative h-[52px] rounded-[14px] ${FIELD_BG}`}>
+              <Phone className="w-4 h-4 absolute left-[16px] top-1/2 -translate-y-1/2 text-[#0F1B2D]/60" />
+              <input
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                value={phone}
+                onChange={(e) => handlePhoneChange(e.target.value)}
+                placeholder={PHONE_MASK_TEMPLATE}
+                className={`w-full h-full pl-[44px] pr-[16px] bg-transparent text-[15px] text-[#0F1B2D] placeholder:text-[#0F1B2D]/40 rounded-[14px] outline-none ring-2 ${
+                  phoneErrors.phone ? "ring-red-400" : "ring-transparent focus:ring-[#9BB7C9]"
+                } transition-all`}
+              />
+            </div>
+            {phoneErrors.phone ? (
+              <p className="text-[12px] text-red-500 ml-[4px]">{phoneErrors.phone}</p>
+            ) : (
+              <p className="text-[13px] text-[#6B7280] ml-[4px]">
+                Отправим SMS c кодом подтверждения
+              </p>
+            )}
+          </div>
+
+          <RecaptchaCheckbox
+            action="login_phone"
+            token={phoneCaptchaToken}
+            onChange={setPhoneCaptchaToken}
+            disabled={phoneSubmitting}
+          />
+
+          <button
+            type="submit"
+            disabled={!canSubmitPhone}
+            className={`h-[52px] rounded-[14px] font-semibold text-[15px] flex items-center justify-center gap-[8px] transition-all ${
+              canSubmitPhone
+                ? "bg-[#5A8FB5] text-white hover:bg-[#4A7EA3]"
+                : "bg-[#D6E3EF] text-[#0F1B2D]/50 cursor-not-allowed"
+            }`}
+          >
+            {phoneSubmitting ? "Отправляем…" : "Получить код"}
+            {!phoneSubmitting && <ArrowRight className="w-4 h-4" />}
+          </button>
+
+          <div className="flex items-center justify-center gap-[6px]">
+            <p className="text-[14px] text-[#6B7280]">Нет аккаунта?</p>
+            <button
+              type="button"
+              onClick={onSwitchToRegister}
+              className="text-[14px] font-semibold text-[#3B82F6] hover:text-[#2563EB] transition-colors"
+            >
+              Зарегистрироваться
+            </button>
+          </div>
+        </form>
+      )}
+
+    </>
+  );
 }

@@ -19,16 +19,16 @@ export const CustomRequest = async (apiPath: string, data: any, method: "POST" |
         const responseData = await response.json()
         if(!response?.ok) {
             console.error(msg + "Incorrect response", response?.statusText, apiPath, data)
-            
+
             let err = defaultError
             if(responseData.message) err = responseData.message
             return {
                 status: false,
-                data: null,
+                data: responseData,
                 error: err,
             }
         }
-        
+
         return {
             status: true,
             data: responseData,

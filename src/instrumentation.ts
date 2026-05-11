@@ -2,6 +2,7 @@
 import cron from 'node-cron';
 import { lostResponse } from './cron/lostResponse';
 import { adminRating } from './cron/adminRating';
+import { cleanupAuthAttemptsDb, cleanupOtpStoreMemory } from './cron/cleanupAuthAttempts';
 
 export async function register() {
     console.log("process.env.NEXT_RUNTIME ", process.env.NEXT_RUNTIME)
@@ -19,9 +20,15 @@ export async function register() {
       await adminRating()
     });
 
-    // Example: Run a daily report at 8:00 AM
-    // cron.schedule('0 8 * * *', () => {
-    //   console.log('Sending daily summary report...');
-    // });
+    // OTP store in-memory prune — раз в час, чтобы Map не рос между рестартами
+    cron.schedule('0 * * * *', () => {
+      cleanupOtpStoreMemory();
+    });
+
+    // Housekeeping anti-bruteforce таблиц — раз в сутки в 3:00 ночи
+    cron.schedule('0 3 * * *', async () => {
+      console.log(`[${new Date().toISOString()}] Cron job running: Cleanup auth_attempts...`);
+      await cleanupAuthAttemptsDb();
+    });
   }
 }

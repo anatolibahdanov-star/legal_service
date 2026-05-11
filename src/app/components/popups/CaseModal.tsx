@@ -1,5 +1,6 @@
 import { X, Star, MessageSquare, ChevronDown, ChevronUp, Check } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
+import { useGoogleReCaptcha } from "react-google-recaptcha-v3";
 import { DBQuestion } from "@/src/interfaces/db";
 import { QuestionStatusesE, dFormat } from "@/src/interfaces/data";
 import {CaseModalProps} from "@/src/interfaces/component";
@@ -12,6 +13,7 @@ import { format } from 'date-fns';
 import { ChatMessage } from "@/src/app/components/data/ChatMessage";
 
 export function CaseModal({ caseItem, isOpen, onClose, openRatingSection, user, openNewQuestionWindow }: CaseModalProps) {
+  const { executeRecaptcha } = useGoogleReCaptcha();
   const [isRatingExpanded, setIsRatingExpanded] = useState(false);
   const [rating, setRating] = useState(caseItem.rating || 0);
   const [hoveredRating, setHoveredRating] = useState(0);
@@ -170,7 +172,12 @@ export function CaseModal({ caseItem, isOpen, onClose, openRatingSection, user, 
         parent: parseInt(caseItem.id),
       }
 
-      const responseData = await submitRequestFormAction(dataRequest)
+      if (!executeRecaptcha) {
+        console.error("reCAPTCHA not ready")
+        return false
+      }
+      const captchaToken = await executeRecaptcha("submit_question")
+      const responseData = await submitRequestFormAction(dataRequest, captchaToken)
       if(!responseData.status) {
         console.log("Error on save new Question to Job", responseData.error)
         return false
