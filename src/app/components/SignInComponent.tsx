@@ -1,4 +1,4 @@
-'use client'; 
+'use client';
 
 import { useSession, signOut } from "next-auth/react"
 import { useState } from "react";
@@ -6,10 +6,21 @@ import Link from 'next/link';
 import { AuthFormWindow } from "@/src/app/components/popups/AuthFormWindow";
 import { RegisterFormWindow } from "@/src/app/components/popups/RegisterFormWindow";
 import { ResetPasswordFormWindow } from "@/src/app/components/popups/ResetPasswordFormWindow";
+import { SwitchToLoginPrefill } from "@/src/interfaces/form";
 
 export default function SignInComponent() {
   const [activeForm, setActiveForm] = useState<"login" | "register" | "reset" | null>(null);
+  const [loginPrefillPhone, setLoginPrefillPhone] = useState<string | undefined>(undefined);
   const { data: session } = useSession()
+
+  const switchToLogin = (prefill?: SwitchToLoginPrefill) => {
+    setLoginPrefillPhone(prefill?.phone);
+    setActiveForm("login");
+  };
+  const closeAll = () => {
+    setActiveForm(null);
+    setLoginPrefillPhone(undefined);
+  };
   let content;
   if (session) {
     content =  (
@@ -37,21 +48,25 @@ export default function SignInComponent() {
     <>
       {content}
       {/* Модальные окна */}
-      <AuthFormWindow 
-        isOpen={activeForm === "login"} 
-        onClose={() => setActiveForm(null)}
-        onSwitchToRegister={() => setActiveForm("register")}
+      <AuthFormWindow
+        isOpen={activeForm === "login"}
+        onClose={closeAll}
+        onSwitchToRegister={() => {
+          setLoginPrefillPhone(undefined);
+          setActiveForm("register");
+        }}
         onSwitchToReset={() => setActiveForm("reset")}
+        prefillPhone={loginPrefillPhone}
       />
-      <RegisterFormWindow 
-        isOpen={activeForm === "register"} 
-        onClose={() => setActiveForm(null)}
-        onSwitchToLogin={() => setActiveForm("login")}
+      <RegisterFormWindow
+        isOpen={activeForm === "register"}
+        onClose={closeAll}
+        onSwitchToLogin={switchToLogin}
       />
-      <ResetPasswordFormWindow 
-        isOpen={activeForm === "reset"} 
-        onClose={() => setActiveForm(null)}
-        onSwitchToLogin={() => setActiveForm("login")}
+      <ResetPasswordFormWindow
+        isOpen={activeForm === "reset"}
+        onClose={closeAll}
+        onSwitchToLogin={switchToLogin}
       />
     </>
   )

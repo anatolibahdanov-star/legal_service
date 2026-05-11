@@ -137,3 +137,7 @@ body {
 	color: var(--violet-11);
 	cursor: default;
 }
+
+.grecaptcha-badge {
+	visibility: hidden !important;
+}

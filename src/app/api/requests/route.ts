@@ -5,6 +5,7 @@ import {UserRequest} from "@/src/interfaces/api"
 import logger from "@/src/libs/logger"
 import { SendSendGridEmailNewRequest } from '@/src/libs/sendgrid';
 import {EmailDataNewRequestI} from "@/src/interfaces/email"
+import { verifyRecaptcha } from "@/src/libs/recaptcha"
 
 export const dynamic = 'force-dynamic'; // defaults to auto
 
@@ -54,9 +55,21 @@ export async function GET(request: NextRequest) {
 export async function POST(request: Request) {
     const msg = "API QUESTIONS POST - "
     // logger.info(msg + "request", request)
-    const insertedQuestion: UserRequest = await request.json(); 
+    const insertedQuestion: UserRequest & { captchaToken?: string } = await request.json();
     logger.info(msg + "request json", insertedQuestion)
+
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null
+    const captcha = await verifyRecaptcha(insertedQuestion.captchaToken, ip, { expectedAction: 'submit_question' })
+    if (!captcha.success) {
+        logger.warn(msg + 'captcha rejected', { reason: captcha.reason })
+        return NextResponse.json(
+            { success: false, message: 'CAPTCHA введена не верно.' },
+            { status: 400 }
+        );
+    }
+
     insertedQuestion.llm = ''
+    delete insertedQuestion.captchaToken
 
     let question: DBQuestion | null = null
     try {

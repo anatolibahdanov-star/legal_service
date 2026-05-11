@@ -6,6 +6,7 @@ import { Header } from "@/src/app/components/Header";
 // import Footer from "@/src/components/Footer";
 import { Footer } from "@/src/app/components/Footer";
 import {NextAuthProvider} from "@/src/app/providers/NextAuthProvider"
+import {RecaptchaProvider} from "@/src/app/providers/RecaptchaProvider"
 import '@/src/styles/index.css';
 import "./enki.css";
 
@@ -19,9 +20,11 @@ export default function RootLayout({
       <body>
         <div className="min-h-screen bg-[#fefdf9]">
           <NextAuthProvider>
-            <Header />
-            {children}
-            <Footer />
+            <RecaptchaProvider>
+              <Header />
+              {children}
+              <Footer />
+            </RecaptchaProvider>
           </NextAuthProvider>
         </div>
       </body>

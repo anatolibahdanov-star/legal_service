@@ -1,242 +1,275 @@
-import { useState } from "react";
-import { useSession, getSession } from "next-auth/react"
+"use client";
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { getSession, useSession } from "next-auth/react";
+import { AlertCircle, ArrowRight, Eye, EyeOff, Lock, Mail, User } from "lucide-react";
 import { validateRegisterForm } from "@/src/app/components/forms/validation/register";
 import { submitRegisterFormAction } from "@/src/app/components/forms/action/register";
 import { RegisterFormI, FormContainerProps } from "@/src/interfaces/form";
-import { redirect } from 'next/navigation';
+
+const FIELD_BG = "bg-[#EFE7D8]";
+const PASSWORD_MIN_LENGTH = 8;
+const HAS_LATIN_LETTER = /[a-zA-Z]/;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function RegisterForm({ onClose, onSwitchToLogin }: FormContainerProps) {
-    const { data: session, update } = useSession()
-    const [name, setName] = useState("");
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [confirmPassword, setConfirmPassword] = useState("");
-    const [errors, setErrors] = useState({ name: "", email: "", password: "", confirmPassword: "", common: "" });
+  const router = useRouter();
+  const { update } = useSession();
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        const data: RegisterFormI = {email: email, name: name, password: password, confirmPassword: confirmPassword}
-        
-        const validResult = validateRegisterForm(data)
-        if (validResult.is_success) {
-            console.log("Registration ", email);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [errors, setErrors] = useState({
+    name: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    common: "",
+  });
+  const [submitting, setSubmitting] = useState(false);
 
-            const registerData = await submitRegisterFormAction(data)
-            if(!registerData.status) {
-                const newErrors = { name: "", email: "", password: "", confirmPassword: "", common: "" };
-                newErrors.common = registerData.error;
-                setErrors(newErrors);
-                return false
-            }
+  const emailValid = useMemo(() => EMAIL_REGEX.test(email), [email]);
+  const passwordValid =
+    password.length >= PASSWORD_MIN_LENGTH && HAS_LATIN_LETTER.test(password);
+  const canSubmit =
+    name.trim().length > 0 &&
+    emailValid &&
+    passwordValid &&
+    password === confirmPassword &&
+    confirmPassword.length > 0 &&
+    !submitting;
 
-            await update(); 
+  const passwordPolicyError = (value: string): string => {
+    if (!value) return "";
+    if (value.length < PASSWORD_MIN_LENGTH) return `Минимум ${PASSWORD_MIN_LENGTH} символов`;
+    if (!HAS_LATIN_LETTER.test(value)) return "Должна быть хотя бы одна латинская буква";
+    return "";
+  };
 
-            const session = await getSession();
-            const user = session?.user
-            if(user === null) {
-                const newErrors = { name: "", email: "", password: "", confirmPassword: "", common: "" };
-                newErrors.common = "Произошла техническая ошибка(2). Попробуйте зарегистрироватьс еще раз.";
-                setErrors(newErrors);
-                return false
-            }
+  const handleNameChange = (value: string) => {
+    setName(value);
+    setErrors((prev) => ({
+      ...prev,
+      name: !value || value.trim() ? "" : "Введите имя",
+      common: "",
+    }));
+  };
+  const handleEmailChange = (value: string) => {
+    setEmail(value);
+    setErrors((prev) => ({
+      ...prev,
+      email: !value || EMAIL_REGEX.test(value) ? "" : "Некорректный формат email",
+      common: "",
+    }));
+  };
+  const handlePasswordChange = (value: string) => {
+    setPassword(value);
+    setErrors((prev) => ({
+      ...prev,
+      password: passwordPolicyError(value),
+      confirmPassword:
+        confirmPassword && confirmPassword !== value ? "Пароли не совпадают." : "",
+      common: "",
+    }));
+  };
+  const handleConfirmChange = (value: string) => {
+    setConfirmPassword(value);
+    setErrors((prev) => ({
+      ...prev,
+      confirmPassword: value && value !== password ? "Пароли не совпадают." : "",
+      common: "",
+    }));
+  };
 
-            console.log('handleSubmit user', user)
-            onClose()
-            redirect('/profile');
-        } else {
-            const _errors = validResult.errors
-            if(_errors !== null) {
-                const newErrors = { name: "", email: "", password: "", confirmPassword: "", common: "" };
-                newErrors.common = "Вы ввели не корректные данные.";
-                for (const error of _errors) {
-                    switch(error.field) {
-                        case "name":
-                            newErrors.name = error.error.join('<br />');
-                            break;
-                        case "email":
-                            newErrors.email = error.error.join('<br />');
-                            break;
-                        case "password":
-                            newErrors.password = error.error.join('<br />');
-                            break;
-                        case "confirmPassword":
-                            newErrors.confirmPassword = error.error.join('<br />');
-                            break;
-                    }
-                }
-                
-                setErrors(newErrors);
-            }
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const data: RegisterFormI = { email, name, password, confirmPassword };
+
+    const validResult = validateRegisterForm(data);
+    if (!validResult.is_success) {
+      const next = { name: "", email: "", password: "", confirmPassword: "", common: "" };
+      validResult.errors?.forEach((err) => {
+        if (err.field in next) {
+          (next as Record<string, string>)[err.field] = err.error.join(" ");
         }
-    };
+      });
+      next.common = "Проверьте правильность заполнения полей.";
+      setErrors(next);
+      return;
+    }
 
-    return (
-        <>
-            {/* Заголовок */}
-            <div className="mb-[32px]">
-                <h1 className="font-['Inter:Bold',sans-serif] font-bold leading-[32px] text-[24px] text-white mb-[12px]">
-                    Регистрация
-                </h1>
-                <p className="font-['Inter:Regular',sans-serif] font-normal leading-[22.75px] text-[14px] text-[rgba(255,255,255,0.8)]">
-                    Создайте учетную запись для доступа к консультациям юристов и личному кабинету.
-                </p>
-                {errors.common && (
-                    <p className="font-['Inter:Regular',sans-serif] font-normal text-[12px] text-red-400 ml-[4px]">
-                        {errors.common}
-                    </p>
-                )}
+    setErrors({ name: "", email: "", password: "", confirmPassword: "", common: "" });
+    setSubmitting(true);
+    const registerData = await submitRegisterFormAction(data);
+    if (!registerData.status) {
+      setSubmitting(false);
+      setErrors((prev) => ({ ...prev, common: registerData.error }));
+      return;
+    }
+
+    await update();
+    const session = await getSession();
+    if (!session?.user) {
+      setSubmitting(false);
+      setErrors((prev) => ({
+        ...prev,
+        common: "Произошла техническая ошибка. Попробуйте зарегистрироваться еще раз.",
+      }));
+      return;
+    }
+
+    onClose();
+    router.push("/profile");
+    router.refresh();
+  };
+
+  return (
+    <>
+      <div className="mb-[24px] pr-[24px]">
+        <h1 className="font-bold text-[26px] leading-[32px] text-[#0F1B2D] mb-[10px]">
+          Регистрация
+        </h1>
+        <p className="font-normal text-[14px] leading-[22px] text-[#6B7280]">
+          Создайте учётную запись для доступа к консультациям юристов и личному кабинету.
+        </p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="flex flex-col gap-[18px]" noValidate>
+        {errors.common && (
+          <div className="px-[16px] py-[12px] rounded-[12px] bg-red-50 border border-red-200 flex items-start gap-[10px]">
+            <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-px" />
+            <div>
+              <p className="font-semibold text-[14px] text-red-700 leading-[18px]">
+                Не удалось зарегистрироваться
+              </p>
+              <p className="text-[13px] text-red-600 leading-[18px]">{errors.common}</p>
             </div>
+          </div>
+        )}
+        <div className="flex flex-col gap-[8px]">
+          <label className="font-semibold text-[14px] text-[#0F1B2D]">Ваше имя</label>
+          <div className={`relative h-[52px] rounded-[14px] ${FIELD_BG}`}>
+            <User className="w-4 h-4 absolute left-[16px] top-1/2 -translate-y-1/2 text-[#0F1B2D]/60" />
+            <input
+              type="text"
+              autoComplete="name"
+              value={name}
+              onChange={(e) => handleNameChange(e.target.value)}
+              placeholder="Имя"
+              className={`w-full h-full pl-[44px] pr-[16px] bg-transparent text-[15px] text-[#0F1B2D] placeholder:text-[#0F1B2D]/40 rounded-[14px] outline-none ring-2 ${
+                errors.name ? "ring-red-400" : "ring-transparent focus:ring-[#9BB7C9]"
+              } transition-all`}
+            />
+          </div>
+          {errors.name && <p className="text-[12px] text-red-500 ml-[4px]">{errors.name}</p>}
+        </div>
 
-            {/* Форма */}
-            <form onSubmit={handleSubmit} className="flex flex-col gap-[16px]" noValidate>
-            
-                {/* Имя поле */}
-                <div className="flex flex-col gap-[8px]">
-                    <label className="font-['Inter:Medium',sans-serif] font-medium leading-[20px] text-[14px] text-[rgba(255,255,255,0.9)]">
-                    Ваше имя: *
-                    </label>
-                    <div className="relative h-[60px] rounded-[16px]">
-                    <input
-                        type="text"
-                        value={name}
-                        onChange={(e) => {
-                        setName(e.target.value);
-                        if (errors.name) {
-                            setErrors({ ...errors, name: "" });
-                        }
-                        }}
-                        placeholder="Имя"
-                        className={`w-full h-full px-[20px] py-[16px] bg-transparent font-['Inter:Regular',sans-serif] font-normal text-[16px] text-white placeholder:text-[rgba(255,255,255,0.4)] rounded-[16px] border-2 ${
-                        errors.name 
-                            ? "border-red-400 focus:border-red-500" 
-                            : "border-[rgba(255,255,255,0.2)] focus:border-[rgba(255,255,255,0.4)]"
-                        } focus:outline-none transition-colors`}
-                    />
-                    </div>
-                    {errors.name && (
-                    <p className="font-['Inter:Regular',sans-serif] font-normal text-[12px] text-red-400 ml-[4px]">
-                        {errors.name}
-                    </p>
-                    )}
-                </div>
+        <div className="flex flex-col gap-[8px]">
+          <label className="font-semibold text-[14px] text-[#0F1B2D]">Email</label>
+          <div className={`relative h-[52px] rounded-[14px] ${FIELD_BG}`}>
+            <Mail className="w-4 h-4 absolute left-[16px] top-1/2 -translate-y-1/2 text-[#0F1B2D]/60" />
+            <input
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={(e) => handleEmailChange(e.target.value)}
+              placeholder="you@company.com"
+              className={`w-full h-full pl-[44px] pr-[16px] bg-transparent text-[15px] text-[#0F1B2D] placeholder:text-[#0F1B2D]/40 rounded-[14px] outline-none ring-2 ${
+                errors.email ? "ring-red-400" : "ring-transparent focus:ring-[#9BB7C9]"
+              } transition-all`}
+            />
+          </div>
+          {errors.email && <p className="text-[12px] text-red-500 ml-[4px]">{errors.email}</p>}
+        </div>
 
-                {/* Email поле */}
-                <div className="flex flex-col gap-[8px]">
-                    <label className="font-['Inter:Medium',sans-serif] font-medium leading-[20px] text-[14px] text-[rgba(255,255,255,0.9)]">
-                    Электронная почта: *
-                    </label>
-                    <div className="relative h-[60px] rounded-[16px]">
-                    <input
-                        type="text"
-                        value={email}
-                        onChange={(e) => {
-                        setEmail(e.target.value);
-                        if (errors.email) {
-                            setErrors({ ...errors, email: "" });
-                        }
-                        }}
-                        placeholder="example@example.com"
-                        className={`w-full h-full px-[20px] py-[16px] bg-transparent font-['Inter:Regular',sans-serif] font-normal text-[16px] text-white placeholder:text-[rgba(255,255,255,0.4)] rounded-[16px] border-2 ${
-                        errors.email 
-                            ? "border-red-400 focus:border-red-500" 
-                            : "border-[rgba(255,255,255,0.2)] focus:border-[rgba(255,255,255,0.4)]"
-                        } focus:outline-none transition-colors`}
-                    />
-                    </div>
-                    {errors.email && (
-                    <p className="font-['Inter:Regular',sans-serif] font-normal text-[12px] text-red-400 ml-[4px]">
-                        {errors.email}
-                    </p>
-                    )}
-                </div>
+        <div className="flex flex-col gap-[8px]">
+          <label className="font-semibold text-[14px] text-[#0F1B2D]">Пароль</label>
+          <div className={`relative h-[52px] rounded-[14px] ${FIELD_BG}`}>
+            <Lock className="w-4 h-4 absolute left-[16px] top-1/2 -translate-y-1/2 text-[#0F1B2D]/60" />
+            <input
+              type={showPassword ? "text" : "password"}
+              autoComplete="new-password"
+              value={password}
+              onChange={(e) => handlePasswordChange(e.target.value)}
+              placeholder="Минимум 8 символов, латинские буквы"
+              className={`w-full h-full pl-[44px] pr-[44px] bg-transparent text-[15px] text-[#0F1B2D] placeholder:text-[#0F1B2D]/40 rounded-[14px] outline-none ring-2 ${
+                errors.password ? "ring-red-400" : "ring-transparent focus:ring-[#9BB7C9]"
+              } transition-all`}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
+              className="absolute right-[14px] top-1/2 -translate-y-1/2 text-[#0F1B2D]/60 hover:text-[#0F1B2D] transition-colors"
+            >
+              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
+          {errors.password && (
+            <p className="text-[12px] text-red-500 ml-[4px]">{errors.password}</p>
+          )}
+        </div>
 
-                {/* Пароль поле */}
-                <div className="flex flex-col gap-[8px]">
-                    <label className="font-['Inter:Medium',sans-serif] font-medium leading-[20px] text-[14px] text-[rgba(255,255,255,0.9)]">
-                    Пароль: *
-                    </label>
-                    <div className="relative h-[60px] rounded-[16px]">
-                    <input
-                        type="password"
-                        value={password}
-                        onChange={(e) => {
-                        setPassword(e.target.value);
-                        if (errors.password) {
-                            setErrors({ ...errors, password: "" });
-                        }
-                        }}
-                        placeholder="Минимум 6 символов"
-                        className={`w-full h-full px-[20px] py-[16px] bg-transparent font-['Inter:Regular',sans-serif] font-normal text-[16px] text-white placeholder:text-[rgba(255,255,255,0.4)] rounded-[16px] border-2 ${
-                        errors.password 
-                            ? "border-red-400 focus:border-red-500" 
-                            : "border-[rgba(255,255,255,0.2)] focus:border-[rgba(255,255,255,0.4)]"
-                        } focus:outline-none transition-colors`}
-                    />
-                    </div>
-                    {errors.password && (
-                    <p className="font-['Inter:Regular',sans-serif] font-normal text-[12px] text-red-400 ml-[4px]">
-                        {errors.password}
-                    </p>
-                    )}
-                </div>
+        <div className="flex flex-col gap-[8px]">
+          <label className="font-semibold text-[14px] text-[#0F1B2D]">Повторите пароль</label>
+          <div className={`relative h-[52px] rounded-[14px] ${FIELD_BG}`}>
+            <Lock className="w-4 h-4 absolute left-[16px] top-1/2 -translate-y-1/2 text-[#0F1B2D]/60" />
+            <input
+              type={showConfirm ? "text" : "password"}
+              autoComplete="new-password"
+              value={confirmPassword}
+              onChange={(e) => handleConfirmChange(e.target.value)}
+              placeholder="Повторите пароль"
+              className={`w-full h-full pl-[44px] pr-[44px] bg-transparent text-[15px] text-[#0F1B2D] placeholder:text-[#0F1B2D]/40 rounded-[14px] outline-none ring-2 ${
+                errors.confirmPassword ? "ring-red-400" : "ring-transparent focus:ring-[#9BB7C9]"
+              } transition-all`}
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirm((v) => !v)}
+              aria-label={showConfirm ? "Скрыть пароль" : "Показать пароль"}
+              className="absolute right-[14px] top-1/2 -translate-y-1/2 text-[#0F1B2D]/60 hover:text-[#0F1B2D] transition-colors"
+            >
+              {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
+          {errors.confirmPassword && (
+            <p className="text-[12px] text-red-500 ml-[4px]">{errors.confirmPassword}</p>
+          )}
+        </div>
 
-                {/* Подтверждение пароля поле */}
-                <div className="flex flex-col gap-[8px]">
-                    <label className="font-['Inter:Medium',sans-serif] font-medium leading-[20px] text-[14px] text-[rgba(255,255,255,0.9)]">
-                    Подтверждение пароля: *
-                    </label>
-                    <div className="relative h-[60px] rounded-[16px]">
-                    <input
-                        type="password"
-                        value={confirmPassword}
-                        onChange={(e) => {
-                        setConfirmPassword(e.target.value);
-                        if (errors.confirmPassword) {
-                            setErrors({ ...errors, confirmPassword: "" });
-                        }
-                        }}
-                        placeholder="Повторите пароль"
-                        className={`w-full h-full px-[20px] py-[16px] bg-transparent font-['Inter:Regular',sans-serif] font-normal text-[16px] text-white placeholder:text-[rgba(255,255,255,0.4)] rounded-[16px] border-2 ${
-                        errors.confirmPassword 
-                            ? "border-red-400 focus:border-red-500" 
-                            : "border-[rgba(255,255,255,0.2)] focus:border-[rgba(255,255,255,0.4)]"
-                        } focus:outline-none transition-colors`}
-                    />
-                    </div>
-                    {errors.confirmPassword && (
-                    <p className="font-['Inter:Regular',sans-serif] font-normal text-[12px] text-red-400 ml-[4px]">
-                        {errors.confirmPassword}
-                    </p>
-                    )}
-                </div>
+        <button
+          type="submit"
+          disabled={!canSubmit}
+          className={`h-[52px] rounded-[14px] font-semibold text-[15px] flex items-center justify-center gap-[8px] transition-all ${
+            canSubmit
+              ? "bg-[#5A8FB5] text-white hover:bg-[#4A7EA3]"
+              : "bg-[#D6E3EF] text-[#0F1B2D]/50 cursor-not-allowed"
+          }`}
+        >
+          {submitting ? "Регистрируем…" : "Зарегистрироваться"}
+          {!submitting && <ArrowRight className="w-4 h-4" />}
+        </button>
 
-                {/* Кнопка регистрации */}
-                <button
-                    type="submit"
-                    className="bg-[#87b7ce] h-[60px] rounded-[16px] font-['Inter:Medium',sans-serif] font-medium leading-[28px] text-[18px] text-center text-white mt-[8px] hover:bg-[#6fa2b8] transition-colors"
-                >
-                    Зарегистрироваться
-                </button>
+        <div className="flex items-center justify-center gap-[6px]">
+          <p className="text-[14px] text-[#6B7280]">Уже есть аккаунт?</p>
+          <button
+            type="button"
+            onClick={() => onSwitchToLogin()}
+            className="text-[14px] font-semibold text-[#3B82F6] hover:text-[#2563EB] transition-colors"
+          >
+            Войти
+          </button>
+        </div>
 
-                {/* Ссылка на вход */}
-                <div className="flex items-center justify-center gap-[8px] mt-[12px]">
-                    <p className="font-['Inter:Regular',sans-serif] font-normal text-[14px] text-[rgba(255,255,255,0.6)]">
-                    Уже есть аккаунт?
-                    </p>
-                    <button
-                    type="button"
-                    onClick={onSwitchToLogin}
-                    className="font-['Inter:Medium',sans-serif] font-medium text-[14px] text-[#87b7ce] hover:text-[#6fa2b8] transition-colors"
-                    >
-                    Войти
-                    </button>
-                </div>
-
-                {/* Примечание о конфиденциальности */}
-                <p className="font-['Inter:Regular',sans-serif] font-normal leading-[19.5px] text-[12px] text-[rgba(255,255,255,0.6)] text-center mt-[8px]">
-                    Нажимая кнопку «Зарегистрироваться», я принимаю условия Пользовательского соглашения и условия Политики конфиденциальности.
-                </p>
-            </form>
-        </>
-    )
+        <p className="text-[11px] leading-[16px] text-[#0F1B2D]/40 text-center">
+          Нажимая «Зарегистрироваться», вы принимаете условия Пользовательского соглашения и
+          Политики конфиденциальности.
+        </p>
+      </form>
+    </>
+  );
 }

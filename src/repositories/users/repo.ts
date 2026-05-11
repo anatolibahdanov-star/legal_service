@@ -154,8 +154,8 @@ export async function addAnonymousUser(user: DBUser): Promise<DBUser | null> {
 
 export async function addUser(user: RegUser): Promise<DBUser | null> {
     const msg = msgGlobal + "addUser - ";
-    const query = `INSERT INTO user(name, email, password, is_register) VALUES(?, ?, MD5(?), 1)`
-    const params = [user.name, user.email, user.password]
+    const query = `INSERT INTO user(name, email, password, is_register) VALUES(?, ?, ?, 1)`
+    const params = [user.name, user.email, md5(user.password)]
     const insertFunc = insert({ query, values: params});
     const executedQueries = await executeTransactionWrapper<ResultSetHeader>([insertFunc], msg);
     if (!executedQueries) {
@@ -176,8 +176,8 @@ export async function saveUser(id: string, user: DBUser): Promise<DBUser | null>
     let query = `UPDATE user SET name=?, email=?, status=? `
     const params = [user.name, user.email, user.status]
     if(user.new_password) {
-        query += ', password=MD5(?)'
-        params.push(user.new_password)
+        query += ', password=?'
+        params.push(md5(user.new_password))
     }
     query += ' WHERE id=?'
     params.push(id)
@@ -191,7 +191,7 @@ export async function saveUser(id: string, user: DBUser): Promise<DBUser | null>
     const updated = result[0]?.affectedRows
     if (updated > 0) {
         logger.info(msg + 'updated', result)
-    } else { 
+    } else {
         logger.warn(msg + "No updates", result[0])
     }
 
@@ -280,8 +280,8 @@ export async function profile(id: string, name: string, password: string, oldPas
     let userUpdateSQL: string = 'UPDATE user SET name=?'
     const userUpdateData = [name]
     if(password) {
-        userUpdateSQL += ', password=MD5(?)'
-        userUpdateData.push(password)
+        userUpdateSQL += ', password=?'
+        userUpdateData.push(md5(password))
     }
     userUpdateSQL += ' WHERE id=?'
     userUpdateData.push(id)
@@ -329,8 +329,8 @@ export async function reset(email: string): Promise<DBUser | undefined | null> {
         return undefined
     }
     const newPass = passGenerator(10)
-    const query = 'UPDATE user SET password=MD5(?) WHERE id=?'
-    const params = [newPass, user.id];
+    const query = 'UPDATE user SET password=? WHERE id=?'
+    const params = [md5(newPass), user.id];
     const updateFunc = update({ query, values: params});
     const executedQueries = await executeTransactionWrapper<ResultSetHeader>([updateFunc], msg);
     if (!executedQueries) {

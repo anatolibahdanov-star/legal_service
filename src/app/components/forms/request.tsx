@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { 
-  Select, 
-  SelectContent, 
-  SelectGroup, 
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
   SelectLabel,
   SelectTrigger,
   SelectValue,
@@ -14,6 +14,7 @@ import { submitRequestFormAction } from "@/src/app/components/forms/action/reque
 import { FormDataObjectT } from "@/src/interfaces/form";
 import { DBQuestion } from "@/src/interfaces/db";
 import { SelectCategories } from "@/src/app/components/data/select-category";
+import { RecaptchaCheckbox } from "@/src/app/components/forms/RecaptchaCheckbox";
 
 interface RequestFormOptionsI {
     parent?: number|null;
@@ -28,6 +29,8 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
     const router = useRouter();
     const { data: session, status } = useSession()
     const [errors, setErrors] = useState<FormDataObjectT>({ name: "", email: "", topic: "", question: "", agree: false, common: "", auth: "", parent: 0});
+    const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+    const [submitting, setSubmitting] = useState(false);
     const [formData, setFormData] = useState({
         email: "",
         name: "",
@@ -46,7 +49,13 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         const newErrors: FormDataObjectT = { name: "", email: "", topic: "", question: "", agree: false, common: "", auth: "" };
-        
+
+        if (!captchaToken) {
+            newErrors.common = "Подтвердите, что вы не робот.";
+            setErrors(newErrors);
+            return false;
+        }
+
         const dataRequest = {...formData}
         if(user) {
             dataRequest.email = user.email ?? ""
@@ -60,8 +69,10 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
         const validResult = validateRequestForm(dataRequest)
         if (validResult.is_success) {
             console.log("Client request", dataRequest);
-
-            const responseData = await submitRequestFormAction(dataRequest)
+            setSubmitting(true);
+            const responseData = await submitRequestFormAction(dataRequest, captchaToken)
+            setSubmitting(false);
+            setCaptchaToken(null);
             if(!responseData.status) {
                 newErrors.common = responseData.error;
                 setErrors(newErrors);
@@ -77,7 +88,7 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
                 if(setCurrent) setCurrent(true)
                 if(onClose) onClose()
             }
-            
+
         } else {
             const _errors = validResult.errors
             console.log('handleSubmit request error', _errors)
@@ -217,9 +228,23 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
                         )}
                     </div>
 
+                <div>
+                    <RecaptchaCheckbox
+                        action="submit_question"
+                        token={captchaToken}
+                        onChange={setCaptchaToken}
+                        disabled={submitting}
+                    />
+                </div>
+
                 <button type="submit"
-                    className="w-full bg-[#8faaba] hover:bg-[#7a98a7] text-white font-medium py-4 px-6 rounded-2xl transition-colors text-lg"
-                >Оставить заявку</button>
+                    disabled={!captchaToken || submitting}
+                    className={`w-full font-medium py-4 px-6 rounded-2xl transition-colors text-lg ${
+                        !captchaToken || submitting
+                            ? "bg-[#8faaba]/50 text-white/70 cursor-not-allowed"
+                            : "bg-[#8faaba] hover:bg-[#7a98a7] text-white"
+                    }`}
+                >{submitting ? "Отправляем…" : "Оставить заявку"}</button>
 
                 {!user && (
                     <>

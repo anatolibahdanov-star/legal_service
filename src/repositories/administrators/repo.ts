@@ -65,6 +65,24 @@ export async function getAdministratorsByIds(ids: string[]): Promise<DBUser[] | 
     return rows
 }
 
+export async function getAdministratorByEmailOnly(email: string): Promise<DBUser | null> {
+    const msg = msgGlobal + "getAdministratorByEmailOnly - ";
+    const query = `SELECT name, email, id, username, password, is_super, status, created_at FROM administrator WHERE email=?`;
+    const findFunc = find({ query, values: [email] });
+    const executed = await queryTransactionWrapper<DBUser>([findFunc], msg);
+    if (!executed) {
+        logger.error(msg + "SQL not results from execution", query)
+        return null
+    }
+    const [[rows]] = executed;
+    if (rows.length === 0) return null;
+    if (rows.length > 1) {
+        logger.error(msg + 'Double admin found', email)
+        return null;
+    }
+    return rows[0];
+}
+
 export async function getAdministratorByEmail(email: string, password: string): Promise<DBUser | null | undefined> {
     const msg = msgGlobal + "getAdministratorByEmail - ";
     const query =  `SELECT name, email, id, username, password, is_super, status, created_at FROM administrator WHERE email=?`;
@@ -146,10 +164,10 @@ export function getAdminAdministratorFilter(filter: DBFilterAdministrators | nul
 
 export async function addAdministrator(admin: DBUser): Promise<DBUser[] | null> {
     const msg = msgGlobal + "addAdministrator - ";
-    const query = `INSERT INTO 
-        administrator(name, email, username, password, created_admin_id, status, is_super) 
-        VALUES(?, ?, ?, MD5(?), ?, ?, ?)`
-    const params = [admin.name, admin.email, admin.username, admin.password, 2, admin.status, admin.is_super];
+    const query = `INSERT INTO
+        administrator(name, email, username, password, created_admin_id, status, is_super)
+        VALUES(?, ?, ?, ?, ?, ?, ?)`
+    const params = [admin.name, admin.email, admin.username, md5(admin.password), 2, admin.status, admin.is_super];
     const insertFunc = insert({ query, values: params});
     const executedQueries = await executeTransactionWrapper<ResultSetHeader>([insertFunc], msg);
     if (!executedQueries) {
@@ -170,8 +188,8 @@ export async function saveAdministrator(id: string, admin: DBUser): Promise<DBUs
     let query = 'UPDATE administrator SET name=?, email=?, username=?, status=?, is_super=? '
     const params = [admin.name, admin.email, admin.username, admin.status, admin.is_super];
     if(admin.new_password) {
-        query += ', password=MD5(?)'
-        params.push(admin.new_password)
+        query += ', password=?'
+        params.push(md5(admin.new_password))
     }
     query += ' WHERE id=?'
     params.push(id)
