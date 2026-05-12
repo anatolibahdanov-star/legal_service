@@ -4,7 +4,7 @@ import logger from '@/src/libs/logger';
 
 const msgGlobal = 'REPO OTP_ATTEMPTS ';
 
-// По ENKI-21: 1, 2, 4 попытки → ошибка; 3 попытка → cooldown 5 мин; 5 попытка → lock 24ч.
+// Per ENKI-21: attempts 1, 2, 4 → error; attempt 3 → 5-min cooldown; attempt 5 → 24h lock.
 export const COOLDOWN_TRIGGER_ATTEMPTS = 3;
 export const LOCKOUT_TRIGGER_ATTEMPTS = 5;
 export const COOLDOWN_DURATION_MS = 5 * 60 * 1000;
@@ -76,9 +76,9 @@ export async function recordFailedAttempt(phone: string): Promise<RecordFailResu
   const prevLockedUntil = existing?.locked_until ? new Date(existing.locked_until) : null;
   const lockExpired = prevLockedUntil !== null && prevLockedUntil.getTime() <= now.getTime();
 
-  // Если 24-часовой lock истёк — счётчик и cooldown сбрасываются (наказание отбыто).
-  // Cooldown 5min сам по себе НЕ ресетит счётчик: после ожидания юзер продолжает
-  // с того места, где был, и на 5-й неверной попытке получает 24ч lock.
+  // If the 24-hour lock has expired — counter and cooldown reset (penalty served).
+  // The 5-min cooldown alone does NOT reset the counter: after waiting, the user continues
+  // from where they left off, and on the 5th wrong attempt gets a 24h lock.
   const baseAttempts = lockExpired ? 0 : existing?.attempts ?? 0;
   const nextAttempts = baseAttempts + 1;
 

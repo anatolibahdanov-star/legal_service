@@ -32,10 +32,14 @@ const toDate = (v: string | Date | null | undefined): Date | null => {
   return isNaN(d.getTime()) ? null : d;
 };
 
-const formatMmSs = (totalSeconds: number): string => {
+const formatDuration = (totalSeconds: number): string => {
   if (totalSeconds <= 0) return "0:00";
-  const m = Math.floor(totalSeconds / 60);
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
   const s = totalSeconds % 60;
+  if (h > 0) {
+    return `${h}:${m.toString().padStart(2, "0")}`;
+  }
   return `${m}:${s.toString().padStart(2, "0")}`;
 };
 
@@ -44,7 +48,7 @@ export default function OtpCodeStep({
   onVerify,
   onResend,
   onChangePhone,
-  initialResendCooldown = 30,
+  initialResendCooldown = 24 * 60 * 60,
 }: Props) {
   const [code, setCode] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -77,7 +81,7 @@ export default function OtpCodeStep({
   const inputDisabled = submitting || cooldownActive || lockoutActive;
   const canSubmit = code.length === CODE_LENGTH && !inputDisabled;
   const canResend = !submitting && !cooldownActive && !lockoutActive && resendRemainingSec === 0;
-  const canChangePhone = !lockoutActive && !submitting;
+  const canChangePhone = !submitting;
 
   useEffect(() => {
     if (!inputDisabled) {
@@ -98,7 +102,11 @@ export default function OtpCodeStep({
       const newLocked = toDate(res.lockedUntil);
       if (newLocked) setLockedUntil(newLocked);
       if (newCooldown) setCooldownUntil(newCooldown);
-      if (res.message) setErrorMessage(res.message);
+      if (newLocked || newCooldown) {
+        setErrorMessage("");
+      } else if (res.message) {
+        setErrorMessage(res.message);
+      }
       setAttemptsLeft(typeof res.attemptsLeft === "number" ? res.attemptsLeft : null);
       setCode("");
     },
@@ -122,7 +130,11 @@ export default function OtpCodeStep({
     const newLocked = toDate(res.lockedUntil);
     if (newLocked) setLockedUntil(newLocked);
     if (newCooldown) setCooldownUntil(newCooldown);
-    if (res.message) setErrorMessage(res.message);
+    if (newLocked || newCooldown) {
+      setErrorMessage("");
+    } else if (res.message) {
+      setErrorMessage(res.message);
+    }
   }, [canResend, onResend, initialResendCooldown]);
 
   const banner = useMemo(() => {
@@ -135,7 +147,7 @@ export default function OtpCodeStep({
     if (cooldownActive) {
       return {
         kind: "cooldown" as const,
-        text: `Слишком много попыток. Попробуйте через ${formatMmSs(cooldownRemainingSec)}.`,
+        text: `Слишком много попыток. Попробуйте через ${formatDuration(cooldownRemainingSec)}.`,
       };
     }
     return null;
@@ -231,7 +243,7 @@ export default function OtpCodeStep({
             className="text-[14px] font-semibold text-[#3B82F6] hover:text-[#2563EB] transition-colors disabled:text-[#0F1B2D]/40 disabled:cursor-not-allowed"
           >
             {resendRemainingSec > 0
-              ? `Отправить код повторно (${resendRemainingSec})`
+              ? `Отправить код повторно (${formatDuration(resendRemainingSec)})`
               : "Отправить код повторно"}
           </button>
         </div>

@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import logger from '@/src/libs/logger';
 import { verifyRecaptcha } from '@/src/libs/recaptcha';
-import { normalizePhoneE164, phoneToEmail } from '@/src/libs/phoneIdentity';
+import { normalizePhoneE164 } from '@/src/libs/phoneIdentity';
 import { createOtp, invalidateOtp } from '@/src/libs/otpStore';
-import { getUserByEmail } from '@/src/repositories/users/repo';
+import { getUserByPhone } from '@/src/repositories/users/repo';
 import { getPhoneStatus } from '@/src/repositories/otp_attempts/repo';
 import { sendSmsTemplate, isDryRun } from '@/src/libs/p1sms';
 import { SmsTemplateE } from '@/src/interfaces/sms';
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const existing = await getUserByEmail(phoneToEmail(normalized.e164));
+  const existing = await getUserByPhone(normalized.e164);
   if (existing) {
     logger.info(msg + 'phone already registered', { phone_tail: normalized.digits.slice(-4) });
     return NextResponse.json(

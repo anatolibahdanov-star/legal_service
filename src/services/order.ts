@@ -35,7 +35,7 @@ export const initNewOrder = async (balanceRequest: UserBalanceRequest, user: Use
                 data: null,
             }
 
-            // 1. Запрос к Альфа API для создания СБП заказа
+            // 1. Request to Alfa API to create an SBP order
             const alfaCreatedOrder = await createAlfaOrder(balanceRequest.amount, emptyOrder.id, user)
             trans.data = alfaCreatedOrder.techical_data ?? null
             if (!alfaCreatedOrder.status) {
@@ -50,8 +50,8 @@ export const initNewOrder = async (balanceRequest: UserBalanceRequest, user: Use
 
             await setDBTransaction(trans, user)
 
-            // 2. Получение данных для QR (например, URL на оплату)
-            // Банк возвращает orderId, нужно запросить qr-код отдельно, если не пришел сразу
+            // 2. Fetch QR data (e.g. payment URL)
+            // Bank returns orderId; fetch the QR code separately if it doesn't arrive immediately
             const updateOrder: PaymentInfoRequest = {
                 order_id: emptyOrder.id,
                 alpha_id: alfaCreatedOrder.data.orderId,

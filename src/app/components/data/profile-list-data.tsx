@@ -124,7 +124,7 @@ export const ProfileListData = ({ id, currentPage, itemsPerPage, totalItems, onT
                     {question.rating ? (
                       <>
                         <Star className="size-5 fill-[#fbbf24]" />
-                        {/* Badge с рейтингом */}
+                        {/* Rating badge */}
                         <span className="absolute -top-2 -right-2 bg-[#fbbf24] text-white text-xs font-bold rounded-full px-1.5 py-0.5 min-w-[24px] flex items-center justify-center shadow-md">
                           {question.rating}
                         </span>

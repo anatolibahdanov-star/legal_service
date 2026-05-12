@@ -24,9 +24,6 @@ export const phoneToEmail = (e164: string): string => {
   return `${digits}@${PHONE_EMAIL_DOMAIN}`;
 };
 
-export const isPhoneEmail = (email: string): boolean =>
-  email.endsWith(`@${PHONE_EMAIL_DOMAIN}`);
-
 export const phoneToDefaultName = (e164: string): string => {
   const digits = e164.replace(/^\+/, '');
   return `User ${digits.slice(-4)}`;

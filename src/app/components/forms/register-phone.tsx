@@ -45,7 +45,7 @@ export default function RegisterPhoneForm({ onClose, onSwitchToLogin }: FormCont
     if (!response.status) {
       const errData = response.data as { code?: string; phone?: string } | null;
       if (errData?.code === "phone_exists") {
-        // По BPMN: «Номер существует?» → Да → переход во флоу авторизации
+        // Per BPMN: "Phone exists?" → Yes → switch to login flow
         onSwitchToLogin({ phone: errData.phone ?? phone });
         return;
       }
@@ -77,7 +77,7 @@ export default function RegisterPhoneForm({ onClose, onSwitchToLogin }: FormCont
           | { code?: string; cooldownUntil?: string | null; lockedUntil?: string | null; phone?: string }
           | null;
         if (errData?.code === "phone_exists") {
-          // на resend получили "номер уже зарегистрирован" — переводим во флоу авторизации
+          // on resend got "phone already registered" — switch to login flow
           onSwitchToLogin({ phone: errData.phone ?? targetPhone });
           return { ok: true };
         }
@@ -140,7 +140,7 @@ export default function RegisterPhoneForm({ onClose, onSwitchToLogin }: FormCont
         onChangePhone={() => {
           goBackToPhoneStep();
         }}
-        initialResendCooldown={30}
+        initialResendCooldown={24 * 60 * 60}
       />
     );
   }
@@ -152,6 +152,9 @@ export default function RegisterPhoneForm({ onClose, onSwitchToLogin }: FormCont
           Регистрация
         </h1>
         <p className="font-normal text-[14px] leading-[22px] text-[#6B7280]">
+          Создайте учётную запись для доступа к консультациям юристов и личному кабинету.
+        </p>
+        <p className="font-normal text-[14px] leading-[22px] text-[#6B7280] mt-[6px]">
           Укажите номер телефона — отправим SMS-код для подтверждения.
         </p>
       </div>

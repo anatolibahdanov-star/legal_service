@@ -15,9 +15,9 @@ export function AboutUs() {
               </p>
             </div>
 
-            {/* Сетка блоков */}
+            {/* Block grid */}
             <div className="space-y-6">
-              {/* Блок О компании вверху - на всю ширину */}
+              {/* About the company — full width on top */}
               <div className="bg-[#fefdf9] rounded-[40px] p-10 lg:p-12 relative overflow-hidden">
                 <h3 className="text-2xl lg:text-3xl font-bold text-[#29282b] mb-6">
                   О компании
@@ -34,7 +34,7 @@ export function AboutUs() {
                 />
               </div>
 
-              {/* 4 блока внизу в ряд */}
+              {/* 4 blocks in a row at the bottom */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div className="bg-[#fefdf9] rounded-[40px] p-6 flex flex-col">
                   <h3 className="text-lg lg:text-xl font-bold text-[#29282b] mb-3">

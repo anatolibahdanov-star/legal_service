@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import logger from '@/src/libs/logger';
-import { normalizePhoneE164, phoneToEmail } from '@/src/libs/phoneIdentity';
+import { normalizePhoneE164 } from '@/src/libs/phoneIdentity';
 import { verifyOtp } from '@/src/libs/otpStore';
-import { getUserByEmail } from '@/src/repositories/users/repo';
+import { getUserByPhone } from '@/src/repositories/users/repo';
 import {
   getPhoneStatus,
   recordFailedAttempt,
@@ -85,8 +85,8 @@ export async function POST(request: NextRequest) {
 
   const result = verifyOtp(normalized.e164, code);
   if (!result.ok) {
-    // По BPMN счётчик растёт и при неверном коде, и при истёкшем коде.
-    // not_found — не считаем (OTP не запрашивался или уже использован).
+    // Per BPMN, the counter grows on both wrong and expired codes.
+    // not_found — not counted (OTP was not requested or already used).
     if (result.reason === 'invalid' || result.reason === 'expired') {
       const fail = await recordFailedAttempt(normalized.e164);
       if (fail.action === 'lock_24h') {
@@ -137,7 +137,7 @@ export async function POST(request: NextRequest) {
 
   await resetAttempts(normalized.e164);
 
-  const user = await getUserByEmail(phoneToEmail(normalized.e164));
+  const user = await getUserByPhone(normalized.e164);
   if (!user) {
     logger.error(msg + 'user vanished between send and verify', {
       phone_tail: normalized.digits.slice(-4),

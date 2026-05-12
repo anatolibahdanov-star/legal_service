@@ -99,14 +99,14 @@ export function StatusPage({ slug }: StatusPagePropsI) {
 
   return (
     <div className="min-h-screen bg-[#fefdf9]">
-      {/* Верхняя часть - заголовок и блок доверия */}
+      {/* Top — header and trust block */}
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-8">
         <div className="text-center mb-8">
           <h1 className="text-4xl lg:text-5xl font-bold text-[#29282b] mb-4">{title}</h1>
           <p className="text-lg text-[#29282b]/70 max-w-3xl mx-auto">{description}</p>
         </div>
 
-        {/* Блок доверия */}
+        {/* Trust block */}
         <div className="flex flex-wrap justify-center gap-6 sm:gap-8 mb-12">
           <div className="flex items-center gap-2">
             <Lock className="w-5 h-5 text-[#8faaba]" />
@@ -123,7 +123,7 @@ export function StatusPage({ slug }: StatusPagePropsI) {
         </div>
       </div>
 
-      {/* Центральная зона - главный статусный блок */}
+      {/* Center — main status block */}
       <div className="bg-[#323c54] max-w-5xl mx-auto rounded-t-[16px]">
         <div className="max-w-[1200px] mx-auto px-6 py-6">
           <div className="flex items-center gap-3 mb-3">
@@ -185,7 +185,7 @@ export function StatusPage({ slug }: StatusPagePropsI) {
         </div>
       </div>
 
-      {/* Кнопки внизу */}
+      {/* Bottom buttons */}
       <div className="max-w-5xl mx-auto bg-white flex flex-col items-center gap-4 mt-8 pb-8">
         <div className="flex gap-4 w-full max-w-[800px]">
           <button className="bg-[#323c54] hover:bg-[#3f4b66] text-white font-['Inter:Medium',sans-serif] font-medium leading-[20px] text-[16px] px-8 py-4 rounded-[12px] transition-colors flex-1">
@@ -200,7 +200,7 @@ export function StatusPage({ slug }: StatusPagePropsI) {
         </p>
       </div>
 
-      {/* Блок "Пока вы здесь" */}
+      {/* "While you are here" block */}
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
         <h2 className="text-3xl font-bold text-[#29282b] mb-8 text-center">
           Пока вы здесь
@@ -225,7 +225,7 @@ export function StatusPage({ slug }: StatusPagePropsI) {
         </div>
       </div>
 
-      {/* Блок с хештегами */}
+      {/* Hashtags block */}
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
         <div className="bg-white rounded-xl p-6 shadow-sm border border-[#29282b]/10">
           <div className="flex flex-wrap gap-2 justify-center">

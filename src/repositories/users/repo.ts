@@ -82,6 +82,23 @@ export async function getUserByEmail(email: string): Promise<DBUser | null> {
     return rows[0]
 }
 
+export async function getUserByPhone(phone: string): Promise<DBUser | null> {
+    const msg = msgGlobal + "getUserByPhone - ";
+    const query =  `SELECT *, ROUND(balance / 100, 0) balance FROM user WHERE phone=?`;
+    const params = [phone]
+    const findFunc = find({ query, values: params });
+    const executedQueries = await queryTransactionWrapper<DBUser>([findFunc], msg);
+    if (!executedQueries) {
+        logger.error(msg + "SQL not results from execution", query)
+        return null
+    }
+    const [[rows]] = executedQueries;
+    if (rows.length === 0) {
+        return null
+    }
+    return rows[0]
+}
+
 export function getAdminUserOrder(orderBy:string[]): string {
     if(orderBy && orderBy.length>0) {
         const field = orderBy[0] ?? "id"
@@ -154,8 +171,8 @@ export async function addAnonymousUser(user: DBUser): Promise<DBUser | null> {
 
 export async function addUser(user: RegUser): Promise<DBUser | null> {
     const msg = msgGlobal + "addUser - ";
-    const query = `INSERT INTO user(name, email, password, is_register) VALUES(?, ?, ?, 1)`
-    const params = [user.name, user.email, md5(user.password)]
+    const query = `INSERT INTO user(name, email, phone, password, is_register) VALUES(?, ?, ?, ?, 1)`
+    const params = [user.name, user.email, user.phone ?? null, md5(user.password)]
     const insertFunc = insert({ query, values: params});
     const executedQueries = await executeTransactionWrapper<ResultSetHeader>([insertFunc], msg);
     if (!executedQueries) {
@@ -303,14 +320,21 @@ export async function profile(id: string, name: string, password: string, oldPas
     return user
 }
 
-export async function register(name: string, email: string, password: string): Promise<DBUser | null | undefined> {
+export async function register(name: string, email: string, password: string, phone: string | null = null): Promise<DBUser | null | undefined> {
     const msg = msgGlobal + "register - ";
     const user = await getUserByEmail(email)
     if (user !== null) {
         logger.error(msg + 'User exists', email, name)
         return undefined
     }
-    const regUser: RegUser = {name: name, email: email, password: password,}
+    if (phone) {
+        const byPhone = await getUserByPhone(phone)
+        if (byPhone !== null) {
+            logger.error(msg + 'User exists by phone', phone, name)
+            return undefined
+        }
+    }
+    const regUser: RegUser = {name: name, email: email, password: password, phone: phone}
 
     const userInserted = await addUser(regUser)
     if(userInserted === null) {

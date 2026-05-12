@@ -45,10 +45,10 @@ export function CaseModal({ caseItem, isOpen, onClose, openRatingSection, user, 
   }, [user.id, caseItem.id]);
 
   
-  // Определяем, это простой вопрос-ответ или полноценное дело
+  // Detect whether this is a simple Q&A or a full case
   const isSimpleQA = data?.count === 1;
 
-  // Автоматический скролл к последнему сообщению при открытии
+  // Auto-scroll to the latest message on open
   useEffect(() => {
     if (isOpen) {
       const timer = setTimeout(() => {
@@ -58,7 +58,7 @@ export function CaseModal({ caseItem, isOpen, onClose, openRatingSection, user, 
     }
   }, [isOpen]);
 
-  // Блокировка прокрутки фона
+  // Lock background scroll
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = "hidden";
@@ -73,7 +73,7 @@ export function CaseModal({ caseItem, isOpen, onClose, openRatingSection, user, 
   if(data === null) return (<>Не найдено...</>)
   const jobs = data.data
 
-  // Находим последнее сообщение юриста
+  // Find the lawyer's latest message
   const lastLawyerMessage = jobs.at(-1);
 
   const getStatusBadge = (status: number) => {
@@ -107,7 +107,7 @@ export function CaseModal({ caseItem, isOpen, onClose, openRatingSection, user, 
   };
 
   const handleSaveRating = async () => {
-    // Здесь будет логика сохранения оценки
+    // Rating save logic will go here
     console.log("Сохранение оценки:", rating, comment);
 
     const dataRequest: RatingFormI = {
@@ -139,7 +139,7 @@ export function CaseModal({ caseItem, isOpen, onClose, openRatingSection, user, 
     setIsRatingExpanded(false);
     setShowThankYou(true);
     
-    // Через 3.5 секунды скрываем "Спасибо" и показываем финальное состояние
+    // After 3.5 seconds hide "Thanks" and show the final state
     setTimeout(() => {
       setShowThankYou(false);
       setIsRatingSubmitted(true);
@@ -155,13 +155,13 @@ export function CaseModal({ caseItem, isOpen, onClose, openRatingSection, user, 
   }
 
   const handleAskClarification = async (questionOrId: string) => {
-    // Если пустая строка - закрываем форму
+    // Empty string — close the form
     if (questionOrId === "") {
       setAskClarificationMessageId("");
       return;
     }
     
-    // Если это текст вопроса (длинная строка) - добавляем сообщение
+    // If this is the question text (long string) — add a message
     if (questionOrId.length > 10) {
       const dataRequest: RequestFormI = {
         name: user.name ?? "",
@@ -193,13 +193,13 @@ export function CaseModal({ caseItem, isOpen, onClose, openRatingSection, user, 
       setAskClarificationMessageId("");
       setShowQuestionSaved(true);
       
-      // Через 3 секунды скрываем уведомление
+      // Hide notification after 3 seconds
       setTimeout(() => {setShowQuestionSaved(false);}, 3000);
       
-      // Скроллим к новому сообщению
+      // Scroll to the new message
       setTimeout(() => {messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });}, 100);
     } else {
-      // Если это ID - открываем форму
+      // If this is an ID — open the form
       setAskClarificationMessageId(questionOrId);
     }
   };
@@ -208,16 +208,16 @@ export function CaseModal({ caseItem, isOpen, onClose, openRatingSection, user, 
 
   return (
     <>
-      {/* Оверлей */}
+      {/* Overlay */}
       <div className="fixed inset-0 bg-black/50 z-40 transition-opacity" onClick={onClose}/>
 
-      {/* Модальное окно */}
+      {/* Modal window */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
         <div
           className="bg-white rounded-2xl shadow-2xl w-full max-w-[900px] max-h-[90vh] overflow-hidden pointer-events-auto flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Заголовок модального окна */}
+          {/* Modal header */}
           <div className="bg-[#323c54] p-6 flex items-start justify-between">
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-2">
@@ -229,9 +229,9 @@ export function CaseModal({ caseItem, isOpen, onClose, openRatingSection, user, 
               <p className="text-sm text-[rgba(255,255,255,0.7)] mb-1">Дата обращения: {format((new Date(caseItem.created_at)), dFormat)}</p>
               <p className="text-base text-white mt-3">{caseItem.question}</p>
               
-              {/* Кнопки действий */}
+              {/* Action buttons */}
               <div className="flex gap-3 mt-4">
-                {/* Кнопка задать уточняющий вопрос */}
+                {/* Ask follow-up question button */}
                 {lastLawyerMessage && [QuestionStatusesE.Approved, QuestionStatusesE.Spam].includes(caseItem.job_status) && (
                   <button onClick={() => setAskClarificationMessageId(lastLawyerMessage.id)}
                     className="text-[#8faaba] hover:text-white text-sm font-medium transition-colors flex items-center gap-2"
@@ -243,7 +243,7 @@ export function CaseModal({ caseItem, isOpen, onClose, openRatingSection, user, 
               </div>
             </div>
             <div className="flex items-start gap-3 ml-6">
-              {/* Кнопка задать новый вопрос юристу */}
+              {/* New question to lawyer button */}
               <Link href="#" onClick={() => openNewQuestion()} 
                 className="px-4 py-2 rounded-lg bg-[#8faaba] hover:bg-[#7a8fa0] text-white text-sm font-medium transition-colors whitespace-nowrap"
               >
@@ -259,14 +259,14 @@ export function CaseModal({ caseItem, isOpen, onClose, openRatingSection, user, 
             </div>
           </div>
 
-          {/* Блок оценки под header */}
+          {/* Rating block below header */}
           <div className="bg-[#323c54] px-6 py-4 border-t border-[rgba(255,255,255,0.1)]">
             <div className="flex items-center justify-between">
               <h3 className="text-base text-white">
                 {isRatingSubmitted ? "Ваша оценка работы юриста" : (isSimpleQA ? "Оценить работу юриста" : "Оцените консультацию")}
               </h3>
               
-              {/* Компактный блок с звездами */}
+              {/* Compact stars block */}
               <div className="flex items-center gap-4">
                 <button
                   onClick={handleRateClick}
@@ -296,22 +296,22 @@ export function CaseModal({ caseItem, isOpen, onClose, openRatingSection, user, 
               </div>
             </div>
 
-            {/* Дата и время оценки - показывать только если оценка выставлена */}
+            {/* Rating date/time — show only if rating is set */}
             {isRatingSubmitted && typeof ratingDate === "string" && (
               <p className="text-xs text-[rgba(255,255,255,0.5)] mt-2">Вы оценили дело {format((new Date(ratingDate)), dFormat)}</p>
             )}
 
-            {/* Отображение сохраненного комментария */}
+            {/* Saved comment display */}
             {isRatingSubmitted && savedComment && (
               <div className="mt-3 p-3 rounded-lg border border-[rgba(255,255,255,0.2)] bg-[rgba(255,255,255,0.05)]">
                 <p className="text-sm text-[rgba(255,255,255,0.8)] italic">{savedComment}</p>
               </div>
             )}
 
-            {/* Развернутая форма оценки */}
+            {/* Expanded rating form */}
             {isRatingExpanded && [QuestionStatusesE.Approved, QuestionStatusesE.Spam].includes(caseItem.job_status) && (
               <div className="bg-[rgba(143,170,186,0.15)] rounded-xl p-4 space-y-4 mt-4">
-                {/* Крупные звезды */}
+                {/* Large stars */}
                 <div>
                   <div className="flex gap-3 mb-3 justify-center">
                     {[1, 2, 3, 4, 5].map((star) => (
@@ -333,7 +333,7 @@ export function CaseModal({ caseItem, isOpen, onClose, openRatingSection, user, 
                   <p className="text-sm text-[rgba(255,255,255,0.9)] text-center">Средняя оценка: 4.8</p>
                 </div>
 
-                {/* Текстовое поле */}
+                {/* Text field */}
                 <div>
                   <label className="text-xs text-[rgba(255,255,255,0.7)] mb-1 block">
                     Ваш комментарий к оценке (необязательно)
@@ -346,7 +346,7 @@ export function CaseModal({ caseItem, isOpen, onClose, openRatingSection, user, 
                   />
                 </div>
 
-                {/* Кнопка сохранить */}
+                {/* Save button */}
                 <button
                   onClick={handleSaveRating}
                   className="w-full py-3 px-4 rounded-lg bg-[#8faaba] hover:bg-[#7a8fa0] text-white font-medium transition-colors"
@@ -354,24 +354,24 @@ export function CaseModal({ caseItem, isOpen, onClose, openRatingSection, user, 
               </div>
             )}
 
-            {/* Состояние "Спасибо" - анимация после первой отправки оценки */}
+            {/* "Thanks" state — animation after first rating submit */}
             {showThankYou && (
               <div className="bg-[rgba(143,170,186,0.2)] rounded-xl p-6 mt-4 text-center animate-in fade-in duration-300">
-                {/* Большая галочка */}
+                {/* Large checkmark */}
                 <div className="inline-flex items-center justify-center size-16 rounded-full bg-[#8faaba] mb-4">
                   <Check className="size-10 text-white stroke-[3]" />
                 </div>
                 
-                {/* Текст благодарности */}
+                {/* Thank-you text */}
                 <h4 className="text-xl text-[rgba(255,255,255,0.95)] font-medium mb-2">Спасибо! Ваш отзыв учтён</h4>
                 
-                {/* Средняя оценка */}
+                {/* Average rating */}
                 <p className="text-sm text-[rgba(255,255,255,0.8)]">Средняя оценка дела: 4.8</p>
               </div>
             )}
           </div>
 
-          {/* Прокручиваемый контент - Ход дела */}
+          {/* Scrollable content — case progress */}
           <div className="flex-1 overflow-y-auto p-6">
             <h3 className="text-lg text-[#29282b] font-medium mb-4">
               Ход вашего дела #{caseItem.id}
@@ -389,7 +389,7 @@ export function CaseModal({ caseItem, isOpen, onClose, openRatingSection, user, 
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Уведомление о сохранении вопроса */}
+            {/* Question saved notification */}
             {showQuestionSaved && (
               <div className="mt-4 bg-[rgba(143,170,186,0.2)] rounded-xl p-4 text-center animate-in fade-in duration-300">
                 <div className="inline-flex items-center justify-center size-12 rounded-full bg-[#8faaba] mb-3">
@@ -400,7 +400,7 @@ export function CaseModal({ caseItem, isOpen, onClose, openRatingSection, user, 
               </div>
             )}
 
-            {/* Кнопка задать уточняющий вопрос внизу */}
+            {/* Ask follow-up question button (bottom) */}
             {lastLawyerMessage && [QuestionStatusesE.Approved, QuestionStatusesE.Spam].includes(caseItem.job_status) && (
               <button onClick={() => setAskClarificationMessageId(lastLawyerMessage.id)}
                 className="w-full mt-6 py-4 px-6 rounded-lg bg-[#8faaba] hover:bg-[#7a8fa0] text-white font-medium transition-colors flex items-center justify-center gap-2"

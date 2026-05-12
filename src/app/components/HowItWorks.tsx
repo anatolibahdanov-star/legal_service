@@ -114,7 +114,7 @@ export function HowItWorks() {
           </p>
         </div>
 
-        {/* Табы */}
+        {/* Tabs */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:items-center lg:justify-center gap-4 mb-8">
           {services.map((service, index) => (
             <div key={index} className="flex flex-col lg:flex-row items-center">
@@ -135,10 +135,10 @@ export function HowItWorks() {
           ))}
         </div>
 
-        {/* Контент активного таба */}
+        {/* Active tab content */}
         <div className="bg-[#fefdf9] rounded-[40px] p-8 lg:p-12">
           <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 mb-8">
-            {/* Левая часть - список шагов */}
+            {/* Left side — steps list */}
             <div>
               <div className="space-y-6">
                 {services[activeTab].steps.map((step, index) => (
@@ -161,9 +161,9 @@ export function HowItWorks() {
               </div>
             </div>
 
-            {/* Правая часть - иллюстрация */}
+            {/* Right side — illustration */}
             <div className="flex flex-col items-center justify-center">
-              {/* Иллюстрация */}
+              {/* Illustration */}
               <div>
                 <Image
                   src={services[activeTab].image}
@@ -176,7 +176,7 @@ export function HowItWorks() {
             </div>
           </div>
 
-          {/* Кнопка по центру */}
+          {/* Centered button */}
           <div className="flex justify-center">
             <a
               href="#contact"

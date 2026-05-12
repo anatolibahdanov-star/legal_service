@@ -2,7 +2,7 @@ import logger from '@/src/libs/logger';
 
 const OTP_TTL_MS = 24 * 60 * 60 * 1000;
 const TOKEN_TTL_MS = 10 * 60 * 1000;
-const RESEND_COOLDOWN_MS = 30 * 1000;
+const RESEND_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 
 interface OtpEntry {
   code: string;

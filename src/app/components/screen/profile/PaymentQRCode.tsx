@@ -18,7 +18,7 @@ const PaymentQRCode = ({qrUrl}: PaymentQRCodePropsI) => {
         </p>
         <div className="mt-4 flex justify-center">
             <QRCodeSVG value={qrUrl} size={140} />
-          {/* <Image src={qrCode} alt="QR-код для оплаты через приложение Альфа-Банк"
+          {/* <Image src={qrCode} alt="QR code for payment via Alfa-Bank app"
             width={140} height={140} className="rounded-md border border-border"
           /> */}
         </div>

@@ -7,7 +7,7 @@ export function Header() {
     <header className="sticky top-0 z-50 bg-[#fefdf9]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between py-4">
-          {/* Лого */}
+          {/* Logo */}
           <div className="flex items-center gap-3">
             <Link href="/">
               <Image
@@ -24,7 +24,7 @@ export function Header() {
             </div>
           </div>
 
-          {/* Навигация */}
+          {/* Navigation */}
           <nav className="hidden md:flex items-center gap-8">
             <Link href="/" className="text-[#29282b] hover:text-[#8faaba] transition-colors cursor-pointer">Задать вопрос</Link>
             <Link href="/#about" className="text-[#29282b] hover:text-[#8faaba] transition-colors cursor-pointer">Почему мы?</Link>
@@ -32,7 +32,7 @@ export function Header() {
             <Link href="/about" className="text-[#29282b] hover:text-[#8faaba] transition-colors cursor-pointer">О нас</Link>
           </nav>
 
-          {/* Иконки соцсетей и кнопка */}
+          {/* Social icons and button */}
           <div className="flex items-center gap-4">
             {/* Telegram */}
             <a
@@ -87,7 +87,7 @@ export function Header() {
         </div>
       </div>
       
-      {/* Тонкая градиентная линия под header */}
+      {/* Thin gradient line below header */}
       <div className="h-px bg-gradient-to-r from-transparent via-[#8faaba]/30 to-transparent"></div>
     </header>
   );

@@ -59,10 +59,10 @@ export const ChatMessage = ({ message, isLastLawyerMessage, onAskClarification, 
     <>
       <div className="py-4 border-b border-[rgba(41,40,43,0.1)] last:border-b-0">
         <div className="flex gap-4">
-          {/* Аватарка */}
+          {/* Avatar */}
           <div className="size-12 rounded-full flex items-center justify-center shrink-0 text-sm font-medium bg-[#8faaba] text-white">{userShortName}</div>
 
-          {/* Контент */}
+          {/* Content */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between mb-2">
               <h4 className="text-sm font-medium text-[#29282b]">{userFullName}</h4>
@@ -82,10 +82,10 @@ export const ChatMessage = ({ message, isLastLawyerMessage, onAskClarification, 
 
       { message.final_reply && (<div className="py-4 border-b border-[rgba(41,40,43,0.1)] last:border-b-0">
         <div className="flex gap-4">
-          {/* Аватарка */}
+          {/* Avatar */}
           <div className="size-12 rounded-full flex items-center justify-center shrink-0 text-sm font-medium bg-[#323c54] text-white">{lawyerShortName}</div>
 
-          {/* Контент */}
+          {/* Content */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between mb-2">
               <h4 className="text-sm font-medium text-[#29282b]">{message.lawyer}</h4>
@@ -103,7 +103,7 @@ export const ChatMessage = ({ message, isLastLawyerMessage, onAskClarification, 
         </div>
       </div>)}
       
-      {/* Форма уточняющего вопроса */}
+      {/* Follow-up question form */}
       {showClarificationForm && isLastLawyerMessage && (
         <div className="ml-16 mt-4 bg-[rgba(143,170,186,0.1)] rounded-lg p-4 space-y-3">
           <label className="text-sm text-[#29282b] font-medium block">Ваш уточняющий вопрос</label>

@@ -2,8 +2,8 @@ import logger from "@/src/libs/logger"
 import { User } from "next-auth";
 import { CustomResponseDataI } from "../interfaces/api";
 
-// const ALFA_API_URL = 'https://pay.alfabank.ru/payment/rest'; // Или тестовый URL
-const ALFA_API_URL = 'https://alfa.rbsuat.com/payment/rest'; // Или тестовый URL
+// const ALFA_API_URL = 'https://pay.alfabank.ru/payment/rest'; // Or test URL
+const ALFA_API_URL = 'https://alfa.rbsuat.com/payment/rest'; // Or test URL
 const ALFA_API_URL_DYN = 'https://alfa.rbsuat.com/payment/rest/sbp/c2b/qr/dynamic/get.do'
 const USERNAME = process.env.ALFA_USERNAME;
 const PASSWORD = process.env.ALFA_PASSWORD;
@@ -12,7 +12,7 @@ const msgGlobal = "LIBS ALFA.PAY "
 
 export const createAlfaOrder = async (amount: number, orderId: string, user: User): Promise<CustomResponseDataI> => {
   const msg = msgGlobal + "createAlfaOrder - "
-  // const ALFA_API_URL = 'https://pay.alfabank.ru/payment/rest'; // Или тестовый URL
+  // const ALFA_API_URL = 'https://pay.alfabank.ru/payment/rest'; // Or test URL
   const ALFA_API_URL = 'https://alfa.rbsuat.com/payment/rest';
   const domainUrl = process.env.NEXT_PUBLIC_URL
   const orderPrefix = process.env.NODE_ENV === 'development' ? 'dev-' : ''
@@ -29,8 +29,8 @@ export const createAlfaOrder = async (amount: number, orderId: string, user: Use
             returnUrl: domainUrl + '/balance/success',
             failUrl: domainUrl + '/balance/unsuccess',
             // dynamicCallbackUrl: domainUrlApi + '/alfacallbacks',
-            // currency: '643', // Рубли
-            paymentType: 'SBP', // Обязательно для QR
+            // currency: '643', // Rubles
+            paymentType: 'SBP', // Required for QR
         }),
     });
 

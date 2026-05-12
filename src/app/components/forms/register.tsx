@@ -8,7 +8,8 @@ import { submitRegisterFormAction } from "@/src/app/components/forms/action/regi
 import { RegisterFormI, FormContainerProps } from "@/src/interfaces/form";
 
 const FIELD_BG = "bg-[#EFE7D8]";
-const PASSWORD_MIN_LENGTH = 8;
+const PASSWORD_MIN_LENGTH = 6;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const HAS_LATIN_LETTER = /[a-zA-Z]/;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -32,8 +33,9 @@ export default function RegisterForm({ onClose, onSwitchToLogin }: FormContainer
   const [submitting, setSubmitting] = useState(false);
 
   const emailValid = useMemo(() => EMAIL_REGEX.test(email), [email]);
-  const passwordValid =
-    password.length >= PASSWORD_MIN_LENGTH && HAS_LATIN_LETTER.test(password);
+  // const passwordValid =
+  //   password.length >= PASSWORD_MIN_LENGTH && HAS_LATIN_LETTER.test(password);
+  const passwordValid = password.length >= PASSWORD_MIN_LENGTH;
   const canSubmit =
     name.trim().length > 0 &&
     emailValid &&
@@ -45,7 +47,7 @@ export default function RegisterForm({ onClose, onSwitchToLogin }: FormContainer
   const passwordPolicyError = (value: string): string => {
     if (!value) return "";
     if (value.length < PASSWORD_MIN_LENGTH) return `Минимум ${PASSWORD_MIN_LENGTH} символов`;
-    if (!HAS_LATIN_LETTER.test(value)) return "Должна быть хотя бы одна латинская буква";
+    // if (!HAS_LATIN_LETTER.test(value)) return "There must be at least one Latin letter";
     return "";
   };
 
@@ -194,7 +196,7 @@ export default function RegisterForm({ onClose, onSwitchToLogin }: FormContainer
               autoComplete="new-password"
               value={password}
               onChange={(e) => handlePasswordChange(e.target.value)}
-              placeholder="Минимум 8 символов, латинские буквы"
+              placeholder="Минимум 6 символов"
               className={`w-full h-full pl-[44px] pr-[44px] bg-transparent text-[15px] text-[#0F1B2D] placeholder:text-[#0F1B2D]/40 rounded-[14px] outline-none ring-2 ${
                 errors.password ? "ring-red-400" : "ring-transparent focus:ring-[#9BB7C9]"
               } transition-all`}

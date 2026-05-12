@@ -21,15 +21,16 @@ export const emptyValidator = (value: string): boolean => {
     return true;
 }
 
-const PASSWORD_MIN_LENGTH = 8;
+const PASSWORD_MIN_LENGTH = 6;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const HAS_LATIN_LETTER = /[a-zA-Z]/;
 
 export const validatePasswordPolicy = (password: string): string | null => {
     if (password.length < PASSWORD_MIN_LENGTH) {
         return `Минимум ${PASSWORD_MIN_LENGTH} символов`;
     }
-    if (!HAS_LATIN_LETTER.test(password)) {
-        return "Должна быть хотя бы одна латинская буква";
-    }
+    // if (!HAS_LATIN_LETTER.test(password)) {
+    //     return "There must be at least one Latin letter";
+    // }
     return null;
 };

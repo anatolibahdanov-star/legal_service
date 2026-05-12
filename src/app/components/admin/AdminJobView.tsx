@@ -50,7 +50,7 @@ export const AdminJobView = ({record, jobs}: AdminJobViewPropsI) => {
                 </div>
             </div>
 
-            {/* Блок оценки под header */}
+            {/* Rating block below header */}
             {record.rating && record.rating_date && (
                 <div className="w-full bg-[#323c54] px-6 py-4 border-t border-[rgba(255,255,255,0.1)]">
                     <div className="flex items-center justify-between">
@@ -66,10 +66,10 @@ export const AdminJobView = ({record, jobs}: AdminJobViewPropsI) => {
                         </div>
                     </div>
 
-                    {/* Дата и время оценки - показывать только если оценка выставлена */}
+                    {/* Rating date/time — show only if rating is set */}
                     <p className="text-xs text-[rgba(255,255,255,0.5)] mt-2">Вы оценили дело {format((new Date(record.rating_date)), dFormat)}</p>
 
-                    {/* Отображение сохраненного комментария */}
+                    {/* Saved comment display */}
                     {record.comment && (
                         <div className="mt-3 p-3 rounded-lg border border-[rgba(255,255,255,0.2)] bg-[rgba(255,255,255,0.05)]">
                             <p className="text-sm text-[rgba(255,255,255,0.8)] italic">{record.comment}</p>

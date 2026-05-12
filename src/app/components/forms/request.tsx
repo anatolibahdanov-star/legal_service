@@ -112,7 +112,7 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
                     {!parent && (<div className="flex items-center justify-between mb-3">
                         <h2 className="text-2xl font-bold text-white">Задать вопрос юристу</h2>
                         
-                        {/* Иконка Онлайн */}
+                        {/* Online icon */}
                         <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full">
                             <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                             <span className="text-[#323c54] text-base font-medium">ОНЛАЙН</span>

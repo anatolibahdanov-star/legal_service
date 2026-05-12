@@ -89,8 +89,8 @@ export async function POST(request: NextRequest) {
 
   const result = verifyOtp(normalized.e164, code);
   if (!result.ok) {
-    // По BPMN счётчик растёт и при неверном коде, и при истёкшем коде.
-    // not_found — не считаем (OTP не запрашивался или уже использован).
+    // Per BPMN, the counter grows on both wrong and expired codes.
+    // not_found — not counted (OTP was not requested or already used).
     if (result.reason === 'invalid' || result.reason === 'expired') {
       const fail = await recordFailedAttempt(normalized.e164);
       if (fail.action === 'lock_24h') {
@@ -145,7 +145,7 @@ export async function POST(request: NextRequest) {
   const password = generatePassword();
   const name = phoneToDefaultName(normalized.e164);
 
-  const user = await register(name, email, password);
+  const user = await register(name, email, password, normalized.e164);
   if (user === undefined) {
     logger.warn(msg + 'race: user appeared between send and verify', {
       phone_tail: normalized.digits.slice(-4),
