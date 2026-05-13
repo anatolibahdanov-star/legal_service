@@ -6,13 +6,13 @@ import { pruneExpiredOtp } from '@/src/libs/otpStore';
 const STALE_RETENTION_DAYS = 30;
 
 /**
- * Удаляет «устаревшие» строки из БД-таблиц anti-bruteforce-счётчиков:
+ * Deletes "stale" rows from anti-bruteforce DB tables:
  *  - otp_attempts.updated_at < NOW() - STALE_RETENTION_DAYS
  *  - login_attempts.updated_at < NOW() - STALE_RETENTION_DAYS
  *
- * Это housekeeping — функционально lazy-reset в repo уже обнуляет счётчики
- * при следующем неудачном вводе. Здесь просто чистим старые записи юзеров,
- * которые после ошибки больше никогда не возвращались.
+ * Housekeeping — functionally, lazy-reset in the repo already zeroes the counters
+ * on the next failed attempt. Here we just clean up old records for users
+ * who never came back after an error.
  */
 export const cleanupAuthAttemptsDb = async (): Promise<void> => {
   const msg = 'CRON cleanupAuthAttemptsDb - ';
@@ -40,9 +40,9 @@ export const cleanupAuthAttemptsDb = async (): Promise<void> => {
 };
 
 /**
- * Удаляет истёкшие OTP-коды и verify-токены из in-memory store.
- * Lazy-cleanup при verify тоже работает, но Map растёт между обращениями
- * для номеров, которые получили код и не вернулись верифицировать.
+ * Deletes expired OTP codes and verify tokens from the in-memory store.
+ * Lazy cleanup on verify also works, but the Map grows between requests
+ * for phones that received a code and never came back to verify.
  */
 export const cleanupOtpStoreMemory = (): void => {
   const msg = 'CRON cleanupOtpStoreMemory - ';

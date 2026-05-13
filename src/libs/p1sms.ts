@@ -70,8 +70,8 @@ const SMS_SEGMENT_GSM = 160;
 const SMS_SEGMENT_UCS2 = 70;
 
 // 3GPP TS 23.038 — GSM-7 default alphabet + extension table.
-// Если каждый символ текста есть в этом наборе — SMS кодируется GSM-7 (160 chars/segment),
-// иначе UCS-2 (70 chars/segment).
+// If every text character is in this set, the SMS is encoded as GSM-7 (160 chars/segment),
+// otherwise UCS-2 (70 chars/segment).
 const GSM7_CHARS =
   '@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ !"#¤%&\'()*+,-./0123456789:;<=>?¡' +
   'ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà' +

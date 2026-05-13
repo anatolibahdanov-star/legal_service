@@ -11,7 +11,7 @@ export default function RequestFormWindow({ isOpen, onClose, setCurrent, setPage
       <div className="bg-[#3d4b5e] rounded-[24px] p-[40px] w-full max-w-[540px] relative"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Кнопка закрытия */}
+        {/* Close button */}
         <button
           onClick={onClose}
           className="absolute top-[20px] right-[20px] text-white/60 hover:text-white transition-colors"

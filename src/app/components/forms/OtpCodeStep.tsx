@@ -1,18 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { ArrowRight } from "lucide-react";
+import {
+  useOtpStep,
+  formatOtpDuration,
+  OtpStepResult,
+} from "@/src/app/components/forms/hooks/useOtpStep";
+
+export type { OtpStepResult };
 
 const FIELD_BG = "bg-[#EFE7D8]";
 const CODE_LENGTH = 6;
-
-export interface OtpStepResult {
-  ok: boolean;
-  message?: string;
-  cooldownUntil?: string | Date | null;
-  lockedUntil?: string | Date | null;
-  attemptsLeft?: number | null;
-}
 
 interface Props {
   phone: string;
@@ -26,120 +25,25 @@ interface Props {
   initialResendCooldown?: number;
 }
 
-const toDate = (v: string | Date | null | undefined): Date | null => {
-  if (!v) return null;
-  const d = v instanceof Date ? v : new Date(v);
-  return isNaN(d.getTime()) ? null : d;
-};
-
-const formatMmSs = (totalSeconds: number): string => {
-  if (totalSeconds <= 0) return "0:00";
-  const m = Math.floor(totalSeconds / 60);
-  const s = totalSeconds % 60;
-  return `${m}:${s.toString().padStart(2, "0")}`;
-};
-
 export default function OtpCodeStep({
   phone,
   onVerify,
   onResend,
   onChangePhone,
-  initialResendCooldown = 30,
+  initialResendCooldown = 24 * 60 * 60,
 }: Props) {
-  const [code, setCode] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string>("");
-  const [attemptsLeft, setAttemptsLeft] = useState<number | null>(null);
-
-  const [cooldownUntil, setCooldownUntil] = useState<Date | null>(null);
-  const [lockedUntil, setLockedUntil] = useState<Date | null>(null);
-  const [nowMs, setNowMs] = useState<number>(() => Date.now());
-
-  const [resendUntil, setResendUntil] = useState<Date | null>(() =>
-    initialResendCooldown > 0 ? new Date(Date.now() + initialResendCooldown * 1000) : null,
-  );
+  const otp = useOtpStep({
+    codeLength: CODE_LENGTH,
+    resendCooldownSec: initialResendCooldown,
+    onVerify,
+    onResend,
+  });
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const canChangePhone = !otp.verifying;
 
   useEffect(() => {
-    const id = setInterval(() => setNowMs(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, []);
-
-  const cooldownActive = !!cooldownUntil && cooldownUntil.getTime() > nowMs;
-  const lockoutActive = !!lockedUntil && lockedUntil.getTime() > nowMs;
-  const cooldownRemainingSec = cooldownActive
-    ? Math.ceil((cooldownUntil!.getTime() - nowMs) / 1000)
-    : 0;
-  const resendRemainingSec = resendUntil
-    ? Math.max(0, Math.ceil((resendUntil.getTime() - nowMs) / 1000))
-    : 0;
-
-  const inputDisabled = submitting || cooldownActive || lockoutActive;
-  const canSubmit = code.length === CODE_LENGTH && !inputDisabled;
-  const canResend = !submitting && !cooldownActive && !lockoutActive && resendRemainingSec === 0;
-  const canChangePhone = !lockoutActive && !submitting;
-
-  useEffect(() => {
-    if (!inputDisabled) {
-      inputRef.current?.focus();
-    }
-  }, [inputDisabled]);
-
-  const handleSubmit = useCallback(
-    async (e: React.FormEvent) => {
-      e.preventDefault();
-      if (!canSubmit) return;
-      setErrorMessage("");
-      setSubmitting(true);
-      const res = await onVerify(code);
-      setSubmitting(false);
-      if (res.ok) return;
-      const newCooldown = toDate(res.cooldownUntil);
-      const newLocked = toDate(res.lockedUntil);
-      if (newLocked) setLockedUntil(newLocked);
-      if (newCooldown) setCooldownUntil(newCooldown);
-      if (res.message) setErrorMessage(res.message);
-      setAttemptsLeft(typeof res.attemptsLeft === "number" ? res.attemptsLeft : null);
-      setCode("");
-    },
-    [canSubmit, code, onVerify],
-  );
-
-  const handleResend = useCallback(async () => {
-    if (!canResend) return;
-    setErrorMessage("");
-    setSubmitting(true);
-    const res = await onResend();
-    setSubmitting(false);
-    if (res.ok) {
-      setResendUntil(new Date(Date.now() + initialResendCooldown * 1000));
-      setCode("");
-      setCooldownUntil(null);
-      setAttemptsLeft(null);
-      return;
-    }
-    const newCooldown = toDate(res.cooldownUntil);
-    const newLocked = toDate(res.lockedUntil);
-    if (newLocked) setLockedUntil(newLocked);
-    if (newCooldown) setCooldownUntil(newCooldown);
-    if (res.message) setErrorMessage(res.message);
-  }, [canResend, onResend, initialResendCooldown]);
-
-  const banner = useMemo(() => {
-    if (lockoutActive) {
-      return {
-        kind: "lockout" as const,
-        text: "Слишком много попыток. Номер заблокирован на 24 часа.",
-      };
-    }
-    if (cooldownActive) {
-      return {
-        kind: "cooldown" as const,
-        text: `Слишком много попыток. Попробуйте через ${formatMmSs(cooldownRemainingSec)}.`,
-      };
-    }
-    return null;
-  }, [lockoutActive, cooldownActive, cooldownRemainingSec]);
+    if (!otp.inputDisabled) inputRef.current?.focus();
+  }, [otp.inputDisabled]);
 
   return (
     <>
@@ -163,20 +67,27 @@ export default function OtpCodeStep({
         </p>
       </div>
 
-      {banner && (
+      {otp.blockBanner && (
         <div
           className={`mb-[18px] px-[16px] py-[12px] rounded-[12px] text-[13px] leading-[18px] ${
-            banner.kind === "lockout"
+            otp.blockBanner.kind === "lockout"
               ? "bg-red-50 text-red-700 border border-red-200"
               : "bg-amber-50 text-amber-700 border border-amber-200"
           }`}
           role="alert"
         >
-          {banner.text}
+          {otp.blockBanner.text}
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-[18px]" noValidate>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          void otp.submit();
+        }}
+        className="flex flex-col gap-[18px]"
+        noValidate
+      >
         <div className="flex flex-col gap-[8px]">
           <label className="font-semibold text-[14px] text-[#0F1B2D]">Код из SMS</label>
           <div className={`relative h-[52px] rounded-[14px] ${FIELD_BG}`}>
@@ -186,52 +97,50 @@ export default function OtpCodeStep({
               inputMode="numeric"
               autoComplete="one-time-code"
               maxLength={CODE_LENGTH}
-              value={code}
-              disabled={inputDisabled}
-              onChange={(e) => {
-                setCode(e.target.value.replace(/\D/g, "").slice(0, CODE_LENGTH));
-                if (errorMessage) setErrorMessage("");
-                if (attemptsLeft !== null) setAttemptsLeft(null);
-              }}
+              value={otp.code}
+              disabled={otp.inputDisabled}
+              onChange={(e) => otp.onCodeChange(e.target.value)}
               placeholder="••••••"
               className={`w-full h-full px-[16px] bg-transparent text-[20px] tracking-[8px] text-center text-[#0F1B2D] placeholder:text-[#0F1B2D]/30 rounded-[14px] outline-none ring-2 ${
-                errorMessage && !banner ? "ring-red-400" : "ring-transparent focus:ring-[#9BB7C9]"
+                otp.error && !otp.blockBanner
+                  ? "ring-red-400"
+                  : "ring-transparent focus:ring-[#9BB7C9]"
               } transition-all disabled:opacity-60 disabled:cursor-not-allowed`}
             />
           </div>
           <p className="text-[12px] text-[#6B7280] ml-[4px]">Срок действия кода — 24 часа.</p>
-          {errorMessage && !banner && (
-            <p className="text-[12px] text-red-500 ml-[4px]">{errorMessage}</p>
+          {otp.error && !otp.blockBanner && (
+            <p className="text-[12px] text-red-500 ml-[4px]">{otp.error}</p>
           )}
-          {!banner && attemptsLeft !== null && attemptsLeft > 0 && (
+          {!otp.blockBanner && otp.attemptsLeft !== null && otp.attemptsLeft > 0 && (
             <p className="text-[12px] text-[#6B7280] ml-[4px]">
-              Осталось попыток: <span className="font-bold text-[#0F1B2D]">{attemptsLeft}</span>
+              Осталось попыток: <span className="font-bold text-[#0F1B2D]">{otp.attemptsLeft}</span>
             </p>
           )}
         </div>
 
         <button
           type="submit"
-          disabled={!canSubmit}
+          disabled={!otp.canSubmit}
           className={`h-[52px] rounded-[14px] font-semibold text-[15px] flex items-center justify-center gap-[8px] transition-all ${
-            canSubmit
+            otp.canSubmit
               ? "bg-[#5A8FB5] text-white hover:bg-[#4A7EA3]"
               : "bg-[#D6E3EF] text-[#0F1B2D]/50 cursor-not-allowed"
           }`}
         >
-          {submitting ? "Проверяем…" : "Подтвердить"}
-          {!submitting && <ArrowRight className="w-4 h-4" />}
+          {otp.verifying ? "Проверяем…" : "Подтвердить"}
+          {!otp.verifying && <ArrowRight className="w-4 h-4" />}
         </button>
 
         <div className="flex items-center justify-center">
           <button
             type="button"
-            onClick={handleResend}
-            disabled={!canResend}
+            onClick={() => void otp.resend()}
+            disabled={!otp.canResend}
             className="text-[14px] font-semibold text-[#3B82F6] hover:text-[#2563EB] transition-colors disabled:text-[#0F1B2D]/40 disabled:cursor-not-allowed"
           >
-            {resendRemainingSec > 0
-              ? `Отправить код повторно (${resendRemainingSec})`
+            {otp.resendRemainingSec > 0
+              ? `Отправить код повторно (${formatOtpDuration(otp.resendRemainingSec)})`
               : "Отправить код повторно"}
           </button>
         </div>

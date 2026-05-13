@@ -70,7 +70,7 @@ export default function AuthForm({
   const passwordPolicyError = (value: string): string => {
     if (!value) return "";
     if (value.length < PASSWORD_MIN_LENGTH) return `Минимум ${PASSWORD_MIN_LENGTH} символов`;
-    // if (!HAS_LATIN_LETTER.test(value)) return "Должна быть хотя бы одна латинская буква";
+    // if (!HAS_LATIN_LETTER.test(value)) return "There must be at least one Latin letter";
     return "";
   };
 
@@ -253,7 +253,7 @@ export default function AuthForm({
         onChangePhone={() => {
           goBackToPhoneStep();
         }}
-        initialResendCooldown={30}
+        initialResendCooldown={24 * 60 * 60}
       />
     );
   }

@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-const ALFA_API_URL = 'https://pay.alfabank.ru/payment/rest'; // Или тестовый URL
+const ALFA_API_URL = 'https://pay.alfabank.ru/payment/rest'; // Or test URL
 const USERNAME = process.env.ALFA_USERNAME;
 const PASSWORD = process.env.ALFA_PASSWORD;
 
@@ -10,7 +10,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const { amount, orderNumber } = req.body;
 
   try {
-    // 1. Запрос к Альфа API для создания СБП заказа
+    // 1. Request to Alfa API to create an SBP order
     const response = await fetch(`${ALFA_API_URL}/register.do`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -20,8 +20,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         amount: String(amount),
         orderNumber: orderNumber,
         returnUrl: 'https://your-site.com/success',
-        currency: '643', // Рубли
-        paymentType: 'SBP', // Обязательно для QR
+        currency: '643', // Rubles
+        paymentType: 'SBP', // Required for QR
       }),
     });
 
@@ -31,8 +31,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: data.errorMessage });
     }
 
-    // 2. Получение данных для QR (например, URL на оплату)
-    // Банк возвращает orderId, нужно запросить qr-код отдельно, если не пришел сразу
+    // 2. Fetch QR data (e.g. payment URL)
+    // Bank returns orderId; fetch the QR code separately if it doesn't arrive immediately
     res.status(200).json({ qrUrl: data.qrUrl, orderId: data.orderId });
 
   } catch (error) {

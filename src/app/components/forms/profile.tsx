@@ -79,13 +79,13 @@ export default function ProfileForm() {
         )}
         
         <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-[32px]" noValidate>
-            {/* Левая колонка - персональные данные */}
+            {/* Left column — personal data */}
             <div className="flex flex-col gap-[16px]">
                 <h3 className="font-['Inter:Medium',sans-serif] font-medium leading-[24px] text-[18px] text-[rgba(255,255,255,0.9)] mb-[8px]">
                     Персональные данные
                 </h3>
 
-            {/* Имя поле */}
+            {/* Name field */}
             <div className="flex flex-col gap-[8px]">
                 <label className="font-['Inter:Medium',sans-serif] font-medium leading-[20px] text-[14px] text-[rgba(255,255,255,0.9)]">
                 Ваше имя: *
@@ -115,7 +115,7 @@ export default function ProfileForm() {
                 )}
             </div>
 
-            {/* Email поле (только для отображения) */}
+            {/* Email field (read-only) */}
             <div className="flex flex-col gap-[8px]">
                 <label className="font-['Inter:Medium',sans-serif] font-medium leading-[20px] text-[14px] text-[rgba(255,255,255,0.9)]">
                 Электронная почта:
@@ -134,13 +134,13 @@ export default function ProfileForm() {
             </div>
             </div>
 
-            {/* Правая колонка - изменение пароля */}
+            {/* Right column — change password */}
             <div className="flex flex-col gap-[16px]">
                 <h3 className="font-['Inter:Medium',sans-serif] font-medium leading-[24px] text-[18px] text-[rgba(255,255,255,0.9)] mb-[8px]">
                     Изменение пароля
                 </h3>
 
-                {/* Текущий пароль */}
+                {/* Current password */}
                 <div className="flex flex-col gap-[8px]">
                     <label className="font-['Inter:Medium',sans-serif] font-medium leading-[20px] text-[14px] text-[rgba(255,255,255,0.9)]">
                     Текущий пароль:
@@ -170,7 +170,7 @@ export default function ProfileForm() {
                     )}
                 </div>
 
-                {/* Новый пароль поле */}
+                {/* New password field */}
                 <div className="flex flex-col gap-[8px]">
                     <label className="font-['Inter:Medium',sans-serif] font-medium leading-[20px] text-[14px] text-[rgba(255,255,255,0.9)]">
                     Новый пароль:
@@ -200,7 +200,7 @@ export default function ProfileForm() {
                     )}
                 </div>
 
-                {/* Подтверждение нового пароля поле */}
+                {/* Confirm new password field */}
                 <div className="flex flex-col gap-[8px]">
                     <label className="font-['Inter:Medium',sans-serif] font-medium leading-[20px] text-[14px] text-[rgba(255,255,255,0.9)]">
                     Подтверждение пароля:
@@ -231,7 +231,7 @@ export default function ProfileForm() {
                 </div>
             </div>
 
-            {/* Кнопки */}
+            {/* Buttons */}
             <div className="col-span-2 flex gap-[16px] justify-end mt-[8px]">
                 <button
                     type="submit"

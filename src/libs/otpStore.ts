@@ -2,7 +2,7 @@ import logger from '@/src/libs/logger';
 
 const OTP_TTL_MS = 24 * 60 * 60 * 1000;
 const TOKEN_TTL_MS = 10 * 60 * 1000;
-const RESEND_COOLDOWN_MS = 30 * 1000;
+const RESEND_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 
 interface OtpEntry {
   code: string;
@@ -104,6 +104,22 @@ export const consumeVerifyToken = (phone: string, token: string): boolean => {
   }
   otpTokens.delete(phone);
   return true;
+};
+
+/**
+ * Validates a verify token WITHOUT consuming it.
+ * Used by the question wizard, where the same token may be presented multiple
+ * times (verify → profile save → signIn) before finally being consumed.
+ */
+export const peekVerifyToken = (phone: string, token: string): boolean => {
+  const entry = otpTokens.get(phone);
+  if (!entry) return false;
+  const now = Date.now();
+  if (now > entry.expiresAt) {
+    otpTokens.delete(phone);
+    return false;
+  }
+  return entry.token === token;
 };
 
 export const pruneExpiredOtp = (): { otpDeleted: number; tokenDeleted: number } => {

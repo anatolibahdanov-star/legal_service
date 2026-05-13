@@ -10,6 +10,7 @@ export interface SendOtpPayload {
 export interface VerifyOtpPayload {
   phone: string;
   code: string;
+  wizardMode?: boolean;
 }
 
 export async function sendPhoneOtpAction(payload: SendOtpPayload): Promise<CustomResponseDataI> {

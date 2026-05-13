@@ -45,6 +45,7 @@ export interface DBUser extends RowDataPacket, User {
   id: string;
   name: string;
   email: string;
+  phone?: string | null;
   new_password?: string;
   password: string;
   username: string;
@@ -54,6 +55,7 @@ export interface DBUser extends RowDataPacket, User {
   is_super?: boolean;
   is_super_bool?: string;
   is_register?: boolean;
+  is_first_question_free?: number;
   status?: number;
   created_at: DateTime;
 }
@@ -70,6 +72,7 @@ export interface DBOrder extends RowDataPacket {
   user_name: string;
   amount: number;
   ptype: OrderTypeE;
+  question_id?: number | null;
   alpha_id: string;
   alpha_status: AlfaOrderStatusE;
   alpha_qr_url: string;

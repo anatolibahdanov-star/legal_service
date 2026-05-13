@@ -28,6 +28,7 @@ export interface RegUser {
   name: string;
   email: string;
   password: string;
+  phone?: string | null;
 }
 
 export interface CustomResponseDataI {
@@ -45,6 +46,10 @@ export interface UserBalanceRequest {
     orderNumber: string;
     type?: OrderTypeE;
     status?: OrderStatusE;
+    /** Free-form payload stored in porder.data — used by wizard OneTime
+     *  orders to carry the question text across the Alfa redirect. */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    data?: Record<string, any> | null;
 }
 
 export interface PaymentInfoRequest {

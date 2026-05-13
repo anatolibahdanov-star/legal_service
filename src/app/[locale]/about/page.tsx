@@ -106,7 +106,7 @@ export default async function AboutPage({
         <section className="py-8 px-4 bg-[#fefdf9]">
           <div className="max-w-7xl mx-auto">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* Stat 1 - Закрытых дел */}
+              {/* Stat 1 — Closed cases */}
               <div className="bg-gradient-to-br from-[#3d4b5e] to-[#2a3542] rounded-[10px] border border-[#576582] px-[13px] py-3 flex gap-3 items-center">
                 <div className="shrink-0 w-7 h-7">
                   <CheckCircle className="w-7 h-7 text-[#87b7ce]" strokeWidth={2} />
@@ -126,7 +126,7 @@ export default async function AboutPage({
                 </div>
               </div>
 
-              {/* Stat 2 - Процент успеха */}
+              {/* Stat 2 — Success rate */}
               <div className="bg-gradient-to-br from-[#3d4b5e] to-[#2a3542] rounded-[10px] border border-[#576582] px-[13px] py-3 flex gap-3 items-center">
                 <div className="shrink-0 w-7 h-7">
                   <TrendingUp className="w-7 h-7 text-[#87b7ce]" strokeWidth={2} />
@@ -146,7 +146,7 @@ export default async function AboutPage({
                 </div>
               </div>
 
-              {/* Stat 3 - Опыт работы */}
+              {/* Stat 3 — Experience */}
               <div className="bg-gradient-to-br from-[#3d4b5e] to-[#2a3542] rounded-[10px] border border-[#576582] px-[13px] py-3 flex gap-3 items-center">
                 <div className="shrink-0 w-7 h-7">
                   <Award className="w-7 h-7 text-[#87b7ce]" strokeWidth={2} />
@@ -166,7 +166,7 @@ export default async function AboutPage({
                 </div>
               </div>
 
-              {/* Stat 4 - Доступность */}
+              {/* Stat 4 — Availability */}
               <div className="bg-gradient-to-br from-[#3d4b5e] to-[#2a3542] rounded-[10px] border border-[#576582] px-[13px] py-3 flex gap-3 items-center">
                 <div className="shrink-0 w-7 h-7">
                   <Clock className="w-7 h-7 text-[#87b7ce]" strokeWidth={2} />
@@ -225,7 +225,7 @@ export default async function AboutPage({
               </h2>
             </div>
 
-            {/* Карта Яндекс */}
+            {/* Yandex map */}
             <Yandex />
           </div>
         </section>

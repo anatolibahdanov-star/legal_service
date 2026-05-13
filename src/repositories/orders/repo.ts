@@ -151,9 +151,10 @@ export async function deleteOrder(id: string): Promise<DBOrder | null> {
 
 export async function createEmptyOrder(userId: string, userOrder: UserBalanceRequest): Promise<DBOrder | null> {
     const msg = msgGlobal + "createEmptyOrder - ";
-    const query = `INSERT INTO porder(user_id, amount, order_type, status, alpha_id, alpha_status, alpha_qr_url, alpha_form_url) 
-    VALUES(?, ?, ?, ?, '', ?, '', '')`
-    const params = [userId, userOrder.amount, userOrder.type, userOrder.status, AlfaOrderStatusE.New]
+    const dataJson = userOrder.data ? JSON.stringify(userOrder.data) : null;
+    const query = `INSERT INTO porder(user_id, amount, order_type, status, alpha_id, alpha_status, alpha_qr_url, alpha_form_url, data)
+    VALUES(?, ?, ?, ?, '', ?, '', '', ?)`
+    const params = [userId, userOrder.amount, userOrder.type, userOrder.status, AlfaOrderStatusE.New, dataJson]
     const insertFunc = insert({ query, values: params});
     const executedQueries = await executeTransactionWrapper<ResultSetHeader>([insertFunc], msg);
     if (!executedQueries) {
@@ -232,6 +233,32 @@ export async function updateOrderStatus(orderInfo: PaymentStatusUpdateI): Promis
     }
 
     return getOrderById(orderInfo.order_id)
+}
+
+/**
+ * Links a payment order to a question. Used after wizard balance/card payments
+ * to make the order traceable to the funded question (audit + future receipts).
+ */
+export async function updateOrderQuestionLink(
+    orderId: string | number,
+    questionId: string | number,
+): Promise<boolean> {
+    const msg = msgGlobal + "updateOrderQuestionLink - ";
+    const query = `UPDATE porder SET question_id = ?, updated_at = NOW() WHERE id = ?`;
+    const params = [questionId, orderId];
+    const updateFunc = update({ query, values: params });
+    const executed = await executeTransactionWrapper<ResultSetHeader>([updateFunc], msg);
+    if (!executed) {
+        logger.error(msg + 'SQL failed', { order_id: orderId, question_id: questionId });
+        return false;
+    }
+    const affected = executed[0]?.[0]?.affectedRows ?? 0;
+    if (!affected) {
+        logger.warn(msg + 'no rows updated', { order_id: orderId, question_id: questionId });
+        return false;
+    }
+    logger.info(msg + 'linked', { order_id: orderId, question_id: questionId });
+    return true;
 }
 
 export async function getActiveOrderByUserId(userId: string): Promise<DBOrder | null | undefined> {

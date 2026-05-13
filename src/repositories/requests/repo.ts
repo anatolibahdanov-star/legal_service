@@ -1,7 +1,7 @@
 import logger from "@/src/libs/logger"
 import {find, findOne, insert, queryTransactionWrapper, executeTransactionWrapper, update, remove} from '@/src/libs/db';
 import { ResultSetHeader } from 'mysql2/promise';
-import {addAnonymousUser} from "@/src/repositories/users/repo"
+import {addAnonymousUser, markFirstQuestionUsed} from "@/src/repositories/users/repo"
 import { randomUUID } from 'node:crypto';
 import {CountResult, DBQuestion, DBUser} from "@/src/interfaces/db"
 import {DBFilterQuestions} from "@/src/interfaces/filters"
@@ -233,6 +233,41 @@ export async function addQuestion(question: DBQuestion): Promise<DBQuestion[] | 
     return getQuestionsByIds([insertedId.toString()])
 }
 
+/**
+ * Inserts a root question for an already-authenticated user.
+ * Unlike addClientQuestion this does NOT touch the user table
+ * (caller is the wizard, user already exists from OTP/complete-profile).
+ *
+ * Caller picks the initial status (e.g. Unpaid for "pay later",
+ * InProgress for free/paid). markFirstQuestionUsed is invoked
+ * unconditionally — same idempotent semantics as elsewhere.
+ */
+export async function addWizardQuestion(
+    userId: string | number,
+    questionText: string,
+    status: QuestionStatusesE,
+): Promise<DBQuestion | null> {
+    const msg = msgGlobal + "addWizardQuestion - ";
+    const myUuid: string = randomUUID();
+    const sql = `INSERT INTO question(user_id, question, status, uuid, parent_id) VALUES(?, ?, ?, UUID_TO_BIN(?), NULL)`;
+    const values = [userId, questionText, status, myUuid];
+    const insertFunc = insert({ query: sql, values });
+    const executed = await executeTransactionWrapper<ResultSetHeader>([insertFunc], msg);
+    if (!executed) {
+        logger.error(msg + 'SQL failed', sql);
+        return null;
+    }
+    const [resultInsert] = executed;
+    const insertedId = resultInsert[0]?.insertId;
+    if (!insertedId) {
+        logger.error(msg + 'no inserted id');
+        return null;
+    }
+    await markFirstQuestionUsed(userId);
+    const rows = await getQuestionsByIds([insertedId.toString()]);
+    return rows && rows.length > 0 ? rows[0] : null;
+}
+
 export async function addClientQuestion(data: UserRequest): Promise<DBQuestion | null> {
     const msg = msgGlobal + "addClientQuestion - ";
     const _user = {id: '', name: data.name, email: data.email} as DBUser
@@ -265,6 +300,11 @@ export async function addClientQuestion(data: UserRequest): Promise<DBQuestion |
         return null
     }
 
+    // Consume the "first question free" benefit on any root question insert.
+    // markFirstQuestionUsed is a no-op when the flag is already 0.
+    if (!parent) {
+        await markFirstQuestionUsed(user.id);
+    }
 
     if(parent) {
         const questionUpdateSQL = `UPDATE question SET job_status=?, updated_at=NOW() WHERE id=?`

@@ -17,11 +17,11 @@ export default function ContactInfo() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
-          {/* Контактная информация */}
+          {/* Contact info */}
           <div className="bg-white rounded-[24px] p-8 shadow-lg border border-[#87b7ce]/20">
             <h3 className="font-['Inter:Bold',sans-serif] font-bold text-[24px] text-[#29282b] mb-6">Наши контакты</h3>
             <div className="space-y-6">
-              {/* Телефоны */}
+              {/* Phones */}
               <div>
                 <div className="flex items-start gap-3 mb-3">
                   <div className="size-[24px]" data-name="Icon">
@@ -54,7 +54,7 @@ export default function ContactInfo() {
                 </div>
               </div>
 
-              {/* Адрес */}
+              {/* Address */}
               <div className="flex items-start gap-3">
                 <div className="size-[24px]" data-name="Icon">
                   <Image
@@ -79,7 +79,7 @@ export default function ContactInfo() {
                 </div>
               </div>
 
-              {/* Социальные сети */}
+              {/* Social networks */}
               <div className="pt-6 border-t border-[#87b7ce]/20">
                 <p className="font-['Inter:Medium',sans-serif] font-medium text-[14px] text-[#87b7ce] mb-4">Мессенджеры</p>
                 <div className="flex gap-[10px]">
@@ -139,11 +139,11 @@ export default function ContactInfo() {
             </div>
           </div>
 
-          {/* Остались вопросы? */}
+          {/* Any questions left? */}
           <ContactForm />
         </div>
 
-        {/* Карта Яндекс */}
+        {/* Yandex map */}
         <Yandex />
       </div>
     </div>

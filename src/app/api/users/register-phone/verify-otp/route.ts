@@ -7,7 +7,9 @@ import {
   generatePassword,
 } from '@/src/libs/phoneIdentity';
 import { verifyOtp } from '@/src/libs/otpStore';
-import { register } from '@/src/repositories/users/repo';
+import { register, getUserByPhone } from '@/src/repositories/users/repo';
+import { isFirstQuestionFree } from '@/src/services/firstQuestion';
+import { getQuestionPrice } from '@/src/services/pricing';
 import {
   getPhoneStatus,
   recordFailedAttempt,
@@ -23,6 +25,7 @@ const LOCKOUT_MESSAGE = 'Слишком много попыток. Номер з
 interface VerifyOtpBody {
   phone?: string;
   code?: string;
+  wizardMode?: boolean;
 }
 
 export async function POST(request: NextRequest) {
@@ -89,8 +92,8 @@ export async function POST(request: NextRequest) {
 
   const result = verifyOtp(normalized.e164, code);
   if (!result.ok) {
-    // По BPMN счётчик растёт и при неверном коде, и при истёкшем коде.
-    // not_found — не считаем (OTP не запрашивался или уже использован).
+    // Per BPMN, the counter grows on both wrong and expired codes.
+    // not_found — not counted (OTP was not requested or already used).
     if (result.reason === 'invalid' || result.reason === 'expired') {
       const fail = await recordFailedAttempt(normalized.e164);
       if (fail.action === 'lock_24h') {
@@ -141,11 +144,37 @@ export async function POST(request: NextRequest) {
 
   await resetAttempts(normalized.e164);
 
+  // Wizard mode: don't create a user — just verify the phone and report
+  // whether a user with this phone already exists. Used by the question
+  // wizard which never registers users itself; that happens later in the
+  // profile step (with real name+email).
+  if (body.wizardMode) {
+    const existing = await getUserByPhone(normalized.e164);
+    const firstFree = await isFirstQuestionFree(existing?.id ?? null);
+    logger.info(msg + 'OTP verified (wizard mode, no user creation)', {
+      phone_tail: normalized.digits.slice(-4),
+      user_exists: !!existing,
+      first_question_free: firstFree,
+    });
+    return NextResponse.json(
+      {
+        success: true,
+        phone: normalized.e164,
+        verifyToken: result.verifyToken,
+        user: existing ? { id: existing.id, name: existing.name, email: existing.email } : null,
+        isFirstQuestionFree: firstFree,
+        questionPrice: getQuestionPrice(),
+        userBalance: existing?.balance ?? 0,
+      },
+      { status: 200 },
+    );
+  }
+
   const email = phoneToEmail(normalized.e164);
   const password = generatePassword();
   const name = phoneToDefaultName(normalized.e164);
 
-  const user = await register(name, email, password);
+  const user = await register(name, email, password, normalized.e164);
   if (user === undefined) {
     logger.warn(msg + 'race: user appeared between send and verify', {
       phone_tail: normalized.digits.slice(-4),

@@ -6,6 +6,8 @@ import logger from "@/src/libs/logger"
 import { SendSendGridEmailNewRequest } from '@/src/libs/sendgrid';
 import {EmailDataNewRequestI} from "@/src/interfaces/email"
 import { verifyRecaptcha } from "@/src/libs/recaptcha"
+import { validateRequestForm } from "@/src/app/components/forms/validation/request"
+import { RequestFormI } from "@/src/interfaces/form"
 
 export const dynamic = 'force-dynamic'; // defaults to auto
 
@@ -64,6 +66,25 @@ export async function POST(request: Request) {
         logger.warn(msg + 'captcha rejected', { reason: captcha.reason })
         return NextResponse.json(
             { success: false, message: 'CAPTCHA введена не верно.' },
+            { status: 400 }
+        );
+    }
+
+    const formForValidation: RequestFormI = {
+        name: insertedQuestion.name ?? "",
+        email: insertedQuestion.email ?? "",
+        topic: insertedQuestion.topic ?? "",
+        question: insertedQuestion.question ?? "",
+        agree: true,
+        auth: "1",
+        parent: insertedQuestion.parent,
+    }
+    const validation = validateRequestForm(formForValidation)
+    if (!validation.is_success) {
+        const firstError = validation.errors?.[0]?.error?.[0] ?? 'Некорректные данные.'
+        logger.warn(msg + 'validation failed', { errors: validation.errors })
+        return NextResponse.json(
+            { success: false, message: firstError, errors: validation.errors },
             { status: 400 }
         );
     }

@@ -9,6 +9,7 @@ export enum QuestionStatusesE {
   InProgress = 2,
   Spam = 3,
   Approved = 4,
+  Unpaid = 5,
 }
 
 export enum ReplyStatusesE {

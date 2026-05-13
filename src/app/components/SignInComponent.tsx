@@ -47,7 +47,7 @@ export default function SignInComponent() {
   return (
     <>
       {content}
-      {/* Модальные окна */}
+      {/* Modals */}
       <AuthFormWindow
         isOpen={activeForm === "login"}
         onClose={closeAll}

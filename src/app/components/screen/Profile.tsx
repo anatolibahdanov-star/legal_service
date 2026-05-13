@@ -338,6 +338,7 @@ const ProfileJobList = ({is_user, user}: ProfileJobListPropsI) => {
           Disabled: { label: "Ошибка", color: "bg-[#ef4444] text-white" },
           Spam: { label: "СПАМ", color: "bg-[#ef4444] text-white" },
           InProgress: { label: "В работе", color: "bg-[#3b82f6] text-white" },
+          Unpaid: { label: "Не оплачен", color: "bg-[#94a3b8] text-white" },
       };
 
       const statusInfo = statusMap[key];
@@ -489,7 +490,7 @@ const ProfileJobList = ({is_user, user}: ProfileJobListPropsI) => {
                             {caseItem.rating ? (
                               <>
                                 <Star className="size-5 fill-[#10b981]" />
-                                {/* Badge с рейтингом */}
+                                {/* Rating badge */}
                                 <span className="absolute -top-2 -right-2 bg-[#10b981] text-white text-xs font-bold rounded-full px-1.5 py-0.5 min-w-[24px] flex items-center justify-center shadow-md">
                                   {caseItem.rating}
                                 </span>
@@ -527,29 +528,29 @@ const ProfileJobList = ({is_user, user}: ProfileJobListPropsI) => {
       {is_user && (<RequestFormWindow isOpen={activeForm === "new-question"} onClose={setCloseProfileWindow} 
         setCurrent={setIsRefresh} setPage={setCurrentCommom}/>)}
 
-      {/* Уведомление о копировании ссылки */}
+      {/* Link copy notification */}
       {showLinkCopied && (
         <>
-          {/* Затемненный фон */}
+          {/* Dimmed background */}
           <div className="fixed inset-0 bg-black/50 z-40 transition-opacity" onClick={() => setShowLinkCopied(false)} />
 
-          {/* Модальное окно уведомления */}
+          {/* Notification modal */}
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
             <div
               className="bg-[#323c54] rounded-2xl shadow-2xl w-full max-w-md p-8 pointer-events-auto animate-in fade-in zoom-in duration-300"
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Большая галочка */}
+              {/* Large checkmark */}
               <div className="flex justify-center mb-4">
                 <div className="inline-flex items-center justify-center size-20 rounded-full bg-[#8faaba]">
                   <Check className="size-12 text-white stroke-[2.5]" />
                 </div>
               </div>
 
-              {/* Заголовок */}
+              {/* Header */}
               <h3 className="text-2xl text-white font-medium text-center mb-3">Ссылка скопирована</h3>
 
-              {/* Ссылка */}
+              {/* Link */}
               <div className="bg-[rgba(143,170,186,0.2)] rounded-lg p-4 mb-6 border border-[rgba(255,255,255,0.1)]">
                 <div className="flex items-center gap-3">
                   <LucideLink className="size-5 text-[#8faaba] shrink-0" />
@@ -557,7 +558,7 @@ const ProfileJobList = ({is_user, user}: ProfileJobListPropsI) => {
                 </div>
               </div>
 
-              {/* Кнопка закрыть */}
+              {/* Close button */}
               <button onClick={() => setShowLinkCopied(false)}
                 className="w-full py-3 px-4 rounded-lg bg-[#8faaba] hover:bg-[#7a8fa0] text-white font-medium transition-colors"
               >Закрыть</button>

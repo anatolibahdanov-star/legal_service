@@ -65,7 +65,7 @@ export async function recordFailedLogin(email: string): Promise<RecordLoginFailR
   const prevLockedUntil = existing?.locked_until ? new Date(existing.locked_until) : null;
   const lockExpired = prevLockedUntil !== null && prevLockedUntil.getTime() <= now.getTime();
 
-  // 15-минутный lock истёк → счётчик стартует с нуля (юзер «отсидел»).
+  // 15-minute lock expired → counter starts from zero (user has "served their time").
   const baseAttempts = lockExpired ? 0 : existing?.attempts ?? 0;
   const nextAttempts = baseAttempts + 1;
 

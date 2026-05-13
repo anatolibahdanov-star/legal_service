@@ -1,11 +1,21 @@
 import {ValidationErrorI, ValidationFormReplyI, RequestFormI} from "@/src/interfaces/form"
 import { EmailValidator, emptyValidator } from "@/src/app/components/forms/validation/common";
 
+export const QUESTION_MIN_LENGTH = 30;
+export const QUESTION_MAX_LENGTH = 2000;
+
+export const validateQuestionText = (value: string): string | null => {
+    const length = value.length;
+    if (length === 0) return "Пожалуйста, введите текст вопроса";
+    if (length < QUESTION_MIN_LENGTH) return `Вопрос должен содержать минимум ${QUESTION_MIN_LENGTH} символов`;
+    if (length > QUESTION_MAX_LENGTH) return `Вопрос не может превышать ${QUESTION_MAX_LENGTH} символов`;
+    return null;
+};
+
 export const validateRequestForm = (data: RequestFormI): ValidationFormReplyI => {
     const newErrors: ValidationErrorI[] | null = []
     let isValid = true;
 
-    console.log("validateRequestForm data", data)
     if (data.auth !== "1") {
         if (!emptyValidator(data.name)) {
             newErrors.push({
@@ -32,28 +42,11 @@ export const validateRequestForm = (data: RequestFormI): ValidationFormReplyI =>
         }
     }
 
-    if(!data.parent) {
-        if (!emptyValidator(data.topic)) {
-            newErrors.push({
-                field: "topic",
-                error: ["Пожалуйста, выберите категорию вопроса."]
-            });
-            isValid = false;
-        }
-    }
-
-    if (!emptyValidator(data.question)) {
+    const questionError = validateQuestionText(data.question);
+    if (questionError) {
         newErrors.push({
             field: "question",
-            error: ["Пожалуйста, введите ваш вопрос."]
-        });
-        isValid = false;
-    }
-
-    if (data.question.length >= 5000) {
-        newErrors.push({
-            field: "question",
-            error: ["Пожалуйста, сократите ваш вопрос до 5000 символов."]
+            error: [questionError]
         });
         isValid = false;
     }

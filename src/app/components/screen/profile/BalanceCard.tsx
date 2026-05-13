@@ -18,7 +18,7 @@ const BalanceCard = ({handleCreateOrder, data}: BalanceCardPropsI) => {
       <p className="text-sm font-medium text-muted-foreground">Текущий баланс</p>
       <p className="mt-2 text-3xl font-bold text-foreground">{balanceFormated}</p>
       <p className="mt-2 text-sm text-muted-foreground">Доступно для оплаты услуг платформы</p>
-      {/* <p className="mt-4 text-xs text-muted-foreground">Обновлено: 12 апр 2026</p> */}
+      {/* <p className="mt-4 text-xs text-muted-foreground">Updated: 2026-04-12</p> */}
       <Link href="#" 
         className="mt-5 inline-block rounded-lg bg-[#EE2A23] px-6 py-2.5 text-sm font-medium text-alfa-red-foreground transition-opacity hover:opacity-90"
         onClick={handleCreateOrder}>Пополнить баланс на 100 рублей</Link>

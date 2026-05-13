@@ -1,13 +1,13 @@
 import NextAuth from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 import {getAdministratorByEmail, getAdministratorByEmailOnly} from "@/src/repositories/administrators/repo"
-import {login, getUserByEmail} from "@/src/repositories/users/repo"
+import {login, getUserByEmail, getUserByPhone} from "@/src/repositories/users/repo"
 import {DBUser} from "@/src/interfaces/db"
 import {NextAuthSessionInput, NextAuthJWTInput} from "@/src/interfaces/custom-next-auth"
 import logger from "@/src/libs/logger"
 import { UserStatusesE } from "@/src/interfaces/data"
 import { consumeVerifyToken } from "@/src/libs/otpStore"
-import { normalizePhoneE164, phoneToEmail } from "@/src/libs/phoneIdentity"
+import { normalizePhoneE164 } from "@/src/libs/phoneIdentity"
 import { verifyRecaptcha } from "@/src/libs/recaptcha"
 import {
   getLoginStatus,
@@ -153,7 +153,7 @@ export const authOptions = {
           logger.error(msg + 'invalid or expired verify token', { phone_tail: normalized.digits.slice(-4) })
           throw new Error('Сессия подтверждения истекла. Повторите регистрацию.')
         }
-        const user = await getUserByEmail(phoneToEmail(normalized.e164))
+        const user = await getUserByPhone(normalized.e164)
         if (!user) {
           logger.error(msg + 'user not found after verify', { phone_tail: normalized.digits.slice(-4) })
           throw new Error('Пользователь не найден. Повторите регистрацию.')

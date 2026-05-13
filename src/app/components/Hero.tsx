@@ -9,7 +9,7 @@ export function Hero() {
     <section className="bg-[#fefdf9] pt-[20px] pb-[20px] lg:pt-[20px] lg:pb-[20px] rounded-b-[60px]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid lg:grid-cols-2 gap-5 items-center">
-          {/* Левая часть - описание */}
+          {/* Left side — description */}
           <div className="space-y-6">
             <h1 className="text-4xl lg:text-5xl font-bold text-[#252623] leading-[1.1]">
               Задавайте вопросы опытным юристам <span className="text-[#8faaba] whitespace-nowrap">онлайн</span>.
@@ -66,7 +66,7 @@ export function Hero() {
             </div>
           </div>
 
-          {/* Правая часть - форма */}
+          {/* Right side — form */}
           <RequestForm />
         </div>
       </div>

@@ -1,16 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import logger from '@/src/libs/logger';
 import { verifyRecaptcha } from '@/src/libs/recaptcha';
-import { normalizePhoneE164, phoneToEmail } from '@/src/libs/phoneIdentity';
+import { normalizePhoneE164 } from '@/src/libs/phoneIdentity';
 import { createOtp, invalidateOtp } from '@/src/libs/otpStore';
-import { getUserByEmail } from '@/src/repositories/users/repo';
-import { getPhoneStatus } from '@/src/repositories/otp_attempts/repo';
+import { getUserByPhone } from '@/src/repositories/users/repo';
+import { getPhoneStatus, recordFailedAttempt } from '@/src/repositories/otp_attempts/repo';
 import { sendSmsTemplate, isDryRun } from '@/src/libs/p1sms';
 import { SmsTemplateE } from '@/src/interfaces/sms';
 
 export const dynamic = 'force-dynamic';
 
 const COOLDOWN_MESSAGE = 'Слишком много попыток. Попробуйте через 5 минут.';
+const LOCKOUT_MESSAGE = 'Слишком много попыток. Номер заблокирован на 24 часа.';
 const BLOCKED_MESSAGE = 'Ваш номер телефона заблокирован. Свяжитесь с тех.поддержкой.';
 
 interface SendOtpBody {
@@ -66,7 +67,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const existing = await getUserByEmail(phoneToEmail(normalized.e164));
+  const existing = await getUserByPhone(normalized.e164);
   if (existing) {
     logger.info(msg + 'phone already registered', { phone_tail: normalized.digits.slice(-4) });
     return NextResponse.json(
@@ -115,6 +116,37 @@ export async function POST(request: NextRequest) {
 
   const result = createOtp(normalized.e164);
   if (!result.ok) {
+    // Existing OTP is still valid (within resend cooldown). Treat repeated
+    // "Получить код" presses for the same phone as failed attempts so the
+    // same 3-attempt → 5min / 5-attempt → 24h thresholds protect against abuse.
+    const fail = await recordFailedAttempt(normalized.e164);
+    logger.info(msg + 'repeat send-otp counted as attempt', {
+      phone_tail: normalized.digits.slice(-4),
+      attempts: fail.attempts,
+      action: fail.action,
+    });
+    if (fail.action === 'lock_24h') {
+      return NextResponse.json(
+        {
+          success: false,
+          code: 'phone_blocked',
+          message: LOCKOUT_MESSAGE,
+          lockedUntil: fail.lockedUntil,
+        },
+        { status: 403 },
+      );
+    }
+    if (fail.action === 'cooldown_5min') {
+      return NextResponse.json(
+        {
+          success: false,
+          code: 'cooldown_5min',
+          message: COOLDOWN_MESSAGE,
+          cooldownUntil: fail.cooldownUntil,
+        },
+        { status: 429 },
+      );
+    }
     return NextResponse.json(
       {
         success: false,

@@ -20,12 +20,12 @@ export async function register() {
       await adminRating()
     });
 
-    // OTP store in-memory prune — раз в час, чтобы Map не рос между рестартами
+    // OTP store in-memory prune — once per hour to keep the Map from growing between restarts
     cron.schedule('0 * * * *', () => {
       cleanupOtpStoreMemory();
     });
 
-    // Housekeeping anti-bruteforce таблиц — раз в сутки в 3:00 ночи
+    // Housekeeping for anti-bruteforce tables — daily at 3:00 AM
     cron.schedule('0 3 * * *', async () => {
       console.log(`[${new Date().toISOString()}] Cron job running: Cleanup auth_attempts...`);
       await cleanupAuthAttemptsDb();

@@ -1,14 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import logger from '@/src/libs/logger';
-import { normalizePhoneE164, phoneToEmail } from '@/src/libs/phoneIdentity';
+import { normalizePhoneE164 } from '@/src/libs/phoneIdentity';
 import { verifyOtp } from '@/src/libs/otpStore';
-import { getUserByEmail } from '@/src/repositories/users/repo';
+import { getUserByPhone } from '@/src/repositories/users/repo';
 import {
   getPhoneStatus,
   recordFailedAttempt,
   resetAttempts,
   LOCKOUT_TRIGGER_ATTEMPTS,
 } from '@/src/repositories/otp_attempts/repo';
+import { isFirstQuestionFree } from '@/src/services/firstQuestion';
+import { getQuestionPrice } from '@/src/services/pricing';
 
 export const dynamic = 'force-dynamic';
 
@@ -85,8 +87,8 @@ export async function POST(request: NextRequest) {
 
   const result = verifyOtp(normalized.e164, code);
   if (!result.ok) {
-    // По BPMN счётчик растёт и при неверном коде, и при истёкшем коде.
-    // not_found — не считаем (OTP не запрашивался или уже использован).
+    // Per BPMN, the counter grows on both wrong and expired codes.
+    // not_found — not counted (OTP was not requested or already used).
     if (result.reason === 'invalid' || result.reason === 'expired') {
       const fail = await recordFailedAttempt(normalized.e164);
       if (fail.action === 'lock_24h') {
@@ -137,7 +139,7 @@ export async function POST(request: NextRequest) {
 
   await resetAttempts(normalized.e164);
 
-  const user = await getUserByEmail(phoneToEmail(normalized.e164));
+  const user = await getUserByPhone(normalized.e164);
   if (!user) {
     logger.error(msg + 'user vanished between send and verify', {
       phone_tail: normalized.digits.slice(-4),
@@ -148,7 +150,12 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  logger.info(msg + 'OTP verified', { user_id: user.id, phone_tail: normalized.digits.slice(-4) });
+  const firstFree = await isFirstQuestionFree(user.id);
+  logger.info(msg + 'OTP verified', {
+    user_id: user.id,
+    phone_tail: normalized.digits.slice(-4),
+    first_question_free: firstFree,
+  });
 
   return NextResponse.json(
     {
@@ -156,6 +163,9 @@ export async function POST(request: NextRequest) {
       phone: normalized.e164,
       verifyToken: result.verifyToken,
       user: { id: user.id, name: user.name, email: user.email },
+      isFirstQuestionFree: firstFree,
+      questionPrice: getQuestionPrice(),
+      userBalance: user.balance ?? 0,
     },
     { status: 200 },
   );

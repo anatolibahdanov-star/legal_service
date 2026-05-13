@@ -5,7 +5,7 @@ export function StatsBar() {
     <div className="bg-[#fefdf9] pt-6 pb-4 relative z-10">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          {/* Блок 1: Специалисты онлайн */}
+          {/* Block 1: Specialists online */}
           <div className="bg-[#fefdf9] border border-[#89a3c6] rounded-lg px-3 py-2.5 flex items-center gap-3">
             <div className="flex-shrink-0">
               <Users className="w-7 h-7 text-[#576582]" />
@@ -25,7 +25,7 @@ export function StatsBar() {
             </div>
           </div>
 
-          {/* Блок 2: Консультируют */}
+          {/* Block 2: Consulting */}
           <div className="bg-[#fefdf9] border border-[#89a3c6] rounded-lg px-3 py-2.5 flex items-center gap-3">
             <div className="flex-shrink-0">
               <UserCheck className="w-7 h-7 text-[#576582]" />
@@ -41,7 +41,7 @@ export function StatsBar() {
             </div>
           </div>
 
-          {/* Блок 3: Среднее время */}
+          {/* Block 3: Average time */}
           <div className="bg-[#fefdf9] border border-[#89a3c6] rounded-lg px-3 py-2.5 flex items-center gap-3">
             <div className="flex-shrink-0">
               <Clock className="w-7 h-7 text-[#576582]" />

@@ -1,8 +1,12 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Check, Loader2, ShieldCheck } from "lucide-react";
 import { useGoogleReCaptcha } from "react-google-recaptcha-v3";
+
+// Google reCAPTCHA v3 tokens are valid for 120s on the server.
+// Reset slightly earlier to avoid edge expirations.
+const TOKEN_TTL_MS = 110_000;
 
 interface RecaptchaCheckboxProps {
   action: string;
@@ -16,6 +20,26 @@ export function RecaptchaCheckbox({ action, onChange, token, disabled }: Recaptc
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const checked = !!token;
+  const expireTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (expireTimerRef.current) {
+      clearTimeout(expireTimerRef.current);
+      expireTimerRef.current = null;
+    }
+    if (token) {
+      expireTimerRef.current = setTimeout(() => {
+        setError("Срок действия проверки истёк. Подтвердите снова.");
+        onChange(null);
+      }, TOKEN_TTL_MS);
+    }
+    return () => {
+      if (expireTimerRef.current) {
+        clearTimeout(expireTimerRef.current);
+        expireTimerRef.current = null;
+      }
+    };
+  }, [token, onChange]);
 
   const handleClick = useCallback(async () => {
     if (disabled || loading || checked) return;

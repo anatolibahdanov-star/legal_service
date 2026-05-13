@@ -1,9 +1,11 @@
 import logger from "@/src/libs/logger"
 import { User } from "next-auth";
 
-import { createEmptyOrder, getOrderById, updateClientOrder, updateClientOrderQR, updateOrderStatus } from '@/src/repositories/orders/repo';
+import { createEmptyOrder, getOrderById, updateClientOrder, updateClientOrderQR, updateOrderStatus, updateOrderQuestionLink } from '@/src/repositories/orders/repo';
+import { addWizardQuestion } from '@/src/repositories/requests/repo';
 import { DBOrder } from "@/src/interfaces/db"
 import { AlfaOrderStatusE, OrderStatusE, OrderTypeE, newOrderResponse, checkOrderResponse, BalanceI, BalanceTypeE, BalanceStatusE, TransactionI, TransStatusE, TransTypeE } from '@/src/interfaces/payment';
+import { QuestionStatusesE } from '@/src/interfaces/data';
 import { UserBalanceRequest, PaymentInfoRequest, PaymentStatusUpdateI } from "@/src/interfaces/api";
 import { createAlfaOrder, getAlfaOrderQR, getAlfaOrderStatus } from '@/src/libs/alfa.pay';
 import { balanceIncrement } from "./balance";
@@ -18,7 +20,10 @@ export const initNewOrder = async (balanceRequest: UserBalanceRequest, user: Use
     try {
     
         balanceRequest.status = OrderStatusE.New
-        balanceRequest.type = OrderTypeE.Balance
+        // Honor the client-supplied order type (Balance for top-ups,
+        // OneTime for one-shot question payments via wizard). Default
+        // to Balance for backward compatibility with existing callers.
+        balanceRequest.type = balanceRequest.type ?? OrderTypeE.Balance
         const emptyOrder = await createEmptyOrder(user.id, balanceRequest)
         if(emptyOrder === null) {
             const error = "Empty response on create order"
@@ -35,7 +40,7 @@ export const initNewOrder = async (balanceRequest: UserBalanceRequest, user: Use
                 data: null,
             }
 
-            // 1. Запрос к Альфа API для создания СБП заказа
+            // 1. Request to Alfa API to create an SBP order
             const alfaCreatedOrder = await createAlfaOrder(balanceRequest.amount, emptyOrder.id, user)
             trans.data = alfaCreatedOrder.techical_data ?? null
             if (!alfaCreatedOrder.status) {
@@ -50,8 +55,8 @@ export const initNewOrder = async (balanceRequest: UserBalanceRequest, user: Use
 
             await setDBTransaction(trans, user)
 
-            // 2. Получение данных для QR (например, URL на оплату)
-            // Банк возвращает orderId, нужно запросить qr-код отдельно, если не пришел сразу
+            // 2. Fetch QR data (e.g. payment URL)
+            // Bank returns orderId; fetch the QR code separately if it doesn't arrive immediately
             const updateOrder: PaymentInfoRequest = {
                 order_id: emptyOrder.id,
                 alpha_id: alfaCreatedOrder.data.orderId,
@@ -129,6 +134,20 @@ export const checkOrderStatus = async (slug:string, user: User): Promise<checkOr
             return result
         }
 
+        // For wizard one-shot card payments we need the question text before
+        // updateOrderStatus overwrites porder.data with the Alfa transaction info.
+        let oneTimeQuestionText: string | null = null;
+        if (order.ptype === OrderTypeE.OneTime && order.data) {
+            try {
+                const parsed = JSON.parse(order.data);
+                if (typeof parsed?.question === 'string' && parsed.question.trim().length > 0) {
+                    oneTimeQuestionText = parsed.question.trim();
+                }
+            } catch (e) {
+                logger.warn(msg + 'failed to parse OneTime order.data', { order_id: order.id, err: (e as Error).message });
+            }
+        }
+
         const transaction: TransactionI = {
             order_id: parseInt(order.id),
             status: TransStatusE.Success,
@@ -189,15 +208,50 @@ export const checkOrderStatus = async (slug:string, user: User): Promise<checkOr
         }
 
         if(updatedOrderStatus.alpha_status === AlfaOrderStatusE.Auth) {
-            const balance: BalanceI = {
-                amount: updatedOrderStatus.amount,
-                balance_type: BalanceTypeE.Increase,
-                user: user,
-                order: updatedOrderStatus,
-                status: BalanceStatusE.Success,
-                data: updateOrder.transaction_info,
+            if (updatedOrderStatus.ptype === OrderTypeE.OneTime) {
+                // Wizard one-shot payment for a single question.
+                // Money goes to the question, NOT to the balance.
+                if (!oneTimeQuestionText) {
+                    logger.error(msg + 'OneTime order paid but question text missing in data', {
+                        order_id: updatedOrderStatus.id,
+                        user_id: user.id,
+                    });
+                } else {
+                    logger.info(msg + 'OneTime paid — creating question', {
+                        order_id: updatedOrderStatus.id,
+                        user_id: user.id,
+                    });
+                    const question = await addWizardQuestion(
+                        user.id,
+                        oneTimeQuestionText,
+                        QuestionStatusesE.InProgress,
+                    );
+                    if (question) {
+                        await updateOrderQuestionLink(updatedOrderStatus.id, question.id);
+                        logger.info(msg + 'OneTime: question created and linked', {
+                            order_id: updatedOrderStatus.id,
+                            question_id: question.id,
+                            user_id: user.id,
+                        });
+                    } else {
+                        logger.error(msg + 'OneTime: failed to create question after payment', {
+                            order_id: updatedOrderStatus.id,
+                            user_id: user.id,
+                        });
+                    }
+                }
+            } else {
+                // Balance top-up — original behavior, increase user.balance.
+                const balance: BalanceI = {
+                    amount: updatedOrderStatus.amount,
+                    balance_type: BalanceTypeE.Increase,
+                    user: user,
+                    order: updatedOrderStatus,
+                    status: BalanceStatusE.Success,
+                    data: updateOrder.transaction_info,
+                }
+                await balanceIncrement(balance)
             }
-            await balanceIncrement(balance)
         }
 
         order = updatedOrderStatus
