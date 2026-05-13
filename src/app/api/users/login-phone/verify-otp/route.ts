@@ -9,6 +9,8 @@ import {
   resetAttempts,
   LOCKOUT_TRIGGER_ATTEMPTS,
 } from '@/src/repositories/otp_attempts/repo';
+import { isFirstQuestionFree } from '@/src/services/firstQuestion';
+import { getQuestionPrice } from '@/src/services/pricing';
 
 export const dynamic = 'force-dynamic';
 
@@ -148,7 +150,12 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  logger.info(msg + 'OTP verified', { user_id: user.id, phone_tail: normalized.digits.slice(-4) });
+  const firstFree = await isFirstQuestionFree(user.id);
+  logger.info(msg + 'OTP verified', {
+    user_id: user.id,
+    phone_tail: normalized.digits.slice(-4),
+    first_question_free: firstFree,
+  });
 
   return NextResponse.json(
     {
@@ -156,6 +163,9 @@ export async function POST(request: NextRequest) {
       phone: normalized.e164,
       verifyToken: result.verifyToken,
       user: { id: user.id, name: user.name, email: user.email },
+      isFirstQuestionFree: firstFree,
+      questionPrice: getQuestionPrice(),
+      userBalance: user.balance ?? 0,
     },
     { status: 200 },
   );

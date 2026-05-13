@@ -7,20 +7,34 @@ import { getUserByPhone } from '@/src/repositories/users/repo';
 import { getPhoneStatus, recordFailedAttempt } from '@/src/repositories/otp_attempts/repo';
 import { sendSmsTemplate, isDryRun } from '@/src/libs/p1sms';
 import { SmsTemplateE } from '@/src/interfaces/sms';
+import { UserStatusesE } from '@/src/interfaces/data';
 
 export const dynamic = 'force-dynamic';
 
 const COOLDOWN_MESSAGE = 'Слишком много попыток. Попробуйте через 5 минут.';
 const LOCKOUT_MESSAGE = 'Слишком много попыток. Номер заблокирован на 24 часа.';
 const BLOCKED_MESSAGE = 'Ваш номер телефона заблокирован. Свяжитесь с тех.поддержкой.';
+const GENERIC_PHONE_ERROR = 'Введите корректный номер телефона.';
 
 interface SendOtpBody {
   phone?: string;
   captchaToken?: string;
 }
 
+/**
+ * Unified send-otp for the question wizard. Internally figures out whether
+ * the phone is new (register branch) or existing (login branch) and runs
+ * the appropriate checks — but to the client it's one request, one response.
+ *
+ * Replaces the previous "try register-phone, fall back to login-phone on
+ * phone_exists" dance, which created a confusing red 409 in DevTools every
+ * time an existing user reused the wizard.
+ *
+ * Response always includes `isLogin: boolean` so the client can later
+ * pick the right verify-otp branch.
+ */
 export async function POST(request: NextRequest) {
-  const msg = 'API register-phone/send-otp - ';
+  const msg = 'API wizard/send-otp - ';
   let body: SendOtpBody;
   try {
     body = (await request.json()) as SendOtpBody;
@@ -36,13 +50,13 @@ export async function POST(request: NextRequest) {
 
   if (!phoneRaw) {
     return NextResponse.json(
-      { success: false, code: 'phone_required', message: 'Укажите номер телефона.' },
+      { success: false, code: 'phone_required', message: GENERIC_PHONE_ERROR },
       { status: 400 },
     );
   }
 
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null;
-  const captcha = await verifyRecaptcha(captchaToken, ip, { expectedAction: 'register_phone' });
+  const captcha = await verifyRecaptcha(captchaToken, ip, { expectedAction: 'wizard_phone_otp' });
   if (!captcha.success) {
     logger.warn(msg + 'captcha failed', { reason: captcha.reason });
     return NextResponse.json(
@@ -58,32 +72,32 @@ export async function POST(request: NextRequest) {
   const normalized = normalizePhoneE164(phoneRaw);
   if (!normalized) {
     return NextResponse.json(
-      {
-        success: false,
-        code: 'invalid_phone',
-        message: 'Некорректный номер телефона.',
-      },
+      { success: false, code: 'invalid_phone', message: GENERIC_PHONE_ERROR },
       { status: 400 },
     );
   }
 
+  // Decide branch: existing user (login flow) or brand-new phone (register flow).
   const existing = await getUserByPhone(normalized.e164);
-  if (existing) {
-    logger.info(msg + 'phone already registered', { phone_tail: normalized.digits.slice(-4) });
+  const isLogin = !!existing;
+
+  // For existing users: respect admin-ban.
+  if (existing && existing.status !== undefined && existing.status !== UserStatusesE.Activated) {
+    logger.warn(msg + 'user banned', {
+      user_id: existing.id,
+      phone_tail: normalized.digits.slice(-4),
+      status: existing.status,
+    });
     return NextResponse.json(
-      {
-        success: false,
-        code: 'phone_exists',
-        message: 'Пользователь с таким номером уже зарегистрирован.',
-        phone: normalized.e164,
-      },
-      { status: 409 },
+      { success: false, code: 'phone_blocked', message: BLOCKED_MESSAGE },
+      { status: 403 },
     );
   }
 
+  // Common: respect attempt-based locks/cooldowns.
   const phoneStatus = await getPhoneStatus(normalized.e164);
   if (phoneStatus.locked) {
-    logger.warn(msg + 'phone locked, rejecting send-otp', {
+    logger.warn(msg + 'phone temporarily locked', {
       phone_tail: normalized.digits.slice(-4),
       remaining_sec: phoneStatus.lockedRemainingSec,
     });
@@ -91,14 +105,14 @@ export async function POST(request: NextRequest) {
       {
         success: false,
         code: 'phone_blocked',
-        message: BLOCKED_MESSAGE,
+        message: LOCKOUT_MESSAGE,
         lockedUntil: phoneStatus.lockedUntil,
       },
       { status: 403 },
     );
   }
   if (phoneStatus.cooldown) {
-    logger.warn(msg + 'phone in cooldown, rejecting send-otp', {
+    logger.warn(msg + 'phone in cooldown', {
       phone_tail: normalized.digits.slice(-4),
       remaining_sec: phoneStatus.cooldownRemainingSec,
     });
@@ -116,9 +130,8 @@ export async function POST(request: NextRequest) {
 
   const result = createOtp(normalized.e164);
   if (!result.ok) {
-    // Existing OTP is still valid (within resend cooldown). Treat repeated
-    // "Получить код" presses for the same phone as failed attempts so the
-    // same 3-attempt → 5min / 5-attempt → 24h thresholds protect against abuse.
+    // Existing OTP is still valid (resend cooldown). Count this repeat as a
+    // failed attempt so spam-clicking gets escalated to cooldown / lockout.
     const fail = await recordFailedAttempt(normalized.e164);
     logger.info(msg + 'repeat send-otp counted as attempt', {
       phone_tail: normalized.digits.slice(-4),
@@ -161,13 +174,14 @@ export async function POST(request: NextRequest) {
   logger.info(msg + 'OTP issued', {
     phone_tail: normalized.digits.slice(-4),
     code: result.code,
+    is_login: isLogin,
   });
 
   const sms = await sendSmsTemplate({
     phone: normalized.e164,
     template: SmsTemplateE.OtpCode,
     params: { code: result.code },
-    reference: `register_${Date.now()}`,
+    reference: `wizard_${Date.now()}`,
   });
   if (!sms.success) {
     invalidateOtp(normalized.e164);
@@ -187,6 +201,7 @@ export async function POST(request: NextRequest) {
       success: true,
       phone: normalized.e164,
       expiresInSec: result.expiresInSec,
+      isLogin,
       ...(isDryRun() ? { devCode: result.code } : {}),
     },
     { status: 200 },

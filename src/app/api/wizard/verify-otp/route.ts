@@ -1,35 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server';
 import logger from '@/src/libs/logger';
-import {
-  normalizePhoneE164,
-  phoneToEmail,
-  phoneToDefaultName,
-  generatePassword,
-} from '@/src/libs/phoneIdentity';
+import { normalizePhoneE164 } from '@/src/libs/phoneIdentity';
 import { verifyOtp } from '@/src/libs/otpStore';
-import { register, getUserByPhone } from '@/src/repositories/users/repo';
-import { isFirstQuestionFree } from '@/src/services/firstQuestion';
-import { getQuestionPrice } from '@/src/services/pricing';
+import { getUserByPhone } from '@/src/repositories/users/repo';
 import {
   getPhoneStatus,
   recordFailedAttempt,
   resetAttempts,
   LOCKOUT_TRIGGER_ATTEMPTS,
 } from '@/src/repositories/otp_attempts/repo';
+import { isFirstQuestionFree } from '@/src/services/firstQuestion';
+import { getQuestionPrice } from '@/src/services/pricing';
 
 export const dynamic = 'force-dynamic';
 
+const GENERIC_PHONE_ERROR = 'Введите корректный номер телефона.';
 const COOLDOWN_MESSAGE = 'Слишком много попыток. Попробуйте через 5 минут.';
 const LOCKOUT_MESSAGE = 'Слишком много попыток. Номер заблокирован на 24 часа.';
 
 interface VerifyOtpBody {
   phone?: string;
   code?: string;
-  wizardMode?: boolean;
 }
 
+/**
+ * Unified verify-otp for the question wizard.
+ * Never creates a user — that's the wizard contract. After successful
+ * verification:
+ *   - existing user → return { user, isLogin: true }
+ *   - new phone     → return { user: null, isLogin: false }
+ * Either way the caller (request.tsx) decides whether to show the profile
+ * step or skip it, and either signs in (existing) or calls complete-profile
+ * (new) which creates the user with real name+email.
+ *
+ * Returns the same enriched payload the previous register/login verify-otp
+ * endpoints returned (verifyToken, isFirstQuestionFree, questionPrice, userBalance)
+ * so the wizard's downstream logic stays unchanged.
+ */
 export async function POST(request: NextRequest) {
-  const msg = 'API register-phone/verify-otp - ';
+  const msg = 'API wizard/verify-otp - ';
   let body: VerifyOtpBody;
   try {
     body = (await request.json()) as VerifyOtpBody;
@@ -52,7 +61,7 @@ export async function POST(request: NextRequest) {
   const normalized = normalizePhoneE164(phoneRaw);
   if (!normalized) {
     return NextResponse.json(
-      { success: false, code: 'invalid_phone', message: 'Некорректный номер телефона.' },
+      { success: false, code: 'invalid_phone', message: GENERIC_PHONE_ERROR },
       { status: 400 },
     );
   }
@@ -74,7 +83,7 @@ export async function POST(request: NextRequest) {
     );
   }
   if (phoneStatus.cooldown) {
-    logger.warn(msg + 'phone in cooldown, rejecting', {
+    logger.warn(msg + 'phone in cooldown', {
       phone_tail: normalized.digits.slice(-4),
       remaining_sec: phoneStatus.cooldownRemainingSec,
     });
@@ -92,8 +101,7 @@ export async function POST(request: NextRequest) {
 
   const result = verifyOtp(normalized.e164, code);
   if (!result.ok) {
-    // Per BPMN, the counter grows on both wrong and expired codes.
-    // not_found — not counted (OTP was not requested or already used).
+    // The counter grows on wrong/expired codes; not_found is silent.
     if (result.reason === 'invalid' || result.reason === 'expired') {
       const fail = await recordFailedAttempt(normalized.e164);
       if (fail.action === 'lock_24h') {
@@ -144,65 +152,15 @@ export async function POST(request: NextRequest) {
 
   await resetAttempts(normalized.e164);
 
-  // Wizard mode: don't create a user — just verify the phone and report
-  // whether a user with this phone already exists. Used by the question
-  // wizard which never registers users itself; that happens later in the
-  // profile step (with real name+email).
-  if (body.wizardMode) {
-    const existing = await getUserByPhone(normalized.e164);
-    const firstFree = await isFirstQuestionFree(existing?.id ?? null);
-    logger.info(msg + 'OTP verified (wizard mode, no user creation)', {
-      phone_tail: normalized.digits.slice(-4),
-      user_exists: !!existing,
-      first_question_free: firstFree,
-    });
-    return NextResponse.json(
-      {
-        success: true,
-        phone: normalized.e164,
-        verifyToken: result.verifyToken,
-        user: existing ? { id: existing.id, name: existing.name, email: existing.email } : null,
-        isFirstQuestionFree: firstFree,
-        questionPrice: getQuestionPrice(),
-        userBalance: existing?.balance ?? 0,
-      },
-      { status: 200 },
-    );
-  }
+  const existing = await getUserByPhone(normalized.e164);
+  const isLogin = !!existing;
+  const firstFree = await isFirstQuestionFree(existing?.id ?? null);
 
-  const email = phoneToEmail(normalized.e164);
-  const password = generatePassword();
-  const name = phoneToDefaultName(normalized.e164);
-
-  const user = await register(name, email, password, normalized.e164);
-  if (user === undefined) {
-    logger.warn(msg + 'race: user appeared between send and verify', {
-      phone_tail: normalized.digits.slice(-4),
-    });
-    return NextResponse.json(
-      {
-        success: false,
-        code: 'phone_exists',
-        message: 'Пользователь с таким номером уже зарегистрирован.',
-      },
-      { status: 409 },
-    );
-  }
-  if (user === null) {
-    logger.error(msg + 'failed to create user', { phone_tail: normalized.digits.slice(-4) });
-    return NextResponse.json(
-      {
-        success: false,
-        code: 'create_failed',
-        message: 'Технические неполадки. Попробуйте повторить через 3 минуты.',
-      },
-      { status: 500 },
-    );
-  }
-
-  logger.info(msg + 'user registered via OTP', {
-    user_id: user.id,
+  logger.info(msg + 'OTP verified', {
     phone_tail: normalized.digits.slice(-4),
+    is_login: isLogin,
+    user_id: existing?.id,
+    first_question_free: firstFree,
   });
 
   return NextResponse.json(
@@ -210,7 +168,11 @@ export async function POST(request: NextRequest) {
       success: true,
       phone: normalized.e164,
       verifyToken: result.verifyToken,
-      user: { id: user.id, name: user.name, email: user.email },
+      user: existing ? { id: existing.id, name: existing.name, email: existing.email } : null,
+      isLogin,
+      isFirstQuestionFree: firstFree,
+      questionPrice: getQuestionPrice(),
+      userBalance: existing?.balance ?? 0,
     },
     { status: 200 },
   );

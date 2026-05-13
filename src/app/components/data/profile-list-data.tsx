@@ -52,6 +52,7 @@ export const ProfileListData = ({ id, currentPage, itemsPerPage, totalItems, onT
             Disabled: { label: "Ошибка", color: "bg-[#ef4444] text-white" },
             Spam: { label: "СПАМ", color: "bg-[#ef4444] text-white" },
             InProgress: { label: "В работе", color: "bg-[#3b82f6] text-white" },
+            Unpaid: { label: "Не оплачен", color: "bg-[#94a3b8] text-white" },
         };
 
         const statusInfo = statusMap[key];

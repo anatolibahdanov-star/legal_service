@@ -169,6 +169,55 @@ export async function addAnonymousUser(user: DBUser): Promise<DBUser | null> {
     return userByEmail
 }
 
+/**
+ * Creates a new user from the question wizard flow.
+ * Unlike register() this is for users who haven't gone through the
+ * formal registration form — they only have phone+name+email from the
+ * wizard. We still set a random password so md5/login machinery doesn't
+ * blow up, but the user can later use phone-OTP to sign in.
+ *
+ * Returns:
+ *   - the created user on success
+ *   - undefined if email or phone collide with an existing user
+ *   - null on technical failure
+ */
+export async function createUserFromWizard(
+    phone: string,
+    name: string,
+    email: string,
+): Promise<DBUser | null | undefined> {
+    const msg = msgGlobal + "createUserFromWizard - ";
+
+    const byEmail = await getUserByEmail(email);
+    if (byEmail) {
+        logger.warn(msg + 'email collision', { email });
+        return undefined;
+    }
+    const byPhone = await getUserByPhone(phone);
+    if (byPhone) {
+        logger.warn(msg + 'phone collision', { phone_tail: phone.slice(-4) });
+        return undefined;
+    }
+
+    const randomPassword = `wizard_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 12)}`;
+    const query = `INSERT INTO user(name, email, phone, password, is_register) VALUES(?, ?, ?, ?, 1)`;
+    const params = [name, email, phone, md5(randomPassword)];
+    const insertFunc = insert({ query, values: params });
+    const executedQueries = await executeTransactionWrapper<ResultSetHeader>([insertFunc], msg);
+    if (!executedQueries) {
+        logger.error(msg + "SQL failed", query);
+        return null;
+    }
+    const [resultInsert] = executedQueries;
+    const insertedId = resultInsert[0]?.insertId;
+    if (!insertedId) {
+        logger.error(msg + "no inserted id");
+        return null;
+    }
+    logger.info(msg + 'user created via wizard', { user_id: insertedId, phone_tail: phone.slice(-4) });
+    return await getUsersByIds([insertedId.toString()]);
+}
+
 export async function addUser(user: RegUser): Promise<DBUser | null> {
     const msg = msgGlobal + "addUser - ";
     const query = `INSERT INTO user(name, email, phone, password, is_register) VALUES(?, ?, ?, ?, 1)`
@@ -318,6 +367,69 @@ export async function profile(id: string, name: string, password: string, oldPas
     }
 
     return user
+}
+
+/**
+ * Updates name + email on the user record. Used after OTP-registered users
+ * complete their profile in the question wizard.
+ * Returns:
+ *   - the updated user on success
+ *   - undefined if another user already owns the requested email
+ *   - null if the user wasn't found or update failed
+ */
+export async function updateUserProfileFields(
+    id: string,
+    name: string,
+    email: string,
+): Promise<DBUser | null | undefined> {
+    const msg = msgGlobal + "updateUserProfileFields - ";
+
+    const existing = await getUserByEmail(email);
+    if (existing && existing.id.toString() !== id.toString()) {
+        logger.warn(msg + 'email already used by another user', { id, email });
+        return undefined;
+    }
+
+    const userUpdateSQL = 'UPDATE user SET name=?, email=? WHERE id=?';
+    const params = [name, email, id];
+    const updateFunc = update({ query: userUpdateSQL, values: params });
+    const executed = await executeTransactionWrapper<ResultSetHeader>([updateFunc], msg);
+    if (!executed) {
+        logger.error(msg + 'SQL failed', userUpdateSQL);
+        return null;
+    }
+    const [result] = executed;
+    if (!result[0]?.affectedRows) {
+        logger.warn(msg + 'no rows affected', { id });
+        return null;
+    }
+
+    const refreshed = await getUsersByIds([id.toString()]);
+    if (!refreshed) {
+        logger.error(msg + 'refresh failed', { id });
+        return null;
+    }
+    return refreshed as DBUser;
+}
+
+/**
+ * Marks the "first question free" benefit as consumed.
+ * Called from addClientQuestion when the user inserts their first root question.
+ * Idempotent — safe to call even if the flag is already 0.
+ */
+export async function markFirstQuestionUsed(userId: string | number): Promise<void> {
+    const msg = msgGlobal + "markFirstQuestionUsed - ";
+    const query = 'UPDATE user SET is_first_question_free = 0 WHERE id = ? AND is_first_question_free = 1';
+    const updateFunc = update({ query, values: [userId] });
+    const executed = await executeTransactionWrapper<ResultSetHeader>([updateFunc], msg);
+    if (!executed) {
+        logger.error(msg + 'SQL failed', { user_id: userId });
+        return;
+    }
+    const [result] = executed;
+    if (result[0]?.affectedRows) {
+        logger.info(msg + 'flag flipped to 0', { user_id: userId });
+    }
 }
 
 export async function register(name: string, email: string, password: string, phone: string | null = null): Promise<DBUser | null | undefined> {

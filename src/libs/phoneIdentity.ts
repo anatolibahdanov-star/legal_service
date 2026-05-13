@@ -24,6 +24,9 @@ export const phoneToEmail = (e164: string): string => {
   return `${digits}@${PHONE_EMAIL_DOMAIN}`;
 };
 
+export const isPhoneEmail = (email: string | null | undefined): boolean =>
+  !!email && email.endsWith(`@${PHONE_EMAIL_DOMAIN}`);
+
 export const phoneToDefaultName = (e164: string): string => {
   const digits = e164.replace(/^\+/, '');
   return `User ${digits.slice(-4)}`;
@@ -31,3 +34,20 @@ export const phoneToDefaultName = (e164: string): string => {
 
 export const generatePassword = (): string =>
   `otp_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 14)}`;
+
+/**
+ * True when the user has no real email yet (missing or phone-placeholder).
+ * Per spec the wizard's profile step is triggered solely by missing email;
+ * name is optional and doesn't drive the conditional.
+ *
+ * Passing `null` user (no DB record at all) also returns true — the wizard
+ * needs to collect their profile data.
+ */
+export const needsProfileCompletion = (
+  user: { email?: string | null } | null | undefined,
+): boolean => {
+  if (!user) return true;
+  if (!user.email) return true;
+  if (isPhoneEmail(user.email)) return true;
+  return false;
+};

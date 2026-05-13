@@ -93,6 +93,7 @@ export function CaseModal({ caseItem, isOpen, onClose, openRatingSection, user, 
           Disabled: { label: "Ошибка", color: "bg-[#ef4444] text-white" },
           Spam: { label: "СПАМ", color: "bg-[#ef4444] text-white" },
           InProgress: { label: "В работе", color: "bg-[#3b82f6] text-white" },
+          Unpaid: { label: "Не оплачен", color: "bg-[#94a3b8] text-white" },
       };
 
       return statusMap[key];
