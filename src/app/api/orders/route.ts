@@ -5,7 +5,10 @@ import {DBOrder} from "@/src/interfaces/db"
 import logger from "@/src/libs/logger"
 import { authOptions } from '@/src/app/api/auth/[...nextauth]/route'
 import { getOrders, getTotalOrders } from '@/src/repositories/orders/repo';
+import { getWizardQuestionById } from '@/src/repositories/requests/repo';
 import { UserBalanceRequest } from '@/src/interfaces/api';
+import { OrderTypeE } from '@/src/interfaces/payment';
+import { QuestionStatusesE } from '@/src/interfaces/data';
 import { initNewOrder } from '@/src/services/order';
 
 export const dynamic = 'force-dynamic'; // defaults to auto
@@ -69,6 +72,39 @@ export async function POST(request: Request) {
         );
     }
     const user = session.user
+
+    // For OneTime wizard orders, the question must already exist (Step 3
+    // creates it as Unpaid). Verify ownership + Unpaid state here so we
+    // don't fire an Alfa redirect for someone else's question or a
+    // question that's already been paid for.
+    if (balanceRequest.type === OrderTypeE.OneTime) {
+        const questionId = balanceRequest.data?.questionId;
+        if (questionId === undefined || questionId === null || questionId === '') {
+            return NextResponse.json(
+                { success: false, message: 'questionId is required for OneTime orders.' },
+                { status: 400 }
+            );
+        }
+        const question = await getWizardQuestionById(questionId, user.id);
+        if (!question) {
+            logger.warn(msg + 'OneTime: question not found or not owned by user', { user_id: user.id, question_id: questionId });
+            return NextResponse.json(
+                { success: false, message: 'Question not found.' },
+                { status: 404 }
+            );
+        }
+        if (question.status !== QuestionStatusesE.Unpaid) {
+            logger.warn(msg + 'OneTime: question is not Unpaid — refusing card order', {
+                user_id: user.id,
+                question_id: question.id,
+                status: question.status,
+            });
+            return NextResponse.json(
+                { success: false, message: 'Question is already paid.' },
+                { status: 409 }
+            );
+        }
+    }
 
     let order: DBOrder | null = null
     try {

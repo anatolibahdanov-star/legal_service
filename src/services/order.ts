@@ -2,7 +2,7 @@ import logger from "@/src/libs/logger"
 import { User } from "next-auth";
 
 import { createEmptyOrder, getOrderById, updateClientOrder, updateClientOrderQR, updateOrderStatus, updateOrderQuestionLink } from '@/src/repositories/orders/repo';
-import { addWizardQuestion } from '@/src/repositories/requests/repo';
+import { updateWizardQuestionStatus } from '@/src/repositories/requests/repo';
 import { DBOrder } from "@/src/interfaces/db"
 import { AlfaOrderStatusE, OrderStatusE, OrderTypeE, newOrderResponse, checkOrderResponse, BalanceI, BalanceTypeE, BalanceStatusE, TransactionI, TransStatusE, TransTypeE } from '@/src/interfaces/payment';
 import { QuestionStatusesE } from '@/src/interfaces/data';
@@ -30,6 +30,13 @@ export const initNewOrder = async (balanceRequest: UserBalanceRequest, user: Use
             logger.error(msg + error, user.id, balanceRequest)
             result.errors = [error]
             return result
+        }
+
+        // OneTime wizard orders carry the questionId — pre-link the FK
+        // so admin queries (orders ↔ questions) work even if Alfa never
+        // confirms (e.g. user abandons the redirect).
+        if (balanceRequest.type === OrderTypeE.OneTime && balanceRequest.data?.questionId) {
+            await updateOrderQuestionLink(emptyOrder.id, balanceRequest.data.questionId);
         }
 
         try {
@@ -134,14 +141,19 @@ export const checkOrderStatus = async (slug:string, user: User): Promise<checkOr
             return result
         }
 
-        // For wizard one-shot card payments we need the question text before
-        // updateOrderStatus overwrites porder.data with the Alfa transaction info.
-        let oneTimeQuestionText: string | null = null;
+        // For wizard one-shot card payments the question is created on
+        // Step 3 of the wizard with status Unpaid. Its id travels along
+        // the order via porder.data ({ questionId }) — capture it before
+        // updateOrderStatus overwrites porder.data with Alfa transaction info.
+        // The pre-existing `order.question_id` FK is filled at order-create
+        // time, but we read from data first so the contract is explicit
+        // and doesn't depend on column ordering.
+        let oneTimeQuestionId: string | number | null = order.question_id ?? null;
         if (order.ptype === OrderTypeE.OneTime && order.data) {
             try {
                 const parsed = JSON.parse(order.data);
-                if (typeof parsed?.question === 'string' && parsed.question.trim().length > 0) {
-                    oneTimeQuestionText = parsed.question.trim();
+                if (parsed?.questionId !== undefined && parsed.questionId !== null && parsed.questionId !== '') {
+                    oneTimeQuestionId = parsed.questionId;
                 }
             } catch (e) {
                 logger.warn(msg + 'failed to parse OneTime order.data', { order_id: order.id, err: (e as Error).message });
@@ -167,12 +179,23 @@ export const checkOrderStatus = async (slug:string, user: User): Promise<checkOr
         }
         
 
-        const order_status = [AlfaOrderStatusE.Register, AlfaOrderStatusE.Hold].includes(alfaOrder.data.orderStatus) ?
-            OrderStatusE.Unpaid:
-            (
-                alfaOrder.data.orderStatus === AlfaOrderStatusE.Auth ? 
-                OrderStatusE.Paid : OrderStatusE.Error
-            )
+        // Register/Hold/New у Альфы — промежуточные статусы (платёж ещё в пути).
+        // Держим заказ в InProgress, чтобы getActiveOrderByUserId/повторный
+        // checkOrderStatus могли допросить Альфу до финала. Unpaid оставляем
+        // только за реальными финальными провалами.
+        let order_status: OrderStatusE
+        switch (alfaOrder.data.orderStatus) {
+            case AlfaOrderStatusE.Auth:
+                order_status = OrderStatusE.Paid
+                break
+            case AlfaOrderStatusE.Register:
+            case AlfaOrderStatusE.Hold:
+            case AlfaOrderStatusE.New:
+                order_status = OrderStatusE.InProgress
+                break
+            default:
+                order_status = OrderStatusE.Error
+        }
         
         const transaction_info = {
             transaction: alfaOrder.data.transactionAttributes,
@@ -210,32 +233,32 @@ export const checkOrderStatus = async (slug:string, user: User): Promise<checkOr
         if(updatedOrderStatus.alpha_status === AlfaOrderStatusE.Auth) {
             if (updatedOrderStatus.ptype === OrderTypeE.OneTime) {
                 // Wizard one-shot payment for a single question.
-                // Money goes to the question, NOT to the balance.
-                if (!oneTimeQuestionText) {
-                    logger.error(msg + 'OneTime order paid but question text missing in data', {
+                // The question was created on Step 3 (status=Unpaid);
+                // here we only flip it to InProgress. No new row is inserted.
+                if (oneTimeQuestionId === null) {
+                    logger.error(msg + 'OneTime order paid but questionId missing', {
                         order_id: updatedOrderStatus.id,
                         user_id: user.id,
                     });
                 } else {
-                    logger.info(msg + 'OneTime paid — creating question', {
-                        order_id: updatedOrderStatus.id,
-                        user_id: user.id,
-                    });
-                    const question = await addWizardQuestion(
-                        user.id,
-                        oneTimeQuestionText,
+                    const updatedQuestion = await updateWizardQuestionStatus(
+                        oneTimeQuestionId,
                         QuestionStatusesE.InProgress,
+                        user.id,
                     );
-                    if (question) {
-                        await updateOrderQuestionLink(updatedOrderStatus.id, question.id);
-                        logger.info(msg + 'OneTime: question created and linked', {
+                    if (updatedQuestion) {
+                        // Ensure the order ↔ question link is set (it may
+                        // already be from create-time, but the call is idempotent).
+                        await updateOrderQuestionLink(updatedOrderStatus.id, updatedQuestion.id);
+                        logger.info(msg + 'OneTime: question status flipped to InProgress', {
                             order_id: updatedOrderStatus.id,
-                            question_id: question.id,
+                            question_id: updatedQuestion.id,
                             user_id: user.id,
                         });
                     } else {
-                        logger.error(msg + 'OneTime: failed to create question after payment', {
+                        logger.error(msg + 'OneTime: failed to update question status after payment', {
                             order_id: updatedOrderStatus.id,
+                            question_id: oneTimeQuestionId,
                             user_id: user.id,
                         });
                     }

@@ -238,9 +238,17 @@ export async function addQuestion(question: DBQuestion): Promise<DBQuestion[] | 
  * Unlike addClientQuestion this does NOT touch the user table
  * (caller is the wizard, user already exists from OTP/complete-profile).
  *
- * Caller picks the initial status (e.g. Unpaid for "pay later",
- * InProgress for free/paid). markFirstQuestionUsed is invoked
- * unconditionally — same idempotent semantics as elsewhere.
+ * Caller picks the initial status (e.g. Unpaid on Step 3 of the wizard,
+ * which is later flipped to InProgress on Step 5 once payment succeeds).
+ *
+ * Both `status` and `job_status` columns are written: the legacy `status`
+ * is what admin queries sort/filter by, `job_status` is what the
+ * personal-cabinet UI displays. Keeping them in sync prevents the user
+ * from seeing a stale "В ожидании" badge on a freshly created Unpaid
+ * question.
+ *
+ * `markFirstQuestionUsed` is invoked unconditionally — same idempotent
+ * semantics as elsewhere.
  */
 export async function addWizardQuestion(
     userId: string | number,
@@ -249,8 +257,8 @@ export async function addWizardQuestion(
 ): Promise<DBQuestion | null> {
     const msg = msgGlobal + "addWizardQuestion - ";
     const myUuid: string = randomUUID();
-    const sql = `INSERT INTO question(user_id, question, status, uuid, parent_id) VALUES(?, ?, ?, UUID_TO_BIN(?), NULL)`;
-    const values = [userId, questionText, status, myUuid];
+    const sql = `INSERT INTO question(user_id, question, status, job_status, uuid, parent_id) VALUES(?, ?, ?, ?, UUID_TO_BIN(?), NULL)`;
+    const values = [userId, questionText, status, status, myUuid];
     const insertFunc = insert({ query: sql, values });
     const executed = await executeTransactionWrapper<ResultSetHeader>([insertFunc], msg);
     if (!executed) {
@@ -266,6 +274,92 @@ export async function addWizardQuestion(
     await markFirstQuestionUsed(userId);
     const rows = await getQuestionsByIds([insertedId.toString()]);
     return rows && rows.length > 0 ? rows[0] : null;
+}
+
+/**
+ * Updates `status` + `job_status` of an existing question, optionally
+ * scoped to a specific user_id so a malicious client can't flip statuses
+ * on someone else's question.
+ *
+ * Returns the updated row on success, or null if no row matched
+ * (wrong id / wrong owner / question doesn't exist).
+ */
+export async function updateWizardQuestionStatus(
+    id: string | number,
+    nextStatus: QuestionStatusesE,
+    ownerUserId?: string | number,
+): Promise<DBQuestion | null> {
+    const msg = msgGlobal + "updateWizardQuestionStatus - ";
+    let sql = `UPDATE question SET status=?, job_status=?, updated_at=NOW() WHERE id=?`;
+    const params: Array<string | number> = [nextStatus, nextStatus, id];
+    if (ownerUserId !== undefined) {
+        sql += ` AND user_id=?`;
+        params.push(ownerUserId);
+    }
+    const updateFunc = update({ query: sql, values: params });
+    const executed = await executeTransactionWrapper<ResultSetHeader>([updateFunc], msg);
+    if (!executed) {
+        logger.error(msg + 'SQL failed', sql);
+        return null;
+    }
+    const [result] = executed;
+    const affected = result[0]?.affectedRows ?? 0;
+    if (affected === 0) {
+        logger.warn(msg + 'no rows updated', { id, ownerUserId, nextStatus });
+        return null;
+    }
+    const rows = await getQuestionsByIds([id.toString()]);
+    return rows && rows.length > 0 ? rows[0] : null;
+}
+
+/**
+ * Updates ONLY the question text of an existing wizard question.
+ * Restricted to Unpaid rows owned by the caller — once a question is
+ * Paid/InProgress the text becomes immutable from the wizard's POV.
+ *
+ * Used to keep the DB row in sync when the user navigates back to
+ * Step 1 inside the same wizard session and edits the text.
+ */
+export async function updateWizardQuestionText(
+    id: string | number,
+    text: string,
+    ownerUserId: string | number,
+): Promise<DBQuestion | null> {
+    const msg = msgGlobal + "updateWizardQuestionText - ";
+    const sql = `UPDATE question SET question=?, updated_at=NOW() WHERE id=? AND user_id=? AND status=?`;
+    const params = [text, id, ownerUserId, QuestionStatusesE.Unpaid];
+    const updateFunc = update({ query: sql, values: params });
+    const executed = await executeTransactionWrapper<ResultSetHeader>([updateFunc], msg);
+    if (!executed) {
+        logger.error(msg + 'SQL failed', sql);
+        return null;
+    }
+    const [result] = executed;
+    const affected = result[0]?.affectedRows ?? 0;
+    if (affected === 0) {
+        logger.warn(msg + 'no rows updated (not found / wrong owner / not Unpaid)', { id, ownerUserId });
+        return null;
+    }
+    const rows = await getQuestionsByIds([id.toString()]);
+    return rows && rows.length > 0 ? rows[0] : null;
+}
+
+/**
+ * Fetches a single question by id, optionally restricted to a specific
+ * owner. Returns null if not found or owner mismatch. Used by the
+ * wizard's pay/finalize endpoints to verify ownership before mutating.
+ */
+export async function getWizardQuestionById(
+    id: string | number,
+    ownerUserId?: string | number,
+): Promise<DBQuestion | null> {
+    const rows = await getQuestionsByIds([id.toString()]);
+    if (!rows || rows.length === 0) return null;
+    const q = rows[0];
+    if (ownerUserId !== undefined && q.user_id?.toString() !== ownerUserId.toString()) {
+        return null;
+    }
+    return q;
 }
 
 export async function addClientQuestion(data: UserRequest): Promise<DBQuestion | null> {

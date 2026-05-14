@@ -2,27 +2,28 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import logger from '@/src/libs/logger';
 import { authOptions } from '@/src/app/api/auth/[...nextauth]/route';
-import { validateQuestionText } from '@/src/app/components/forms/validation/request';
 import { getQuestionPrice } from '@/src/services/pricing';
 import { payQuestionWithBalance } from '@/src/services/payWithBalance';
 
 export const dynamic = 'force-dynamic';
 
 interface PayWithBalanceBody {
-  question?: string;
+  questionId?: string | number;
   idempotencyKey?: string;
 }
 
 /**
- * Wizard: charges the user's balance for one question.
+ * Wizard: charges the user's balance for an already-existing Unpaid
+ * question, then flips its status to InProgress.
+ *
  * Mandatory body fields:
- *   - question:        the question text (re-validated server-side)
+ *   - questionId:      id of the question created on Step 3
  *   - idempotencyKey:  client-generated UUID; protects against double-charge
  *                       on retries / accidental double-clicks.
  *
- * Auth: a signed-in NextAuth session is required. The user id is taken
- * from the session, not from the body, so a malicious client can't charge
- * someone else's account.
+ * Auth: a signed-in NextAuth session is required. user_id is taken
+ * from the session, not the body — so a malicious client can't charge
+ * someone else's account or finalize someone else's question.
  */
 export async function POST(request: NextRequest) {
   const msg = 'API wizard/pay-with-balance - ';
@@ -46,11 +47,10 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const questionText = (body.question ?? '').trim();
-  const questionError = validateQuestionText(questionText);
-  if (questionError) {
+  const questionId = body.questionId;
+  if (questionId === undefined || questionId === null || questionId === '') {
     return NextResponse.json(
-      { success: false, code: 'invalid_question', message: questionError },
+      { success: false, code: 'invalid_question_id', message: 'Не указан id вопроса.' },
       { status: 400 },
     );
   }
@@ -72,19 +72,27 @@ export async function POST(request: NextRequest) {
 
   logger.info(msg + 'request received', {
     user_id: userId,
+    question_id: questionId,
     price,
     idempotency_key: idempotencyKey,
   });
 
   const result = await payQuestionWithBalance({
     userId,
-    questionText,
+    questionId,
     amount: price,
     idempotencyKey,
   });
 
   if (!result.ok) {
-    const status = result.code === 'insufficient' ? 402 : result.code === 'user_not_found' ? 404 : 500;
+    const status =
+      result.code === 'insufficient'
+        ? 402
+        : result.code === 'user_not_found' || result.code === 'question_not_found'
+          ? 404
+          : result.code === 'already_paid'
+            ? 409
+            : 500;
     return NextResponse.json(
       {
         success: false,
@@ -103,6 +111,7 @@ export async function POST(request: NextRequest) {
         uuid: result.questionUuid,
       },
       orderId: result.orderId,
+      amount: result.amount,
     },
     { status: 200 },
   );

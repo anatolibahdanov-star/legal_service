@@ -21,6 +21,10 @@ export interface ChargeResult {
  * in the balance table linked to the given order_id.
  *
  * `amount` must be a positive number (this is a debit, not a transfer).
+ *
+ * Внутри БД `user.balance` хранится в копейках (SELECT-ы по таблице делят
+ * на 100). Снаружи же все операции работают в рублях, поэтому здесь
+ * конвертируем рубли → копейки прямо на границе записи.
  */
 export async function chargeUserBalance(
     userId: number | string,
@@ -32,10 +36,11 @@ export async function chargeUserBalance(
         logger.error(msg + 'invalid amount', { user_id: userId, amount });
         return { ok: false, reason: 'db_error' };
     }
+    const amountKop = Math.round(amount * 100);
 
     // Step 1 — atomic deduct guarded by balance >= amount.
     const deductSQL = `UPDATE user SET balance = balance - ? WHERE id = ? AND balance >= ?`;
-    const deductParams = [amount, userId, amount];
+    const deductParams = [amountKop, userId, amountKop];
     const deductFunc = update({ query: deductSQL, values: deductParams });
     const deductExec = await executeTransactionWrapper<ResultSetHeader>([deductFunc], msg);
     if (!deductExec) {
@@ -59,7 +64,7 @@ export async function chargeUserBalance(
         userId,
         orderId,
         BalanceTypeE.Decrease,
-        -Math.abs(amount),
+        -Math.abs(amountKop),
         BalanceStatusE.Success,
         null,
     ];

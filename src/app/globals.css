@@ -141,3 +141,10 @@ body {
 .grecaptcha-badge {
 	visibility: hidden !important;
 }
+
+.smartcaptcha-host-stretched > div,
+.smartcaptcha-host-stretched > div > div,
+.smartcaptcha-host-stretched iframe {
+	width: 100% !important;
+	max-width: 100% !important;
+}

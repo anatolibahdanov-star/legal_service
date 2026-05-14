@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { CustomResponseDataI } from "@/src/interfaces/api"
 
-export const CustomRequest = async (apiPath: string, data: any, method: "POST" | "PUT" = "POST"): Promise<CustomResponseDataI> => {
+export const CustomRequest = async (apiPath: string, data: any, method: "POST" | "PUT" | "PATCH" = "POST"): Promise<CustomResponseDataI> => {
     const msg = "Send POST CustomRequest - "
     const api_url = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost/api';
     const openapi_request_timeout = parseInt(process.env.NEXT_PUBLIC_OPENAI_TIMEOUT ?? '1')

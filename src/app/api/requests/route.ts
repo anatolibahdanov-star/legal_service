@@ -5,7 +5,7 @@ import {UserRequest} from "@/src/interfaces/api"
 import logger from "@/src/libs/logger"
 import { SendSendGridEmailNewRequest } from '@/src/libs/sendgrid';
 import {EmailDataNewRequestI} from "@/src/interfaces/email"
-import { verifyRecaptcha } from "@/src/libs/recaptcha"
+import { verifyCaptcha } from "@/src/libs/captcha"
 import { validateRequestForm } from "@/src/app/components/forms/validation/request"
 import { RequestFormI } from "@/src/interfaces/form"
 
@@ -61,7 +61,7 @@ export async function POST(request: Request) {
     logger.info(msg + "request json", insertedQuestion)
 
     const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null
-    const captcha = await verifyRecaptcha(insertedQuestion.captchaToken, ip, { expectedAction: 'submit_question' })
+    const captcha = await verifyCaptcha(insertedQuestion.captchaToken, ip, { variant: 'dark' })
     if (!captcha.success) {
         logger.warn(msg + 'captcha rejected', { reason: captcha.reason })
         return NextResponse.json(

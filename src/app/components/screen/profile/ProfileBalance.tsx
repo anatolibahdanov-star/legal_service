@@ -6,7 +6,7 @@ import PaymentAlfaBank from "@/src/app/components/screen/profile/PaymentAlfaBank
 import PaymentQRCode from "@/src/app/components/screen/profile/PaymentQRCode"
 import { CustomGetRequest, CustomRequest } from "@/src/libs/request";
 import type { DBOrder, DBUser } from "@/src/interfaces/db";
-import { AlfaOrderStatusE } from "@/src/interfaces/payment";
+import { AlfaOrderStatusE, OrderTypeE } from "@/src/interfaces/payment";
 
 export const isAlphaStatusFinal = (status: number): boolean => {
     return ![
@@ -45,7 +45,7 @@ export const ProfileBalance = ({data, setUserBalance}: ProfileBalancePropsI) => 
     }, [newOrder]);
 
     useEffect(() => {
-        if(newOrder && !isAlphaStatusFinal(newOrder.alpha_status)) {  
+        if(newOrder && !isAlphaStatusFinal(newOrder.alpha_status)) {
           const intervalId = setInterval(async () => {
               const path = "/status/"
               const orderData = await CustomRequest(path, {slug: newOrder.alpha_id})
@@ -53,7 +53,11 @@ export const ProfileBalance = ({data, setUserBalance}: ProfileBalancePropsI) => 
               if(orderData.status) {
                   if(isAlphaStatusFinal(orderData.data.alpha_status)) {
                       clearInterval(intervalId);
-                      if(orderData.data.alpha_status === AlfaOrderStatusE.Auth) {
+                      // Only credit the local balance UI for actual Balance top-ups.
+                      // /api/check already filters to Balance orders, but keep the
+                      // guard here so a stale/foreign order can't trigger the modal.
+                      if(orderData.data.alpha_status === AlfaOrderStatusE.Auth
+                          && orderData.data.ptype === OrderTypeE.Balance) {
                           setUserBalance(orderData.data.amount)
                       }
                       setNewOrder(null)
@@ -61,7 +65,7 @@ export const ProfileBalance = ({data, setUserBalance}: ProfileBalancePropsI) => 
                   return true;
               }
           }, 2000); // Fetch every 2 seconds
-          
+
           return () => clearInterval(intervalId); // Cleanup
         }
     }, [newOrder, setUserBalance]);

@@ -1,7 +1,6 @@
 "use client";
 import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useGoogleReCaptcha } from "react-google-recaptcha-v3";
 import { AlertCircle, ArrowRight, Phone } from "lucide-react";
 import { FormContainerProps } from "@/src/interfaces/form";
 import {
@@ -10,7 +9,8 @@ import {
   signInWithPhoneOtp,
 } from "@/src/app/components/forms/action/register-phone";
 import { PHONE_MASK_TEMPLATE, formatPhoneInput, isPhoneComplete } from "@/src/libs/phoneMask";
-import { RecaptchaCheckbox } from "@/src/app/components/forms/RecaptchaCheckbox";
+import { YandexSmartCaptcha } from "@/src/app/components/forms/YandexSmartCaptcha";
+import { useYandexInvisibleCaptcha } from "@/src/app/components/forms/useYandexInvisibleCaptcha";
 import OtpCodeStep, { OtpStepResult } from "@/src/app/components/forms/OtpCodeStep";
 
 type Step = "phone" | "code";
@@ -19,7 +19,7 @@ const FIELD_BG = "bg-[#EFE7D8]";
 
 export default function RegisterPhoneForm({ onClose, onSwitchToLogin }: FormContainerProps) {
   const router = useRouter();
-  const { executeRecaptcha } = useGoogleReCaptcha();
+  const { execute: executeCaptcha } = useYandexInvisibleCaptcha();
 
   const [step, setStep] = useState<Step>("phone");
   const [phone, setPhone] = useState("");
@@ -59,15 +59,12 @@ export default function RegisterPhoneForm({ onClose, onSwitchToLogin }: FormCont
   };
 
   const handleResend = useCallback(async (): Promise<OtpStepResult> => {
-    if (!executeRecaptcha) {
-      return { ok: false, message: "Сервис проверки недоступен. Обновите страницу." };
-    }
     const targetPhone = normalizedPhone || phone;
     if (!targetPhone) {
       return { ok: false, message: "Не удалось определить номер телефона." };
     }
     try {
-      const token = await executeRecaptcha("register_phone");
+      const token = await executeCaptcha();
       const response = await sendPhoneOtpAction({
         phone: targetPhone,
         captchaToken: token,
@@ -95,7 +92,7 @@ export default function RegisterPhoneForm({ onClose, onSwitchToLogin }: FormCont
     } catch {
       return { ok: false, message: "Не удалось отправить код. Попробуйте позже." };
     }
-  }, [executeRecaptcha, normalizedPhone, phone, onSwitchToLogin]);
+  }, [executeCaptcha, normalizedPhone, phone, onSwitchToLogin]);
 
   const handleVerify = async (otpCode: string): Promise<OtpStepResult> => {
     const response = await verifyPhoneOtpAction({ phone: normalizedPhone, code: otpCode });
@@ -205,11 +202,11 @@ export default function RegisterPhoneForm({ onClose, onSwitchToLogin }: FormCont
             )}
           </div>
 
-          <RecaptchaCheckbox
-            action="register_phone"
+          <YandexSmartCaptcha
             token={captchaToken}
             onChange={setCaptchaToken}
             disabled={submitting}
+            fullWidth
           />
 
           <button

@@ -33,20 +33,20 @@ export function Header() {
           </nav>
 
           {/* Social icons and button */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-start gap-4">
             {/* Telegram */}
             <a
               href="https://t.me/your_telegram"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center justify-center w-10 h-10 transition-colors"
+              className="flex items-center justify-center w-8 h-8 transition-colors"
               aria-label="Telegram"
             >
               <Image
                 src="/design/telegram.svg"
                 width="10"
                 height="10"
-                className="w-8 h-8 text-white"
+                className="w-6 h-6 text-white"
                 alt="LLLMS logo"
               />
             </a>
@@ -56,14 +56,14 @@ export function Header() {
               href="https://wa.me/your_whatsapp"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center justify-center w-10 h-10 transition-colors"
+              className="flex items-center justify-center w-8 h-8 transition-colors"
               aria-label="WhatsApp"
             >
               <Image
                 src="/design/whatsapp.svg"
                 width="10"
                 height="10"
-                className="w-8 h-8 text-white"
+                className="w-6 h-6 text-white"
                 alt="LLLMS logo"
               />
             </a>
@@ -71,14 +71,14 @@ export function Header() {
             {/* Phone */}
             <a
               href="tel:+1234567890"
-              className="flex items-center justify-center w-10 h-10 transition-colors"
+              className="flex items-center justify-center w-8 h-8 transition-colors"
               aria-label="Позвонить"
             >
               <Image
                 src="/design/phone.svg"
                 width="10"
                 height="10"
-                className="w-8 h-8 text-white"
+                className="w-6 h-6 text-white"
                 alt="LLLMS logo"
               />
             </a>

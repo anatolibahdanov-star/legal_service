@@ -10,6 +10,7 @@ import Swal from 'sweetalert2'
 import { Upload, Eye, EyeOff, Star, Edit, Trash2, StarOff, Share2, Check, Link as LucideLink } from "lucide-react";
 
 import { CustomGetRequest, CustomRequest } from "@/src/libs/request";
+import { emitBalanceRefresh } from "@/src/libs/balanceEvents";
 import { DBQuestion, DBUser } from "@/src/interfaces/db";
 import { profileDataQuestionsI } from '@/src/interfaces/component';
 import { QuestionStatusesE, dFormat } from "@/src/interfaces/data";
@@ -591,7 +592,13 @@ export function ProfileScreen({is_user = false}: ProfileScreenPropsI) {
         redirect('/')
     }
     const user = session.user
-    const [activeTab, setActiveTab] = useState<"account" | "cases" | "balance">("account");
+    const [activeTab, setActiveTab] = useState<"account" | "cases" | "balance">(() => {
+        // Инициализируем синхронно из URL, иначе таб «прыгает» — сначала
+        // рендерится дефолтный, потом через эффект подменяется на нужный.
+        if (typeof window === "undefined") return "account";
+        const t = new URLSearchParams(window.location.search).get("tab");
+        return t === "balance" || t === "cases" || t === "account" ? t : "account";
+    });
     const [data, setData] = useState<DBUser | null>(null);
     
     const entity = is_user ? "users" : "administrators"
@@ -614,25 +621,28 @@ export function ProfileScreen({is_user = false}: ProfileScreenPropsI) {
         if(additionalBalance && data) {
             const newData = { ...data };
             if(!newData.balance) newData.balance = 0
-            newData.balance += Math.round(additionalBalance / 100);
+            const rub = Math.round(additionalBalance / 100);
+            newData.balance += rub;
             Swal.fire({
               title: "Успешная операция",
-              text: "Ваш баланс успешно пополнен на 100 рублей.",
+              text: `Ваш баланс успешно пополнен на ${new Intl.NumberFormat("ru-RU").format(rub)} ₽.`,
               icon: "success",
               draggable: true
             });
             setData(newData)
+            emitBalanceRefresh()
         }
     }
+  // После того как мы прочитали ?tab= для инициализации activeTab, чистим URL,
+  // чтобы дальнейший reload не цеплялся за устаревший таб.
+  useEffect(() => {
+    const t = new URLSearchParams(window.location.search).get("tab");
+    if (t === "balance" || t === "cases" || t === "account") {
+      history.replaceState(null, document.title, window.location.origin + window.location.pathname);
+    }
+  }, []);
+
   const windowWidth = is_user ? "max-w-7xl" : "max-w-5xl";
-  const hash = new URLSearchParams(window.location.search).get('tab');
-  if(hash && ["account", "cases", "balance"].includes(hash)) {
-    const cleanUrl = window.location.origin + window.location.pathname;
-    history.replaceState(null, document.title, cleanUrl);
-    setTimeout(() => {
-      setActiveTab(hash as "account" | "cases" | "balance")
-    }, 1000);
-  }
 
   return (
     <div className="p-6">

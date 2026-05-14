@@ -12,7 +12,7 @@ export function ResetPasswordFormWindow({ isOpen, onClose, onSwitchToLogin }: Fo
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-[24px] p-[32px] w-full max-w-[480px] relative max-h-[92vh] overflow-y-auto shadow-2xl"
+        className="bg-white rounded-[24px] p-[32px] w-full max-w-[520px] relative max-h-[92vh] overflow-y-auto shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <button

@@ -9,7 +9,6 @@ import {
 } from "@/src/app/components/ui/select";
 import { useSession } from "next-auth/react"
 import { useRouter } from 'next/navigation';
-import { useGoogleReCaptcha } from "react-google-recaptcha-v3";
 import { AlertCircle, ArrowLeft, Check } from "lucide-react";
 import {
   validateRequestForm,
@@ -22,20 +21,26 @@ import { PHONE_MASK_TEMPLATE, formatPhoneInput, isPhoneComplete } from "@/src/li
 import { FormDataObjectT } from "@/src/interfaces/form";
 import { DBQuestion } from "@/src/interfaces/db";
 import { SelectCategories } from "@/src/app/components/data/select-category";
-import { RecaptchaCheckbox } from "@/src/app/components/forms/RecaptchaCheckbox";
+import { YandexSmartCaptcha } from "@/src/app/components/forms/YandexSmartCaptcha";
+import { useYandexInvisibleCaptcha } from "@/src/app/components/forms/useYandexInvisibleCaptcha";
 import RequestStepOtp, { OtpStepResult } from "@/src/app/components/forms/RequestStepOtp";
 import RequestStepProfile, { CompleteProfileResult } from "@/src/app/components/forms/RequestStepProfile";
 import RequestStepPayment from "@/src/app/components/forms/RequestStepPayment";
 import RequestStepSuccess from "@/src/app/components/forms/RequestStepSuccess";
+import RequestStepError from "@/src/app/components/forms/RequestStepError";
 import { completeProfileAction } from "@/src/app/components/forms/action/complete-profile";
 import {
+  wizardAuthInitAction,
   wizardSendOtpAction,
   wizardVerifyOtpAction,
+  wizardCreateQuestionAction,
+  wizardUpdateQuestionTextAction,
   wizardSubmitQuestionAction,
   createWizardCardOrderAction,
   payWithBalanceAction,
 } from "@/src/app/components/forms/action/wizard";
 import { needsProfileCompletion, isPhoneEmail, phoneToDefaultName, normalizePhoneE164 } from "@/src/libs/phoneIdentity";
+import { emitBalanceRefresh } from "@/src/libs/balanceEvents";
 import { cn } from "@/src/app/components/ui/utils";
 
 interface RequestFormOptionsI {
@@ -49,7 +54,10 @@ interface RequestFormOptionsI {
 const BRAND = "#8faaba";
 const FIELD_BG = "rgba(143, 170, 186, 0.18)";
 
-type WizardStep = "question" | "phone" | "otp" | "profile" | "payment" | "success";
+type WizardStep = "question" | "phone" | "otp" | "profile" | "payment" | "success" | "error";
+
+/** Discriminates success-screen variants — drives copy + icon + amount. */
+type SuccessKind = "free" | "balance" | "card" | "later";
 
 /** Formats seconds into a human-readable Russian duration: "1 ч 23 мин", "5 мин", "45 с". */
 const formatRetryAfter = (totalSeconds: number): string => {
@@ -66,7 +74,7 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
 
     const router = useRouter();
     const { data: session, status } = useSession()
-    const { executeRecaptcha } = useGoogleReCaptcha();
+    const { execute: executeCaptcha } = useYandexInvisibleCaptcha({ variant: "dark" });
     const [errors, setErrors] = useState<FormDataObjectT>({ name: "", email: "", topic: "", question: "", agree: false, common: "", auth: "", parent: 0});
     const [captchaToken, setCaptchaToken] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
@@ -98,8 +106,23 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
     const [questionPrice, setQuestionPrice] = useState<number>(0);
     /** User's balance (rubles) from backend. */
     const [userBalance, setUserBalance] = useState<number>(0);
-    /** Controls the success-step variant: true → "юрист приступил", false → "сохранён, не отправлен". */
-    const [successPaid, setSuccessPaid] = useState<boolean>(true);
+    /** Controls the success-step copy/icon. */
+    const [successKind, setSuccessKind] = useState<SuccessKind>("free");
+    /** Charged/paid amount shown on the success screen for balance/card. */
+    const [successAmount, setSuccessAmount] = useState<number>(0);
+    /**
+     * Id+uuid of the Unpaid question created on Step 3 (after signIn).
+     * Step 5 uses this — it never creates a new question.
+     */
+    const [questionId, setQuestionId] = useState<string | number | null>(null);
+    const [questionUuid, setQuestionUuid] = useState<string | null>(null);
+    /**
+     * Snapshot of the question text at the moment the DB row was last
+     * created/updated. Used to detect drift when the user goes back to
+     * Step 1 and edits the text — `ensureUnpaidQuestionExists` PATCHes
+     * the row instead of stale-binding to the original text.
+     */
+    const [committedQuestionText, setCommittedQuestionText] = useState<string>("");
     /**
      * Idempotency key for the "pay with balance" action. Generated once per
      * wizard session and reused on retries so the server can dedup repeated
@@ -173,17 +196,13 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
 
     const handleSendOtp = async () => {
         if (!isPhoneComplete(phone) || sendingOtp) return;
-        if (!executeRecaptcha) {
-            setPhoneCommonError("Сервис проверки недоступен. Обновите страницу.");
-            return;
-        }
         setPhoneError("");
         setPhoneCommonError("");
         setSendingOtp(true);
 
         let token: string;
         try {
-            token = await executeRecaptcha("wizard_phone_otp");
+            token = await executeCaptcha();
         } catch {
             setSendingOtp(false);
             setPhoneCommonError("Не удалось пройти проверку. Попробуйте позже.");
@@ -295,7 +314,13 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
             if (!signInResult.status) {
                 return { ok: false, message: signInResult.error || "Ошибка авторизации. Попробуйте позже." };
             }
-            // First question free → create the question now and jump to success.
+            // Step 3 → Unpaid question is created right after the phone-bound
+            // session is established. Step 5 will only flip its status.
+            const ensured = await ensureUnpaidQuestionExists();
+            if (!ensured.ok) {
+                return { ok: false, message: ensured.message };
+            }
+            // First question free → flip status to InProgress and jump to success.
             if (data.isFirstQuestionFree) {
                 const submit = await submitFreeAndShowSuccess();
                 if (!submit.ok) {
@@ -313,12 +338,9 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
     };
 
     const handleOtpResend = async (): Promise<OtpStepResult> => {
-        if (!executeRecaptcha) {
-            return { ok: false, message: "Сервис проверки недоступен. Обновите страницу." };
-        }
         let token: string;
         try {
-            token = await executeRecaptcha("wizard_phone_otp");
+            token = await executeCaptcha();
         } catch {
             return { ok: false, message: "Не удалось пройти проверку. Попробуйте позже." };
         }
@@ -353,69 +375,163 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
     };
 
     /**
-     * Creates a question marked as "free" (first-question benefit) and
-     * advances the wizard to the success step. Used both when the profile
-     * step is skipped (user already has full data) and after profile-save.
+     * Ensures an Unpaid question exists for this wizard session, creating
+     * it on the server if needed. Should be called right after signIn
+     * (either after OTP for existing users, or after profile-save for new
+     * ones, or on "Далее" for already-authed LK users). Idempotent on the
+     * client side via the questionId state.
+     *
+     * Handles back-navigation drift: if the user has gone back to Step 1
+     * and edited the text after the Unpaid row was already created, the
+     * row is PATCHed in place rather than left stale (or duplicated).
+     */
+    const ensureUnpaidQuestionExists = async (): Promise<
+        { ok: true; id: string | number; uuid: string } | { ok: false; message: string }
+    > => {
+        const currentText = formData.question.trim();
+        if (questionId !== null) {
+            if (currentText === committedQuestionText) {
+                return { ok: true, id: questionId, uuid: questionUuid ?? "" };
+            }
+            const patch = await wizardUpdateQuestionTextAction(questionId, currentText);
+            if (!patch.status) {
+                // If the row is no longer Unpaid (server returned 409),
+                // the original question already moved past Unpaid — don't
+                // silently overwrite, just fall through with the existing id.
+                return {
+                    ok: false,
+                    message: patch.error || "Не удалось обновить текст вопроса.",
+                };
+            }
+            setCommittedQuestionText(currentText);
+            return { ok: true, id: questionId, uuid: questionUuid ?? "" };
+        }
+        const response = await wizardCreateQuestionAction(currentText);
+        if (!response.status) {
+            return { ok: false, message: response.error || "Не удалось сохранить вопрос." };
+        }
+        const data = response.data as { question?: { id?: string | number; uuid?: string } };
+        const created = data?.question;
+        if (!created?.id) {
+            return { ok: false, message: "Не удалось сохранить вопрос." };
+        }
+        setQuestionId(created.id);
+        setQuestionUuid(created.uuid ?? null);
+        setCommittedQuestionText(currentText);
+        return { ok: true, id: created.id, uuid: created.uuid ?? "" };
+    };
+
+    /**
+     * Finalizes a free question (first-question benefit): flips the
+     * existing Unpaid row to InProgress. Used both when the profile step
+     * is skipped (user already has full data) and after profile-save.
      */
     const submitFreeAndShowSuccess = async (): Promise<{ ok: boolean; message?: string }> => {
+        const ensured = await ensureUnpaidQuestionExists();
+        if (!ensured.ok) return { ok: false, message: ensured.message };
         const response = await wizardSubmitQuestionAction({
-            question: formData.question.trim(),
+            questionId: ensured.id,
             paymentMethod: "free",
         });
         if (!response.status) {
             return { ok: false, message: response.error || "Не удалось сохранить вопрос." };
         }
-        setSuccessPaid(true);
+        setSuccessKind("free");
+        setSuccessAmount(0);
         setStep("success");
         return { ok: true };
     };
 
     const handlePayCard = async (): Promise<{ ok: boolean; message?: string }> => {
-        const response = await createWizardCardOrderAction(questionPrice, formData.question.trim());
+        const ensured = await ensureUnpaidQuestionExists();
+        if (!ensured.ok) {
+            showPaymentError(ensured.message);
+            return { ok: false, message: ensured.message };
+        }
+        const response = await createWizardCardOrderAction(questionPrice, ensured.id);
         if (!response.status) {
-            return { ok: false, message: response.error || "Не удалось создать платёж." };
+            const msg = response.error || "Не удалось создать платёж.";
+            showPaymentError(msg);
+            return { ok: false, message: msg };
         }
         const order = response.data as { alpha_form_url?: string };
         if (!order.alpha_form_url) {
-            return { ok: false, message: "Платёжная форма недоступна." };
+            const msg = "Платёжная форма недоступна.";
+            showPaymentError(msg);
+            return { ok: false, message: msg };
         }
-        // Redirect to Alfa's payment form. Question is created after the
-        // callback (out of scope for task 5).
+        // Redirect to Alfa's payment form. The question status remains
+        // Unpaid until /api/status callback confirms the Alfa payment;
+        // at that point the order service flips it to InProgress.
         window.location.href = order.alpha_form_url;
         return { ok: true };
     };
 
     const handlePayBalance = async (): Promise<{ ok: boolean; message?: string }> => {
+        const ensured = await ensureUnpaidQuestionExists();
+        if (!ensured.ok) {
+            showPaymentError(ensured.message);
+            return { ok: false, message: ensured.message };
+        }
         const response = await payWithBalanceAction({
-            question: formData.question.trim(),
+            questionId: ensured.id,
             idempotencyKey: paymentIdempotencyKey,
         });
         if (!response.status) {
-            return { ok: false, message: response.error || "Не удалось провести оплату с баланса." };
+            const msg = response.error || "Не удалось провести оплату с баланса.";
+            showPaymentError(msg);
+            return { ok: false, message: msg };
         }
-        // Server has already charged, created the question (InProgress) and
-        // linked the order. From the wizard's POV this is final.
-        setSuccessPaid(true);
+        const data = response.data as { amount?: number };
+        setSuccessKind("balance");
+        setSuccessAmount(typeof data?.amount === "number" ? data.amount : questionPrice);
+        emitBalanceRefresh();
         setStep("success");
         return { ok: true };
     };
 
     const handlePayLater = async (): Promise<{ ok: boolean; message?: string }> => {
+        const ensured = await ensureUnpaidQuestionExists();
+        if (!ensured.ok) return { ok: false, message: ensured.message };
         const response = await wizardSubmitQuestionAction({
-            question: formData.question.trim(),
+            questionId: ensured.id,
             paymentMethod: "later",
         });
         if (!response.status) {
             return { ok: false, message: response.error || "Не удалось сохранить вопрос." };
         }
-        setSuccessPaid(false);
+        setSuccessKind("later");
+        setSuccessAmount(0);
         setStep("success");
         return { ok: true };
     };
 
+    /**
+     * Switches the wizard to the error screen. The question itself is
+     * left as Unpaid — the user can retry from their LK. The error
+     * `message` is logged for diagnostics but not shown in the UI per
+     * the spec (the error screen is intentionally indistinguishable in
+     * copy from the "оплатить позже" success screen).
+     */
+    const showPaymentError = (message: string) => {
+        console.warn("[wizard] payment failed:", message);
+        setStep("error");
+    };
+
     const handleTopUpBalance = () => {
-        // Existing UI in /profile?tab=balance handles the actual top-up flow.
-        router.push("/profile?tab=balance");
+        // Hard-navigation вместо router.push: Profile.tsx читает ?tab= один
+        // раз в useState-инициализаторе, поэтому soft-навигация по тому же
+        // пути не переключит таб.
+        // Если визард в попапе ЛК — сперва закрываем модалку.
+        if (onClose) onClose();
+        // Сохраняем текущую locale-префиксную базу пути (например, /ru/profile),
+        // иначе уйдём на «голый» /profile, который не матчится с [locale]/profile.
+        if (typeof window !== "undefined") {
+            const path = window.location.pathname.replace(/\/$/, "") || "";
+            const profileBase = path.match(/^(.*?\/profile)(\/.*)?$/);
+            const target = profileBase ? profileBase[1] : "/profile";
+            window.location.assign(`${target}?tab=balance`);
+        }
     };
 
     const handleProfileSubmit = async (name: string, email: string): Promise<CompleteProfileResult> => {
@@ -454,6 +570,13 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
         const signInResult = await signInWithPhoneOtp(normalizedPhone, verifyToken);
         if (!signInResult.status) {
             return { ok: false, message: signInResult.error || "Ошибка авторизации. Попробуйте позже." };
+        }
+        // For new users, this is the point that satisfies the "Step 3 —
+        // after phone confirmation" requirement: the session exists, so
+        // the Unpaid question can be persisted before the payment step.
+        const ensured = await ensureUnpaidQuestionExists();
+        if (!ensured.ok) {
+            return { ok: false, message: ensured.message };
         }
         return { ok: true, verificationEmailSent: data.verificationEmailSent };
     };
@@ -500,14 +623,13 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
                         </div>
                     </div>
 
-                    <div>
-                        <RecaptchaCheckbox
-                            action="submit_question"
-                            token={captchaToken}
-                            onChange={setCaptchaToken}
-                            disabled={submitting}
-                        />
-                    </div>
+                    <YandexSmartCaptcha
+                        token={captchaToken}
+                        onChange={setCaptchaToken}
+                        disabled={submitting}
+                        variant="dark"
+                        fullWidth
+                    />
 
                     <button type="submit"
                         disabled={!canSubmitFollowUp}
@@ -522,10 +644,13 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
         );
     }
 
-    // Main wizard — step 1: question + captcha + agree
+    // Main wizard — step 1: question + (captcha for guests) + agree
     if (step === "question") {
         const questionError = validateQuestionText(formData.question);
-        const isCaptchaValid = !!captchaToken;
+        const isAuthed = !!user;
+        // Captcha is only required for guests; authed users have already
+        // proven themselves via the existing session.
+        const isCaptchaValid = isAuthed || !!captchaToken;
         const isAgreed = formData.agree === true;
         const canProceed = !questionError && isCaptchaValid && isAgreed && !submitting;
 
@@ -534,6 +659,88 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
             const err = validateQuestionText(formData.question);
             if (err || !isCaptchaValid || !isAgreed) return;
             setStep("phone");
+        };
+
+        /**
+         * Authed-user branch: skip phone/OTP/profile and decide payment
+         * straight from step 1. We re-fetch init data on submit so the
+         * balance check uses fresh server state, not whatever was loaded
+         * on mount.
+         */
+        const handleNextAuthed = async () => {
+            setQuestionTouched(true);
+            const err = validateQuestionText(formData.question);
+            if (err || !isAgreed || submitting) return;
+
+            setSubmitting(true);
+            setErrors((prev) => ({ ...prev, common: "" }));
+            try {
+                const initResponse = await wizardAuthInitAction();
+                if (!initResponse.status) {
+                    setErrors((prev) => ({
+                        ...prev,
+                        common: initResponse.error || "Не удалось получить данные пользователя. Попробуйте позже.",
+                    }));
+                    return;
+                }
+                const initData = initResponse.data as {
+                    isFirstQuestionFree?: boolean;
+                    questionPrice?: number;
+                    userBalance?: number;
+                };
+                const isFirstFree = !!initData.isFirstQuestionFree;
+                const price = typeof initData.questionPrice === "number" ? initData.questionPrice : 0;
+                const balance = typeof initData.userBalance === "number" ? initData.userBalance : 0;
+
+                // Surface the fresh numbers so Step 5 renders correctly if
+                // we end up falling through to it.
+                setIsFirstQuestionFree(isFirstFree);
+                setQuestionPrice(price);
+                setUserBalance(balance);
+
+                // LK-side equivalent of "Step 3 after phone confirmation":
+                // the user is already authenticated, so once they commit to
+                // submitting we persist the Unpaid question now.
+                const ensured = await ensureUnpaidQuestionExists();
+                if (!ensured.ok) {
+                    setErrors((prev) => ({
+                        ...prev,
+                        common: ensured.message || "Не удалось сохранить вопрос.",
+                    }));
+                    return;
+                }
+
+                if (isFirstFree) {
+                    const r = await submitFreeAndShowSuccess();
+                    if (!r.ok) {
+                        setErrors((prev) => ({
+                            ...prev,
+                            common: r.message || "Не удалось сохранить вопрос.",
+                        }));
+                    }
+                    return;
+                }
+
+                if (balance >= price) {
+                    const r = await handlePayBalance();
+                    if (!r.ok) {
+                        // Balance dropped between init and pay (or other
+                        // failure). Fall back to the payment step so the
+                        // user can pick another method.
+                        setErrors((prev) => ({
+                            ...prev,
+                            common: r.message || "Не удалось списать с баланса. Выберите способ оплаты.",
+                        }));
+                        setStep("payment");
+                    }
+                    return;
+                }
+
+                // Balance < price → let the user pick card / top-up / pay-later.
+                setStep("payment");
+            } finally {
+                setSubmitting(false);
+            }
         };
 
         return (
@@ -603,16 +810,19 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
                         </div>
                     </div>
 
-                    <RecaptchaCheckbox
-                        action="submit_question"
-                        token={captchaToken}
-                        onChange={setCaptchaToken}
-                        disabled={submitting}
-                    />
+                    {!isAuthed && (
+                        <YandexSmartCaptcha
+                            token={captchaToken}
+                            onChange={setCaptchaToken}
+                            disabled={submitting}
+                            variant="dark"
+                            fullWidth
+                        />
+                    )}
 
                     <button
                         type="button"
-                        onClick={handleNext}
+                        onClick={isAuthed ? handleNextAuthed : handleNext}
                         disabled={!canProceed}
                         className={cn(
                             "w-full font-medium py-4 px-6 rounded-2xl transition-colors text-lg",
@@ -622,7 +832,7 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
                         )}
                         style={canProceed ? { backgroundColor: BRAND } : undefined}
                     >
-                        Далее
+                        {submitting ? "Обрабатываем…" : "Далее"}
                     </button>
 
                     <div className="flex items-start gap-3 text-xs text-white/70 leading-relaxed pt-1">
@@ -800,9 +1010,23 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
     }
 
     // Step 6: success — reached after free submit, paid balance/card payment,
-    // or "оплатить позже" (with paid=false).
+    // or "оплатить позже". `successKind` drives the copy + icon + amount.
     if (step === "success") {
-        return <RequestStepSuccess paid={successPaid} onGoToProfile={goToMyQuestions} />;
+        return (
+            <RequestStepSuccess
+                variant={successKind}
+                amount={successAmount}
+                onGoToProfile={goToMyQuestions}
+            />
+        );
+    }
+
+    // Step 7: payment error — question stays Unpaid; user is sent to LK
+    // to retry from there (single-button screen per spec).
+    if (step === "error") {
+        return (
+            <RequestStepError onGoToProfile={goToMyQuestions} />
+        );
     }
 
     // Safety net for any unhandled step.
