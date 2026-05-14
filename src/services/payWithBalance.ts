@@ -1,7 +1,10 @@
 import logger from '@/src/libs/logger';
 import { chargeUserBalance } from '@/src/repositories/balances/repo';
 import { createEmptyOrder, updateOrderQuestionLink } from '@/src/repositories/orders/repo';
-import { addWizardQuestion } from '@/src/repositories/requests/repo';
+import {
+  getWizardQuestionById,
+  updateWizardQuestionStatus,
+} from '@/src/repositories/requests/repo';
 import { getUsersByIds } from '@/src/repositories/users/repo';
 import { OrderStatusE, OrderTypeE } from '@/src/interfaces/payment';
 import { QuestionStatusesE } from '@/src/interfaces/data';
@@ -13,11 +16,20 @@ const IDEMPOTENCY_TTL_MS = 5 * 60 * 1000;
 
 export interface PayWithBalanceResult {
   ok: boolean;
-  code?: 'insufficient' | 'user_not_found' | 'create_failed' | 'charge_failed' | 'internal';
+  code?:
+    | 'insufficient'
+    | 'user_not_found'
+    | 'question_not_found'
+    | 'already_paid'
+    | 'create_failed'
+    | 'charge_failed'
+    | 'update_failed'
+    | 'internal';
   message?: string;
   questionId?: string;
   questionUuid?: string;
   orderId?: string;
+  amount?: number;
 }
 
 interface CachedEntry {
@@ -42,28 +54,26 @@ const pruneInFlight = () => {
 
 interface PayParams {
   userId: string | number;
-  questionText: string;
+  questionId: string | number;
   amount: number;
   idempotencyKey: string;
 }
 
 /**
- * Charges the user's balance and binds the payment to a freshly created
- * question. Designed to be the *final* operation for "pay with balance":
- * once it returns success, the question has status InProgress and the
- * order is marked Paid.
+ * Charges the user's balance for an EXISTING Unpaid question and flips
+ * its status to InProgress. The question must already exist in the DB
+ * (created on Step 3 of the wizard).
  *
  * Idempotency: keyed by `idempotencyKey`. Concurrent or repeated requests
  * with the same key receive the same result (no double-charge). Entries
  * are kept in-memory for IDEMPOTENCY_TTL_MS (5 min).
  *
  * Sequence:
- *   1. Verify user exists, balance pre-check (UX hint only)
- *   2. Atomic debit via chargeUserBalance (true safety net)
- *   3. Create order (type=OneTime, status=Paid)
- *   4. Create question (status=InProgress)
- *   5. Link order.question_id = question.id
- * Each step is logged.
+ *   1. Verify user + question exist and the question belongs to the user
+ *   2. Pre-check balance (UX hint only)
+ *   3. Create order (type=OneTime, status=Paid, question_id pre-set)
+ *   4. Atomic debit via chargeUserBalance (true safety net)
+ *   5. Flip question status: Unpaid → InProgress
  */
 export async function payQuestionWithBalance(params: PayParams): Promise<PayWithBalanceResult> {
   pruneInFlight();
@@ -88,16 +98,35 @@ export async function payQuestionWithBalance(params: PayParams): Promise<PayWith
 }
 
 async function runPayment(params: PayParams): Promise<PayWithBalanceResult> {
-  const { userId, questionText, amount, idempotencyKey } = params;
+  const { userId, questionId, amount, idempotencyKey } = params;
   const ctx = {
     user_id: userId,
+    question_id: questionId,
     amount,
     idempotency_key: idempotencyKey,
   };
 
   logger.info(msgGlobal + 'start', ctx);
 
-  // 1. Fresh user fetch — balance from DB, not the (possibly stale) session.
+  // 1a. Question must exist, belong to the user, and still be Unpaid.
+  const question = await getWizardQuestionById(questionId, userId);
+  if (!question) {
+    logger.error(msgGlobal + 'question not found / wrong owner', ctx);
+    return { ok: false, code: 'question_not_found', message: 'Вопрос не найден.' };
+  }
+  if (question.status !== QuestionStatusesE.Unpaid) {
+    logger.warn(msgGlobal + 'question already finalized — refusing to re-charge', {
+      ...ctx,
+      status: question.status,
+    });
+    return {
+      ok: false,
+      code: 'already_paid',
+      message: 'Этот вопрос уже оплачен.',
+    };
+  }
+
+  // 1b. Fresh user fetch — balance from DB, not the (possibly stale) session.
   const user = await getUsersByIds([userId.toString()]);
   if (!user) {
     logger.error(msgGlobal + 'user not found', ctx);
@@ -112,8 +141,8 @@ async function runPayment(params: PayParams): Promise<PayWithBalanceResult> {
   }
   logger.info(msgGlobal + 'pre-check passed', { ...ctx, balance: user.balance });
 
-  // 2. Create an empty Paid OneTime order first so the ledger row has a
-  //    real order_id reference. Question link is set in step 5.
+  // 2. Create a Paid OneTime order, pre-linked to the question so the
+  //    ledger row has a real reference from the start.
   const orderRequest: UserBalanceRequest = {
     amount,
     orderNumber: `wizard_balance_${Date.now()}`,
@@ -125,6 +154,7 @@ async function runPayment(params: PayParams): Promise<PayWithBalanceResult> {
     logger.error(msgGlobal + 'failed to create order', ctx);
     return { ok: false, code: 'create_failed', message: 'Не удалось создать платёж.' };
   }
+  await updateOrderQuestionLink(order.id, question.id);
   logger.info(msgGlobal + 'order created', { ...ctx, order_id: order.id });
 
   // 3. Atomic debit. This is the authoritative check for balance >= amount.
@@ -143,36 +173,37 @@ async function runPayment(params: PayParams): Promise<PayWithBalanceResult> {
   }
   logger.info(msgGlobal + 'charged', { ...ctx, ledger_id: charge.transactionId });
 
-  // 4. Create the question as paid → InProgress.
-  const question = await addWizardQuestion(userId, questionText, QuestionStatusesE.InProgress);
-  if (!question) {
-    logger.error(msgGlobal + 'failed to create question after charge', {
+  // 4. Flip the question status: Unpaid → InProgress.
+  const updated = await updateWizardQuestionStatus(
+    question.id,
+    QuestionStatusesE.InProgress,
+    userId,
+  );
+  if (!updated) {
+    logger.error(msgGlobal + 'status update failed AFTER charge', {
       ...ctx,
       order_id: order.id,
     });
-    // Money was deducted but question creation failed. Mark visibly so admins
-    // can refund/recover manually. Order stays Paid with no question_id link.
+    // Money was deducted but the status flip failed. Manual reconciliation
+    // is needed — order stays Paid, question stays Unpaid.
     return {
       ok: false,
-      code: 'create_failed',
-      message: 'Оплата прошла, но не удалось создать вопрос. Свяжитесь с поддержкой.',
+      code: 'update_failed',
+      message: 'Оплата прошла, но не удалось обновить статус. Свяжитесь с поддержкой.',
     };
   }
-  logger.info(msgGlobal + 'question created', { ...ctx, question_id: question.id });
-
-  // 5. Link order ↔ question so the payment is fully traceable.
-  await updateOrderQuestionLink(order.id, question.id);
 
   logger.info(msgGlobal + 'success', {
     ...ctx,
     order_id: order.id,
-    question_id: question.id,
+    question_id: updated.id,
   });
 
   return {
     ok: true,
-    questionId: question.id.toString(),
-    questionUuid: question.uuid,
+    questionId: updated.id.toString(),
+    questionUuid: updated.uuid,
     orderId: order.id,
+    amount,
   };
 }

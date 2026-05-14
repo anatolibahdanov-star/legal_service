@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import logger from '@/src/libs/logger';
-import { verifyRecaptcha } from '@/src/libs/recaptcha';
+import { verifyCaptcha } from '@/src/libs/captcha';
 import { normalizePhoneE164 } from '@/src/libs/phoneIdentity';
 import { createOtp, invalidateOtp } from '@/src/libs/otpStore';
 import { getUserByPhone } from '@/src/repositories/users/repo';
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
   }
 
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null;
-  const captcha = await verifyRecaptcha(captchaToken, ip, { expectedAction: 'register_phone' });
+  const captcha = await verifyCaptcha(captchaToken, ip);
   if (!captcha.success) {
     logger.warn(msg + 'captcha failed', { reason: captcha.reason });
     return NextResponse.json(

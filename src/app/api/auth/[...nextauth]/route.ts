@@ -8,7 +8,7 @@ import logger from "@/src/libs/logger"
 import { UserStatusesE } from "@/src/interfaces/data"
 import { consumeVerifyToken } from "@/src/libs/otpStore"
 import { normalizePhoneE164 } from "@/src/libs/phoneIdentity"
-import { verifyRecaptcha } from "@/src/libs/recaptcha"
+import { verifyCaptcha } from "@/src/libs/captcha"
 import {
   getLoginStatus,
   recordFailedLogin,
@@ -62,9 +62,9 @@ export const authOptions = {
           const captchaToken = credentials.captchaToken
 
           if (captchaToken) {
-            const captcha = await verifyRecaptcha(captchaToken, null, { expectedAction: 'login_email' })
+            const captcha = await verifyCaptcha(captchaToken, null)
             if (!captcha.success) {
-              logger.error(msg + "captcha rejected", { reason: captcha.reason, score: captcha.score })
+              logger.error(msg + "captcha rejected", { reason: captcha.reason })
               throw new Error(encodeLoginError({ code: 'captcha', message: CAPTCHA_ERROR }))
             }
           }

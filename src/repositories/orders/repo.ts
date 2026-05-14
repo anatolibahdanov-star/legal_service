@@ -4,7 +4,7 @@ import { ResultSetHeader } from 'mysql2/promise';
 import {DBOrder, CountResult} from '@/src/interfaces/db'
 import { DBFilterOrders } from "@/src/interfaces/filters";
 import { PaymentInfoRequest, PaymentStatusUpdateI, UserBalanceRequest } from "@/src/interfaces/api";
-import { AlfaOrderStatusE, OrderStatusE } from "@/src/interfaces/payment";
+import { AlfaOrderStatusE, OrderStatusE, OrderTypeE } from "@/src/interfaces/payment";
 
 const msgGlobal = "REPO ORDER "
 
@@ -263,10 +263,13 @@ export async function updateOrderQuestionLink(
 
 export async function getActiveOrderByUserId(userId: string): Promise<DBOrder | null | undefined> {
     const msg = msgGlobal + "getActiveOrderByUserId - "
-    const query =  `SELECT po.*, po.order_type ptype, u.name user_name FROM porder po INNER JOIN user u ON po.user_id=u.id 
-        WHERE po.user_id=? AND po.status=? AND po.alpha_status IN (?) AND po.created_at > NOW() - INTERVAL 1 DAY`;
-    const statuses = [AlfaOrderStatusE.New, AlfaOrderStatusE.Hold, AlfaOrderStatusE.Register]
-    const params = [userId, OrderStatusE.InProgress, statuses]
+    // Balance-only: this is used by the LK Balance tab to resume an in-flight
+    // top-up. OneTime wizard card orders must not leak in — otherwise the tab
+    // would treat a paid-question as a balance top-up and fake the modal/UI.
+    const query =  `SELECT po.*, po.order_type ptype, u.name user_name FROM porder po INNER JOIN user u ON po.user_id=u.id
+        WHERE po.user_id=? AND po.order_type=? AND po.status=? AND po.alpha_status IN (?) AND po.created_at > NOW() - INTERVAL 1 DAY`;
+    const statuses = [AlfaOrderStatusE.New, AlfaOrderStatusE.Hold, AlfaOrderStatusE.Register,]
+    const params = [userId, OrderTypeE.Balance, OrderStatusE.InProgress, statuses]
     const findFunc = find({ query, values: params });
     const executedQueries = await queryTransactionWrapper<DBOrder>([findFunc], msg);
     if (!executedQueries) {

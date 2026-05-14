@@ -8,13 +8,13 @@ export default function RequestFormWindow({ isOpen, onClose, setCurrent, setPage
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-8 z-50"
       onClick={onClose}
     >
-      <div className="bg-[#3d4b5e] rounded-[24px] p-[40px] w-full max-w-[540px] relative"
+      <div className="relative w-full max-w-[540px]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close button */}
         <button
           onClick={onClose}
-          className="absolute top-[20px] right-[20px] text-white/60 hover:text-white transition-colors"
+          className="absolute top-[20px] right-[20px] text-white/60 hover:text-white transition-colors z-10"
           aria-label="Закрыть"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

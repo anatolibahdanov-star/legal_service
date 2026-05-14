@@ -4,7 +4,7 @@ import {DBUser} from "@/src/interfaces/db"
 import logger from "@/src/libs/logger"
 import { SendSendGridEmailForgot } from '@/src/libs/sendgrid';
 import { EmailDataForgotI } from '@/src/interfaces/email';
-import { verifyRecaptcha } from "@/src/libs/recaptcha"
+import { verifyCaptcha } from "@/src/libs/captcha"
 
 export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
@@ -112,7 +112,7 @@ export async function POST(request: Request) {
               { status: 401 }
           );
         }
-        const resetCaptcha = await verifyRecaptcha(data.captchaToken, null, { expectedAction: 'reset_password' })
+        const resetCaptcha = await verifyCaptcha(data.captchaToken, null)
         if (!resetCaptcha.success) {
           logger.warn(msg + 'captcha rejected on reset', { reason: resetCaptcha.reason })
           return NextResponse.json(

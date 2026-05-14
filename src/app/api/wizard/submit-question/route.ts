@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import logger from '@/src/libs/logger';
 import { authOptions } from '@/src/app/api/auth/[...nextauth]/route';
-import { addWizardQuestion } from '@/src/repositories/requests/repo';
-import { validateQuestionText } from '@/src/app/components/forms/validation/request';
+import { getWizardQuestionById, updateWizardQuestionStatus } from '@/src/repositories/requests/repo';
+import { isFirstQuestionFree } from '@/src/services/firstQuestion';
 import { QuestionStatusesE } from '@/src/interfaces/data';
 
 export const dynamic = 'force-dynamic';
@@ -11,21 +11,23 @@ export const dynamic = 'force-dynamic';
 type PaymentMethod = 'free' | 'later';
 
 interface SubmitQuestionBody {
-  question?: string;
+  questionId?: string | number;
   paymentMethod?: PaymentMethod;
 }
 
 /**
- * Wizard's final question-submission endpoint.
- * Handles the methods that don't go through a payment gateway right now:
- *   - 'free'  : user is on their first-question-free benefit → create the
- *               question InProgress so a lawyer can pick it up.
- *   - 'later' : user opted to pay later → create the question Unpaid;
- *               front-end then redirects to the profile screen where
- *               the user can pay from their account.
+ * Step 5 of the wizard for non-gateway payment methods.
  *
- * Card payments are handled separately via /api/orders (type=OneTime) +
- * Alfa-Bank redirect. Balance payments will get their own endpoint in task 7.
+ * Contract: the question already exists in the DB (created on Step 3
+ * with status Unpaid). This endpoint never creates a question; it only
+ * updates the status:
+ *   - 'free'  : verify the first-question-free benefit, flip to InProgress.
+ *   - 'later' : status stays Unpaid (no DB change), the client just
+ *               navigates to the success screen. Kept as an explicit
+ *               server call so we have a single place to log the decision.
+ *
+ * Card payments don't pass through here — they go via /api/orders
+ * (OneTime) and the Alfa callback flips the status.
  */
 export async function POST(request: NextRequest) {
   const msg = 'API wizard/submit-question - ';
@@ -48,15 +50,6 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const questionText = (body.question ?? '').trim();
-  const questionError = validateQuestionText(questionText);
-  if (questionError) {
-    return NextResponse.json(
-      { success: false, code: 'invalid_question', message: questionError },
-      { status: 400 },
-    );
-  }
-
   const method = body.paymentMethod;
   if (method !== 'free' && method !== 'later') {
     return NextResponse.json(
@@ -69,33 +62,103 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const userId = session.user.id.toString();
-  const status = method === 'free' ? QuestionStatusesE.InProgress : QuestionStatusesE.Unpaid;
-
-  const question = await addWizardQuestion(userId, questionText, status);
-  if (!question) {
-    logger.error(msg + 'failed to insert question', { user_id: userId, method });
+  const questionId = body.questionId;
+  if (questionId === undefined || questionId === null || questionId === '') {
     return NextResponse.json(
-      { success: false, code: 'create_failed', message: 'Не удалось сохранить вопрос. Попробуйте позже.' },
+      { success: false, code: 'invalid_question_id', message: 'Не указан id вопроса.' },
+      { status: 400 },
+    );
+  }
+
+  const userId = session.user.id.toString();
+
+  const question = await getWizardQuestionById(questionId, userId);
+  if (!question) {
+    logger.warn(msg + 'question not found or not owned by user', {
+      user_id: userId,
+      question_id: questionId,
+    });
+    return NextResponse.json(
+      { success: false, code: 'not_found', message: 'Вопрос не найден.' },
+      { status: 404 },
+    );
+  }
+
+  // Если вопрос уже не Unpaid — оплата по нему уже прошла. Идемпотентно
+  // возвращаем текущее состояние, чтобы не дёргать lawyer-flow повторно.
+  if (question.status !== QuestionStatusesE.Unpaid) {
+    logger.info(msg + 'question already finalized — returning as-is', {
+      user_id: userId,
+      question_id: question.id,
+      status: question.status,
+    });
+    return NextResponse.json(
+      {
+        success: true,
+        question: { id: question.id, uuid: question.uuid, status: question.status },
+        already_finalized: true,
+      },
+      { status: 200 },
+    );
+  }
+
+  if (method === 'later') {
+    // Статус остаётся Unpaid. Клиент покажет "Ваш вопрос сохранён".
+    logger.info(msg + 'pay-later — status stays Unpaid', {
+      user_id: userId,
+      question_id: question.id,
+    });
+    return NextResponse.json(
+      {
+        success: true,
+        question: { id: question.id, uuid: question.uuid, status: question.status },
+      },
+      { status: 200 },
+    );
+  }
+
+  // method === 'free' — проверяем бенефит и переводим в InProgress.
+  const firstFree = await isFirstQuestionFree(userId);
+  if (!firstFree) {
+    logger.warn(msg + 'free claim rejected — user not entitled', {
+      user_id: userId,
+      question_id: question.id,
+    });
+    return NextResponse.json(
+      {
+        success: false,
+        code: 'not_entitled',
+        message: 'Бесплатный вопрос недоступен. Выберите способ оплаты.',
+      },
+      { status: 403 },
+    );
+  }
+
+  const updated = await updateWizardQuestionStatus(
+    question.id,
+    QuestionStatusesE.InProgress,
+    userId,
+  );
+  if (!updated) {
+    logger.error(msg + 'status update failed', {
+      user_id: userId,
+      question_id: question.id,
+    });
+    return NextResponse.json(
+      { success: false, code: 'update_failed', message: 'Не удалось обновить статус вопроса.' },
       { status: 500 },
     );
   }
 
-  logger.info(msg + 'wizard question created', {
+  logger.info(msg + 'free question finalized', {
     user_id: userId,
-    question_id: question.id,
-    status,
-    method,
+    question_id: updated.id,
   });
 
   return NextResponse.json(
     {
       success: true,
-      question: {
-        id: question.id,
-        uuid: question.uuid,
-        status: question.status,
-      },
+      question: { id: updated.id, uuid: updated.uuid, status: updated.status },
     },
     { status: 200 },
   );

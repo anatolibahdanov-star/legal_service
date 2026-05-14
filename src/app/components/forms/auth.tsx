@@ -2,7 +2,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession, getSession, signIn } from "next-auth/react";
-import { useGoogleReCaptcha } from "react-google-recaptcha-v3";
 import { AlertCircle, ArrowRight, Eye, EyeOff, Lock, Mail, Phone } from "lucide-react";
 import { AuthFormPropsI } from "@/src/interfaces/form";
 import { PHONE_MASK_TEMPLATE, formatPhoneInput, isPhoneComplete } from "@/src/libs/phoneMask";
@@ -11,7 +10,8 @@ import {
   verifyLoginPhoneOtpAction,
 } from "@/src/app/components/forms/action/login-phone";
 import { signInWithPhoneOtp } from "@/src/app/components/forms/action/register-phone";
-import { RecaptchaCheckbox } from "@/src/app/components/forms/RecaptchaCheckbox";
+import { YandexSmartCaptcha } from "@/src/app/components/forms/YandexSmartCaptcha";
+import { useYandexInvisibleCaptcha } from "@/src/app/components/forms/useYandexInvisibleCaptcha";
 import OtpCodeStep, { OtpStepResult } from "@/src/app/components/forms/OtpCodeStep";
 
 type Tab = "email" | "phone";
@@ -48,7 +48,7 @@ export default function AuthForm({
 }: AuthFormPropsI) {
   const router = useRouter();
   const { update } = useSession();
-  const { executeRecaptcha } = useGoogleReCaptcha();
+  const { execute: executeCaptcha } = useYandexInvisibleCaptcha();
 
   const [tab, setTab] = useState<Tab>(prefillPhone ? "phone" : "email");
 
@@ -182,15 +182,12 @@ export default function AuthForm({
   };
 
   const handlePhoneResend = useCallback(async (): Promise<OtpStepResult> => {
-    if (!executeRecaptcha) {
-      return { ok: false, message: "Сервис проверки недоступен. Обновите страницу." };
-    }
     const targetPhone = normalizedPhone || phone;
     if (!targetPhone) {
       return { ok: false, message: "Не удалось определить номер телефона." };
     }
     try {
-      const token = await executeRecaptcha("login_phone");
+      const token = await executeCaptcha();
       const response = await sendLoginPhoneOtpAction({
         phone: targetPhone,
         captchaToken: token,
@@ -211,9 +208,9 @@ export default function AuthForm({
       if (data.devCode) console.info("[DEV] OTP code:", data.devCode);
       return { ok: true };
     } catch {
-      return { ok: false, message: "Не удалось отправить код. Попробуйте позже." };
+      return { ok: false, message: "Не удалось пройти проверку. Попробуйте позже." };
     }
-  }, [executeRecaptcha, normalizedPhone, phone]);
+  }, [executeCaptcha, normalizedPhone, phone]);
 
   const handlePhoneVerify = async (otpCode: string): Promise<OtpStepResult> => {
     const response = await verifyLoginPhoneOtpAction({ phone: normalizedPhone, code: otpCode });
@@ -365,11 +362,11 @@ export default function AuthForm({
             )}
           </div>
 
-          <RecaptchaCheckbox
-            action="login_email"
+          <YandexSmartCaptcha
             token={emailCaptchaToken}
             onChange={setEmailCaptchaToken}
             disabled={emailSubmitting}
+            fullWidth
           />
 
           {attemptsLeft !== null && attemptsLeft > 0 && (
@@ -443,11 +440,11 @@ export default function AuthForm({
             )}
           </div>
 
-          <RecaptchaCheckbox
-            action="login_phone"
+          <YandexSmartCaptcha
             token={phoneCaptchaToken}
             onChange={setPhoneCaptchaToken}
             disabled={phoneSubmitting}
+            fullWidth
           />
 
           <button

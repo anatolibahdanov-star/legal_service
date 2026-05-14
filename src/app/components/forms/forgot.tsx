@@ -4,7 +4,7 @@ import { AlertCircle, ArrowLeft, ArrowRight, Check, Mail } from "lucide-react";
 import { validateResetPasswordForm } from "@/src/app/components/forms/validation/forgot";
 import { submitResetPasswordFormAction } from "@/src/app/components/forms/action/forgot";
 import { ResetPasswordFormI, FormProps } from "@/src/interfaces/form";
-import { RecaptchaCheckbox } from "@/src/app/components/forms/RecaptchaCheckbox";
+import { YandexSmartCaptcha } from "@/src/app/components/forms/YandexSmartCaptcha";
 import { CaptchaDisclaimer } from "@/src/app/components/forms/CaptchaDisclaimer";
 
 const FIELD_BG = "bg-[#EFE7D8]";
@@ -124,11 +124,11 @@ export default function ForgotPasswordForm({ onSwitchToLogin }: FormProps) {
           {errors.email && <p className="text-[12px] text-red-500 ml-[4px]">{errors.email}</p>}
         </div>
 
-        <RecaptchaCheckbox
-          action="reset_password"
+        <YandexSmartCaptcha
           token={captchaToken}
           onChange={setCaptchaToken}
           disabled={submitting}
+          fullWidth
         />
 
         <button
