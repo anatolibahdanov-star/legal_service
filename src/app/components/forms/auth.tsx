@@ -13,6 +13,7 @@ import { signInWithPhoneOtp } from "@/src/app/components/forms/action/register-p
 import { YandexSmartCaptcha } from "@/src/app/components/forms/YandexSmartCaptcha";
 import { useYandexInvisibleCaptcha } from "@/src/app/components/forms/useYandexInvisibleCaptcha";
 import OtpCodeStep, { OtpStepResult } from "@/src/app/components/forms/OtpCodeStep";
+import { formatOtpDuration } from "@/src/app/components/forms/hooks/useOtpStep";
 
 type Tab = "email" | "phone";
 type PhoneStep = "phone" | "code";
@@ -27,7 +28,15 @@ interface ParsedAuthError {
   message: string;
   code?: string;
   attemptsLeft?: number;
+  lockedUntil?: string;
 }
+
+const formatLockCountdown = (totalSec: number): string => {
+  const safe = Math.max(0, totalSec);
+  const m = Math.floor(safe / 60);
+  const s = safe % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+};
 
 const parseAuthError = (raw: string | undefined | null): ParsedAuthError => {
   if (!raw) return { message: "Ошибка авторизации." };
@@ -59,13 +68,35 @@ export default function AuthForm({
   const [emailErrors, setEmailErrors] = useState({ email: "", password: "", common: "" });
   const [emailSubmitting, setEmailSubmitting] = useState(false);
   const [attemptsLeft, setAttemptsLeft] = useState<number | null>(null);
+  const [emailLockedUntil, setEmailLockedUntil] = useState<Date | null>(null);
+  const [nowTs, setNowTs] = useState<number>(() => Date.now());
+
+  useEffect(() => {
+    if (!emailLockedUntil) return;
+    const id = setInterval(() => setNowTs(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [emailLockedUntil]);
+
+  useEffect(() => {
+    if (emailLockedUntil && emailLockedUntil.getTime() <= nowTs) {
+      setEmailLockedUntil(null);
+      setEmailErrors((prev) => ({ ...prev, common: "" }));
+      setAttemptsLeft(null);
+    }
+  }, [emailLockedUntil, nowTs]);
+
+  const emailLockRemainingSec = emailLockedUntil
+    ? Math.max(0, Math.ceil((emailLockedUntil.getTime() - nowTs) / 1000))
+    : 0;
+  const isEmailLocked = emailLockRemainingSec > 0;
 
   const emailValid = useMemo(() => EMAIL_REGEX.test(email), [email]);
   // const passwordValid =
   //   password.length >= PASSWORD_MIN_LENGTH && HAS_LATIN_LETTER.test(password);
   const passwordValid =
     password.length >= PASSWORD_MIN_LENGTH;
-  const canSubmitEmail = emailValid && passwordValid && !!emailCaptchaToken && !emailSubmitting;
+  const canSubmitEmail =
+    emailValid && passwordValid && !!emailCaptchaToken && !emailSubmitting && !isEmailLocked;
 
   const passwordPolicyError = (value: string): string => {
     if (!value) return "";
@@ -82,6 +113,7 @@ export default function AuthForm({
       common: "",
     }));
     setAttemptsLeft(null);
+    setEmailLockedUntil(null);
   };
 
   const handlePasswordChange = (value: string) => {
@@ -100,6 +132,35 @@ export default function AuthForm({
   const [normalizedPhone, setNormalizedPhone] = useState("");
   const [phoneErrors, setPhoneErrors] = useState({ phone: "", code: "", common: "" });
   const [phoneSubmitting, setPhoneSubmitting] = useState(false);
+  const [phoneLockedUntil, setPhoneLockedUntil] = useState<Date | null>(null);
+  const [phoneCooldownUntil, setPhoneCooldownUntil] = useState<Date | null>(null);
+
+  useEffect(() => {
+    if (!phoneLockedUntil && !phoneCooldownUntil) return;
+    const id = setInterval(() => setNowTs(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [phoneLockedUntil, phoneCooldownUntil]);
+
+  useEffect(() => {
+    if (phoneLockedUntil && phoneLockedUntil.getTime() <= nowTs) {
+      setPhoneLockedUntil(null);
+      setPhoneErrors((prev) => ({ ...prev, common: "" }));
+    }
+    if (phoneCooldownUntil && phoneCooldownUntil.getTime() <= nowTs) {
+      setPhoneCooldownUntil(null);
+      setPhoneErrors((prev) => ({ ...prev, common: "" }));
+    }
+  }, [phoneLockedUntil, phoneCooldownUntil, nowTs]);
+
+  const phoneLockRemainingSec = phoneLockedUntil
+    ? Math.max(0, Math.ceil((phoneLockedUntil.getTime() - nowTs) / 1000))
+    : 0;
+  const phoneCooldownRemainingSec = phoneCooldownUntil
+    ? Math.max(0, Math.ceil((phoneCooldownUntil.getTime() - nowTs) / 1000))
+    : 0;
+  const isPhoneLocked = phoneLockRemainingSec > 0;
+  const isPhoneCoolingDown = phoneCooldownRemainingSec > 0;
+  const isPhoneBlocked = isPhoneLocked || isPhoneCoolingDown;
 
   useEffect(() => {
     if (prefillPhone) {
@@ -109,7 +170,8 @@ export default function AuthForm({
   }, [prefillPhone]);
 
   const phoneValid = useMemo(() => isPhoneComplete(phone), [phone]);
-  const canSubmitPhone = phoneValid && !!phoneCaptchaToken && !phoneSubmitting;
+  const canSubmitPhone =
+    phoneValid && !!phoneCaptchaToken && !phoneSubmitting && !isPhoneBlocked;
 
   const handlePhoneChange = (raw: string) => {
     const formatted = formatPhoneInput(raw);
@@ -122,6 +184,8 @@ export default function AuthForm({
           : "Введите корректный номер телефона",
       common: "",
     }));
+    setPhoneLockedUntil(null);
+    setPhoneCooldownUntil(null);
   };
 
   const finishSignInRedirect = async () => {
@@ -154,6 +218,15 @@ export default function AuthForm({
       const parsed = parseAuthError(response.error);
       setEmailErrors((prev) => ({ ...prev, common: parsed.message }));
       setAttemptsLeft(typeof parsed.attemptsLeft === "number" ? parsed.attemptsLeft : null);
+      if (parsed.code === "lock_15min") {
+        const until = parsed.lockedUntil ? new Date(parsed.lockedUntil) : null;
+        if (until && !Number.isNaN(until.getTime())) {
+          setEmailLockedUntil(until);
+        } else {
+          setEmailLockedUntil(new Date(Date.now() + 15 * 60 * 1000));
+        }
+        setNowTs(Date.now());
+      }
       return;
     }
     await finishSignInRedirect();
@@ -173,6 +246,25 @@ export default function AuthForm({
     setPhoneCaptchaToken(null);
     if (!response.status) {
       setPhoneErrors((prev) => ({ ...prev, common: response.error || "Не удалось отправить код." }));
+      const errData = response.data as
+        | { cooldownUntil?: string | null; lockedUntil?: string | null }
+        | null;
+      const lockedUntilRaw = errData?.lockedUntil ?? null;
+      const cooldownUntilRaw = errData?.cooldownUntil ?? null;
+      if (lockedUntilRaw) {
+        const d = new Date(lockedUntilRaw);
+        if (!Number.isNaN(d.getTime())) {
+          setPhoneLockedUntil(d);
+          setNowTs(Date.now());
+        }
+      }
+      if (cooldownUntilRaw) {
+        const d = new Date(cooldownUntilRaw);
+        if (!Number.isNaN(d.getTime())) {
+          setPhoneCooldownUntil(d);
+          setNowTs(Date.now());
+        }
+      }
       return;
     }
     const data = response.data as { phone: string; expiresInSec: number; devCode?: string };
@@ -301,6 +393,14 @@ export default function AuthForm({
                   Не удалось войти
                 </p>
                 <p className="text-[13px] text-red-600 leading-[18px]">{emailErrors.common}</p>
+                {isEmailLocked && (
+                  <p className="text-[13px] text-red-600 leading-[18px] mt-[4px]">
+                    Попробуйте через{" "}
+                    <span className="font-semibold tabular-nums">
+                      {formatLockCountdown(emailLockRemainingSec)}
+                    </span>
+                  </p>
+                )}
               </div>
             </div>
           )}
@@ -369,9 +469,14 @@ export default function AuthForm({
             fullWidth
           />
 
-          {attemptsLeft !== null && attemptsLeft > 0 && (
+          {attemptsLeft !== null && attemptsLeft > 0 && !isEmailLocked && (
             <p className="text-center text-[13px] text-[#6B7280]">
               Осталось попыток: <span className="font-bold text-[#0F1B2D]">{attemptsLeft}</span>
+            </p>
+          )}
+          {attemptsLeft === 0 && !isEmailLocked && (
+            <p className="text-center text-[13px] text-red-600">
+              Последняя попытка перед блокировкой на 15 минут.
             </p>
           )}
 
@@ -384,8 +489,12 @@ export default function AuthForm({
                 : "bg-[#D6E3EF] text-[#0F1B2D]/50 cursor-not-allowed"
             }`}
           >
-            {emailSubmitting ? "Входим…" : "Войти"}
-            {!emailSubmitting && <ArrowRight className="w-4 h-4" />}
+            {emailSubmitting
+              ? "Входим…"
+              : isEmailLocked
+                ? "Заблокировано"
+                : "Войти"}
+            {!emailSubmitting && !isEmailLocked && <ArrowRight className="w-4 h-4" />}
           </button>
 
           <div className="flex items-center justify-center gap-[6px]">
@@ -411,6 +520,22 @@ export default function AuthForm({
                   Не удалось отправить код
                 </p>
                 <p className="text-[13px] text-red-600 leading-[18px]">{phoneErrors.common}</p>
+                {isPhoneLocked && (
+                  <p className="text-[13px] text-red-600 leading-[18px] mt-[4px]">
+                    Попробуйте через{" "}
+                    <span className="font-semibold tabular-nums">
+                      {formatOtpDuration(phoneLockRemainingSec)}
+                    </span>
+                  </p>
+                )}
+                {!isPhoneLocked && isPhoneCoolingDown && (
+                  <p className="text-[13px] text-red-600 leading-[18px] mt-[4px]">
+                    Повторная отправка через{" "}
+                    <span className="font-semibold tabular-nums">
+                      {formatOtpDuration(phoneCooldownRemainingSec)}
+                    </span>
+                  </p>
+                )}
               </div>
             </div>
           )}
@@ -456,8 +581,14 @@ export default function AuthForm({
                 : "bg-[#D6E3EF] text-[#0F1B2D]/50 cursor-not-allowed"
             }`}
           >
-            {phoneSubmitting ? "Отправляем…" : "Получить код"}
-            {!phoneSubmitting && <ArrowRight className="w-4 h-4" />}
+            {phoneSubmitting
+              ? "Отправляем…"
+              : isPhoneLocked
+                ? "Заблокировано"
+                : isPhoneCoolingDown
+                  ? "Подождите"
+                  : "Получить код"}
+            {!phoneSubmitting && !isPhoneBlocked && <ArrowRight className="w-4 h-4" />}
           </button>
 
           <div className="flex items-center justify-center gap-[6px]">

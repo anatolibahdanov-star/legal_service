@@ -25,6 +25,7 @@ interface LoginErrorPayload {
   code: 'invalid_creds' | 'lock_15min' | 'blocked' | 'captcha';
   message: string;
   attemptsLeft?: number;
+  lockedUntil?: string;
 }
 const encodeLoginError = (payload: LoginErrorPayload): string => JSON.stringify(payload);
 const remainingAttempts = (used: number): number => Math.max(0, LOGIN_LOCKOUT_TRIGGER - used);
@@ -77,7 +78,11 @@ export const authOptions = {
           const lock = await getLoginStatus(email)
           if (lock.locked) {
             logger.warn(msg + "email locked", { email, remaining_sec: lock.lockedRemainingSec })
-            throw new Error(encodeLoginError({ code: 'lock_15min', message: LOCKED_15MIN_MESSAGE }))
+            throw new Error(encodeLoginError({
+              code: 'lock_15min',
+              message: LOCKED_15MIN_MESSAGE,
+              lockedUntil: lock.lockedUntil?.toISOString(),
+            }))
           }
 
           const adminRow = await getAdministratorByEmailOnly(email)
@@ -88,7 +93,11 @@ export const authOptions = {
             const fail = await recordFailedLogin(email)
             logger.warn(msg + "email not found", { email, attempts: fail.attempts, action: fail.action })
             if (fail.action === 'lock_15min') {
-              throw new Error(encodeLoginError({ code: 'lock_15min', message: LOCKED_15MIN_MESSAGE }))
+              throw new Error(encodeLoginError({
+                code: 'lock_15min',
+                message: LOCKED_15MIN_MESSAGE,
+                lockedUntil: fail.lockedUntil?.toISOString(),
+              }))
             }
             throw new Error(encodeLoginError({ code: 'invalid_creds', message: GENERIC_LOGIN_ERROR, attemptsLeft: remainingAttempts(fail.attempts) }))
           }
@@ -111,7 +120,11 @@ export const authOptions = {
             const fail = await recordFailedLogin(email)
             logger.warn(msg + "wrong password", { email, attempts: fail.attempts, action: fail.action })
             if (fail.action === 'lock_15min') {
-              throw new Error(encodeLoginError({ code: 'lock_15min', message: LOCKED_15MIN_MESSAGE }))
+              throw new Error(encodeLoginError({
+                code: 'lock_15min',
+                message: LOCKED_15MIN_MESSAGE,
+                lockedUntil: fail.lockedUntil?.toISOString(),
+              }))
             }
             throw new Error(encodeLoginError({ code: 'invalid_creds', message: GENERIC_LOGIN_ERROR, attemptsLeft: remainingAttempts(fail.attempts) }))
           }

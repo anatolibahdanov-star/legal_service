@@ -2,7 +2,7 @@
 
 import { Button } from "@/src/app/components/ui/button";
 import Image from 'next/image'
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { CustomRequest } from "@/src/libs/request";
@@ -53,12 +53,11 @@ const formatRub = (n: number): string => new Intl.NumberFormat("ru-RU").format(n
  *      OneTime ордеров переводит вопрос Unpaid → InProgress).
  *   2. По `order.ptype` рендерит либо пополнение баланса (старое UI),
  *      либо подтверждение оплаты вопроса с суммой + автоматический
- *      редирект в `/profile?tab=questions`.
+ *      редирект в `/profile?tab=cases`.
  */
 export default function BalancePage() {
   const params = useParams();
   const searchParams = useSearchParams();
-  const router = useRouter();
 
   const slug = params.slug as string | undefined;
   const isReturnFromAlfa = slug === "success" || slug === "unsuccess";
@@ -129,17 +128,25 @@ export default function BalancePage() {
     };
   }, [alfaOrderId, isReturnFromAlfa]);
 
+  const goToProfileTab = (tab: "balance" | "cases") => {
+    if (typeof window === "undefined") return;
+    const path = window.location.pathname.replace(/\/$/, "") || "";
+    const localeMatch = path.match(/^(\/[^/]+)\/balance(\/.*)?$/);
+    const base = localeMatch ? `${localeMatch[1]}/profile` : "/profile";
+    window.location.assign(`${base}?tab=${tab}`);
+  };
+
   // Авто-редирект в ЛК для OneTime: фоновый таймер. Юзер может ткнуть
   // кнопку и уйти раньше.
   useEffect(() => {
     if (view.kind !== "one_time" || secondsLeft === null) return;
     if (secondsLeft <= 0) {
-      router.push("/profile?tab=questions");
+      goToProfileTab("cases");
       return;
     }
     const t = setTimeout(() => setSecondsLeft((s) => (s === null ? null : s - 1)), 1000);
     return () => clearTimeout(t);
-  }, [secondsLeft, view.kind, router]);
+  }, [secondsLeft, view.kind]);
 
   if (loading) {
     return (
@@ -150,10 +157,10 @@ export default function BalancePage() {
   }
 
   if (view.kind === "one_time") {
-    return <OneTimeView paid={view.paid} amount={view.amount} secondsLeft={secondsLeft} onContinue={() => router.push("/profile?tab=questions")} onRetry={() => router.push("/profile?tab=questions")} />;
+    return <OneTimeView paid={view.paid} amount={view.amount} secondsLeft={secondsLeft} onContinue={() => goToProfileTab("cases")} onRetry={() => goToProfileTab("cases")} />;
   }
 
-  return <BalanceTopUpView paid={view.paid} onReturn={() => router.push("/profile?tab=balance")} />;
+  return <BalanceTopUpView paid={view.paid} onReturn={() => goToProfileTab("balance")} />;
 }
 
 /* ------------------------------------------------------------------ */
