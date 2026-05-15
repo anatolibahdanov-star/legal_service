@@ -17,8 +17,12 @@ interface RequestStepPaymentProps {
   onPayCard: () => Promise<{ ok: boolean; message?: string }>;
   /** Handles the balance-payment flow (stub for task 7 for now). */
   onPayBalance: () => Promise<{ ok: boolean; message?: string }>;
-  /** Creates an unpaid question and redirects to the profile. */
-  onPayLater: () => Promise<{ ok: boolean; message?: string }>;
+  /**
+   * Creates an unpaid question and redirects to the profile. Опциональный —
+   * в LK-сценарии «Оплатить» из списка заявок этой кнопки не должно быть
+   * (вопрос уже сохранён и виден в таблице).
+   */
+  onPayLater?: () => Promise<{ ok: boolean; message?: string }>;
   /** Redirects to the balance top-up screen. */
   onTopUp: () => void;
 }
@@ -62,7 +66,7 @@ export default function RequestStepPayment({
   };
 
   const handleLater = async () => {
-    if (submitting) return;
+    if (submitting || !onPayLater) return;
     setError("");
     setSubmitting("later");
     const res = await onPayLater();
@@ -169,15 +173,18 @@ export default function RequestStepPayment({
         )}
       </button>
 
-      {/* Pay later */}
-      <button
-        type="button"
-        onClick={handleLater}
-        disabled={submitting !== null}
-        className="w-full text-sm text-white/70 hover:text-white transition-colors py-3 mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        {submitting === "later" ? "Сохраняем…" : "Оплатить позже"}
-      </button>
+      {/* Pay later — hidden when caller didn't pass onPayLater (e.g. paying
+          from the LK questions list, where the question is already saved). */}
+      {onPayLater && (
+        <button
+          type="button"
+          onClick={handleLater}
+          disabled={submitting !== null}
+          className="w-full text-sm text-white/70 hover:text-white transition-colors py-3 mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {submitting === "later" ? "Сохраняем…" : "Оплатить позже"}
+        </button>
+      )}
     </div>
   );
 }

@@ -103,9 +103,12 @@ export async function createWizardCardOrderAction(
   });
 }
 
+export type WizardSource = 'lk' | 'main';
+
 export interface PayWithBalancePayload {
   questionId: string | number;
   idempotencyKey: string;
+  source: WizardSource;
 }
 
 /**
