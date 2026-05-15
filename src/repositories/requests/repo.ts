@@ -274,6 +274,37 @@ export async function addWizardQuestion(
         logger.error(msg + 'no inserted id');
         return null;
     }
+
+    const replyInsertSQL = `INSERT INTO reply(question_id, reply, status) VALUES(?, ?, ?)`;
+    const replyInsertData = [insertedId, '', ReplyStatusesE.New];
+    const replyInsertFunc = insert({ query: replyInsertSQL, values: replyInsertData });
+    const replyExecuted = await executeTransactionWrapper<ResultSetHeader>([replyInsertFunc], msg);
+    if (!replyExecuted) {
+        logger.error(msg + 'SQL failed (reply)', replyInsertSQL);
+        return null;
+    }
+    const [replyResult] = replyExecuted;
+    const insertedReplyId = replyResult[0]?.insertId;
+    if (!insertedReplyId) {
+        logger.error(msg + 'no inserted reply id');
+        return null;
+    }
+
+    const finalReplyInsertSQL = `INSERT INTO final_reply(reply_id, final_reply, status) VALUES(?, ?, ?)`;
+    const finalReplyInsertData = [insertedReplyId, '', FinalReplyStatusesE.New];
+    const finalReplyInsertFunc = insert({ query: finalReplyInsertSQL, values: finalReplyInsertData });
+    const finalReplyExecuted = await executeTransactionWrapper<ResultSetHeader>([finalReplyInsertFunc], msg);
+    if (!finalReplyExecuted) {
+        logger.error(msg + 'SQL failed (final_reply)', finalReplyInsertSQL);
+        return null;
+    }
+    const [finalReplyResult] = finalReplyExecuted;
+    const insertedFinalReplyId = finalReplyResult[0]?.insertId;
+    if (!insertedFinalReplyId) {
+        logger.error(msg + 'no inserted final_reply id');
+        return null;
+    }
+
     const rows = await getQuestionsByIds([insertedId.toString()]);
     return rows && rows.length > 0 ? rows[0] : null;
 }
