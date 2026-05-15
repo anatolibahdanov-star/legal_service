@@ -987,7 +987,12 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
                 onSubmit={handleProfileSubmit}
                 onContinue={() => {
                     if (isFirstQuestionFree) {
-                        void submitFreeAndShowSuccess();
+                        // Если сервер откажет в free-бенефите (рассинхрон стейта
+                        // и серверного флага) — не оставляем юзера в тупике,
+                        // отправляем на шаг выбора оплаты.
+                        submitFreeAndShowSuccess().then((r) => {
+                            if (!r.ok) setStep("payment");
+                        });
                     } else {
                         setStep("payment");
                     }

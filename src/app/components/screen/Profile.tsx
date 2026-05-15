@@ -7,7 +7,7 @@ import Image from 'next/image'
 import Link from 'next/link';
 import Swal from 'sweetalert2'
 
-import { Upload, Eye, EyeOff, Star, Edit, Trash2, StarOff, Share2, Check, Link as LucideLink } from "lucide-react";
+import { Upload, Eye, EyeOff, Star, Edit, Trash2, StarOff, Share2, Check, CreditCard, Link as LucideLink } from "lucide-react";
 
 import { CustomGetRequest, CustomRequest } from "@/src/libs/request";
 import { emitBalanceRefresh } from "@/src/libs/balanceEvents";
@@ -16,6 +16,7 @@ import { profileDataQuestionsI } from '@/src/interfaces/component';
 import { QuestionStatusesE, dFormat } from "@/src/interfaces/data";
 import { format } from 'date-fns';
 import RequestFormWindow from "@/src/app/components/popups/RequestFormWindow";
+import PayQuestionWindow from "@/src/app/components/popups/PayQuestionWindow";
 import {ProfileBalance} from "@/src/app/components/screen/profile/ProfileBalance"
 import { PaginationApp } from '@/src/app/components/data/pagination';
 import { Tooltip } from "@/src/app/components/Tooltip";
@@ -322,6 +323,8 @@ const ProfileJobList = ({is_user, user}: ProfileJobListPropsI) => {
   const [openRatingSection, setOpenRatingSection] = useState(false);
   const [copiedLink, setCopiedLink] = useState("");
   const [showLinkCopied, setShowLinkCopied] = useState(false);
+  /** id вопроса, для которого открыто окно оплаты; null — окно закрыто. */
+  const [payingQuestionId, setPayingQuestionId] = useState<string | number | null>(null);
 
   const getStatusBadge = (status: number) => {
       const isValidColor = (value: number): value is QuestionStatusesE => {
@@ -464,7 +467,21 @@ const ProfileJobList = ({is_user, user}: ProfileJobListPropsI) => {
                         className="font-['Inter:Regular',sans-serif] font-normal text-[14px] text-[#87b7ce] hover:text-[#6fa2b8] transition-colors line-clamp-2"
                     >{caseItem.question}</Link>
                   </td>
-                  <td className="p-4 text-sm text-[#333] min-w-[130px]">{getStatusBadge(caseItem.job_status)}</td>
+                  <td className="p-4 text-sm text-[#333] min-w-[180px]">
+                    <div className="flex flex-wrap items-center gap-2">
+                      {getStatusBadge(caseItem.job_status)}
+                      {is_user && caseItem.job_status === QuestionStatusesE.Unpaid && (
+                        <button
+                          type="button"
+                          onClick={() => setPayingQuestionId(caseItem.id)}
+                          className="inline-flex items-center gap-1.5 rounded-lg bg-[#323c54] hover:bg-[#3d4b5e] text-white text-xs font-medium px-3 py-1.5 transition-colors"
+                        >
+                          <CreditCard className="size-4" />
+                          Оплатить
+                        </button>
+                      )}
+                    </div>
+                  </td>
                   <td className="p-4 text-sm text-[#333]">{format((new Date(caseItem.updated_at)), dFormat)}</td>
                   <td className="p-4 flex items-center justify-center gap-2"> 
                     {!is_user ? (
@@ -526,8 +543,19 @@ const ProfileJobList = ({is_user, user}: ProfileJobListPropsI) => {
         </div>
       </div>
 
-      {is_user && (<RequestFormWindow isOpen={activeForm === "new-question"} onClose={setCloseProfileWindow} 
+      {is_user && (<RequestFormWindow isOpen={activeForm === "new-question"} onClose={setCloseProfileWindow}
         setCurrent={setIsRefresh} setPage={setCurrentCommom}/>)}
+
+      {is_user && (
+        <PayQuestionWindow
+          isOpen={payingQuestionId !== null}
+          questionId={payingQuestionId}
+          onClose={() => setPayingQuestionId(null)}
+          // Тоггл вместо `setIsRefresh(true)` — гарантирует, что useEffect
+          // перезапустится и после второй/третьей оплаты подряд.
+          onPaid={() => setIsRefresh((prev) => !prev)}
+        />
+      )}
 
       {/* Link copy notification */}
       {showLinkCopied && (

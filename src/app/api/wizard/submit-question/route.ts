@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth/next';
 import logger from '@/src/libs/logger';
 import { authOptions } from '@/src/app/api/auth/[...nextauth]/route';
 import { getWizardQuestionById, updateWizardQuestionStatus } from '@/src/repositories/requests/repo';
+import { markFirstQuestionUsed } from '@/src/repositories/users/repo';
 import { isFirstQuestionFree } from '@/src/services/firstQuestion';
 import { QuestionStatusesE } from '@/src/interfaces/data';
 
@@ -149,6 +150,12 @@ export async function POST(request: NextRequest) {
       { status: 500 },
     );
   }
+
+  // Бенефит «первый вопрос бесплатно» сжигаем именно здесь — когда вопрос
+  // действительно ушёл в работу по free-пути. На стадии создания черновика
+  // (addWizardQuestion) это делать нельзя: клиент к тому моменту уже держит
+  // isFirstQuestionFree=true в стейте и упрётся в 403 not_entitled.
+  await markFirstQuestionUsed(userId);
 
   logger.info(msg + 'free question finalized', {
     user_id: userId,

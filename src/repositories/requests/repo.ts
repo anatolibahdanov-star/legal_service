@@ -247,8 +247,11 @@ export async function addQuestion(question: DBQuestion): Promise<DBQuestion[] | 
  * from seeing a stale "В ожидании" badge on a freshly created Unpaid
  * question.
  *
- * `markFirstQuestionUsed` is invoked unconditionally — same idempotent
- * semantics as elsewhere.
+ * Бенефит «первый вопрос бесплатно» здесь НЕ сжигается — черновик Unpaid
+ * ещё не финализирован. Флаг сбрасывается только когда вопрос реально
+ * уходит в InProgress по free-пути (см. /api/wizard/submit-question).
+ * Иначе клиент, получивший `isFirstQuestionFree=true` до создания черновика,
+ * будет получать 403 not_entitled на submit-question.
  */
 export async function addWizardQuestion(
     userId: string | number,
@@ -271,7 +274,6 @@ export async function addWizardQuestion(
         logger.error(msg + 'no inserted id');
         return null;
     }
-    await markFirstQuestionUsed(userId);
     const rows = await getQuestionsByIds([insertedId.toString()]);
     return rows && rows.length > 0 ? rows[0] : null;
 }
