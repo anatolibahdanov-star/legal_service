@@ -4,7 +4,7 @@ import logger from '@/src/libs/logger';
 import { authOptions } from '@/src/app/api/auth/[...nextauth]/route';
 import { getUsersByIds } from '@/src/repositories/users/repo';
 import { isFirstQuestionFree } from '@/src/services/firstQuestion';
-import { getQuestionPrice } from '@/src/services/pricing';
+import { getQuestionPriceLK } from '@/src/services/pricing';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,7 +41,7 @@ export async function GET() {
     {
       success: true,
       isFirstQuestionFree: firstFree,
-      questionPrice: getQuestionPrice(),
+      questionPrice: getQuestionPriceLK(),
       userBalance: user.balance ?? 0,
     },
     { status: 200 },

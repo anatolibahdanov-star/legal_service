@@ -47,8 +47,14 @@ export const initNewOrder = async (balanceRequest: UserBalanceRequest, user: Use
                 data: null,
             }
 
-            // 1. Request to Alfa API to create an SBP order
-            const alfaCreatedOrder = await createAlfaOrder(balanceRequest.amount, emptyOrder.id, user)
+            // 1. Request to Alfa API to create an SBP order.
+            // OneTime приходит в рублях (getQuestionPrice/LK возвращают рубли) —
+            // конвертим в копейки. Balance topup исторически уже идёт в копейках
+            // (ProfileBalance отправляет «10000» → 100₽), его не трогаем.
+            const alfaAmount = balanceRequest.type === OrderTypeE.OneTime
+                ? Math.round(balanceRequest.amount * 100)
+                : balanceRequest.amount
+            const alfaCreatedOrder = await createAlfaOrder(alfaAmount, emptyOrder.id, user)
             trans.data = alfaCreatedOrder.techical_data ?? null
             if (!alfaCreatedOrder.status) {
                 const error = "Error on order create in Alfa: "

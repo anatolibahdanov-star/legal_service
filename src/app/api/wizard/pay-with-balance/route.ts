@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import logger from '@/src/libs/logger';
 import { authOptions } from '@/src/app/api/auth/[...nextauth]/route';
-import { getQuestionPrice } from '@/src/services/pricing';
+import { getQuestionPriceFor, QuestionSource } from '@/src/services/pricing';
 import { payQuestionWithBalance } from '@/src/services/payWithBalance';
 
 export const dynamic = 'force-dynamic';
@@ -10,6 +10,7 @@ export const dynamic = 'force-dynamic';
 interface PayWithBalanceBody {
   questionId?: string | number;
   idempotencyKey?: string;
+  source?: QuestionSource;
 }
 
 /**
@@ -67,12 +68,14 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const price = getQuestionPrice();
+  const source: QuestionSource = body.source === 'lk' ? 'lk' : 'main';
+  const price = getQuestionPriceFor(source);
   const userId = session.user.id.toString();
 
   logger.info(msg + 'request received', {
     user_id: userId,
     question_id: questionId,
+    source,
     price,
     idempotency_key: idempotencyKey,
   });

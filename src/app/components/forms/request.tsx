@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   Select,
   SelectContent,
@@ -114,15 +114,14 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
      * Id+uuid of the Unpaid question created on Step 3 (after signIn).
      * Step 5 uses this — it never creates a new question.
      */
-    const [questionId, setQuestionId] = useState<string | number | null>(null);
-    const [questionUuid, setQuestionUuid] = useState<string | null>(null);
-    /**
-     * Snapshot of the question text at the moment the DB row was last
-     * created/updated. Used to detect drift when the user goes back to
-     * Step 1 and edits the text — `ensureUnpaidQuestionExists` PATCHes
-     * the row instead of stale-binding to the original text.
-     */
-    const [committedQuestionText, setCommittedQuestionText] = useState<string>("");
+    // Хранится в ref-ах, а не useState, потому что в одном тике (handleNextAuthed)
+    // ensureUnpaidQuestionExists вызывается дважды подряд — сначала на шаге 705
+    // и потом изнутри handlePayBalance/submitFreeAndShowSuccess. setState
+    // асинхронен и не виден в замыкании повторного вызова, поэтому второй вызов
+    // видел null и создавал дубликат вопроса. Refs обновляются синхронно.
+    const questionIdRef = useRef<string | number | null>(null);
+    const questionUuidRef = useRef<string | null>(null);
+    const committedQuestionTextRef = useRef<string>("");
     /**
      * Idempotency key for the "pay with balance" action. Generated once per
      * wizard session and reused on retries so the server can dedup repeated
@@ -378,8 +377,8 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
      * Ensures an Unpaid question exists for this wizard session, creating
      * it on the server if needed. Should be called right after signIn
      * (either after OTP for existing users, or after profile-save for new
-     * ones, or on "Далее" for already-authed LK users). Idempotent on the
-     * client side via the questionId state.
+     * ones, or on "Далее" for already-authed LK users). Идемпотентность на
+     * клиенте через refs (см. комментарий у questionIdRef).
      *
      * Handles back-navigation drift: if the user has gone back to Step 1
      * and edited the text after the Unpaid row was already created, the
@@ -389,11 +388,12 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
         { ok: true; id: string | number; uuid: string } | { ok: false; message: string }
     > => {
         const currentText = formData.question.trim();
-        if (questionId !== null) {
-            if (currentText === committedQuestionText) {
-                return { ok: true, id: questionId, uuid: questionUuid ?? "" };
+        const existingId = questionIdRef.current;
+        if (existingId !== null) {
+            if (currentText === committedQuestionTextRef.current) {
+                return { ok: true, id: existingId, uuid: questionUuidRef.current ?? "" };
             }
-            const patch = await wizardUpdateQuestionTextAction(questionId, currentText);
+            const patch = await wizardUpdateQuestionTextAction(existingId, currentText);
             if (!patch.status) {
                 // If the row is no longer Unpaid (server returned 409),
                 // the original question already moved past Unpaid — don't
@@ -403,8 +403,8 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
                     message: patch.error || "Не удалось обновить текст вопроса.",
                 };
             }
-            setCommittedQuestionText(currentText);
-            return { ok: true, id: questionId, uuid: questionUuid ?? "" };
+            committedQuestionTextRef.current = currentText;
+            return { ok: true, id: existingId, uuid: questionUuidRef.current ?? "" };
         }
         const response = await wizardCreateQuestionAction(currentText);
         if (!response.status) {
@@ -415,9 +415,9 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
         if (!created?.id) {
             return { ok: false, message: "Не удалось сохранить вопрос." };
         }
-        setQuestionId(created.id);
-        setQuestionUuid(created.uuid ?? null);
-        setCommittedQuestionText(currentText);
+        questionIdRef.current = created.id;
+        questionUuidRef.current = created.uuid ?? null;
+        committedQuestionTextRef.current = currentText;
         return { ok: true, id: created.id, uuid: created.uuid ?? "" };
     };
 
@@ -476,6 +476,7 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
         const response = await payWithBalanceAction({
             questionId: ensured.id,
             idempotencyKey: paymentIdempotencyKey,
+            source: isProfile ? 'lk' : 'main',
         });
         if (!response.status) {
             const msg = response.error || "Не удалось провести оплату с баланса.";
