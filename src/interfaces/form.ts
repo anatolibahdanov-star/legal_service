@@ -1,6 +1,7 @@
 
 import { DBCategory, DBQuestion, DBUser } from './db';
 import { User } from 'next-auth';
+import { Dispatch, SetStateAction } from 'react';
 
 export interface SwitchToLoginPrefill {
   phone?: string;
@@ -32,8 +33,8 @@ export interface AuthWindowProps extends AuthFormPropsI  {
 export interface RequestFormPropsI {
   isOpen: boolean;
   onClose: () => void;
-  setCurrent?:  (page: boolean) => void;
-  setPage?:  (page: number) => void; 
+  setCurrent?:  Dispatch<SetStateAction<boolean>>;
+  setPage?:  (page: number) => void;
 }
 
 export interface RequestListPropsI {

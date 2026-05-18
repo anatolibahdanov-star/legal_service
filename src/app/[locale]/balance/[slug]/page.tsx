@@ -116,7 +116,10 @@ export default function BalancePage() {
           amount: typeof lastOrder.amount === "number" ? lastOrder.amount : null,
           questionId: lastOrder.question_id ?? null,
         });
-        setSecondsLeft(REDIRECT_SECONDS);
+        // Auto-redirect only on successful payment. On failure the user
+        // must stay on the page to see the "Платёж не прошёл" message
+        // and decide whether to retry.
+        if (paid) setSecondsLeft(REDIRECT_SECONDS);
       } else {
         setView({ kind: "balance", paid });
       }
@@ -178,7 +181,7 @@ interface OneTimeViewProps {
 function OneTimeView({ paid, amount, secondsLeft, onContinue, onRetry }: OneTimeViewProps) {
   const image = paid ? "/assets/payment-success.png" : "/assets/payment-failed.png";
   const imageAlt = paid ? "Успешная оплата" : "Ошибка при оплате";
-  const title = paid ? "Ваш вопрос принят" : "Ваш вопрос сохранён";
+  const title = paid ? "Ваш вопрос принят" : "Платёж не прошёл";
   // Two-paragraph copy per spec: same shape as the wizard success/error
   // screens so the user sees a consistent message regardless of whether
   // they paid via balance (in-wizard) or returned from Alfa.
@@ -192,8 +195,8 @@ function OneTimeView({ paid, amount, secondsLeft, onContinue, onRetry }: OneTime
         "Ваш вопрос сохранён и отправлен на рассмотрение юристу. Ответ придёт в Личный кабинет и на Вашу электронную почту.",
       ]
     : [
-        "Вопрос успешно сохранён в Личном кабинете, но пока не отправлен юристу.",
-        "Вы можете оплатить его в Личном кабинете в любое время в разделе «Мои заявки».",
+        "Деньги не списаны — статус заказа не изменён.",
+        "Вопрос сохранён в Личном кабинете как неоплаченный. Вы можете попробовать оплатить его ещё раз в разделе «Мои заявки».",
       ];
   const badge = paid
     ? { text: "✔ Оплата подтверждена", type: "success" as const }
@@ -232,7 +235,7 @@ function OneTimeView({ paid, amount, secondsLeft, onContinue, onRetry }: OneTime
               className="w-full rounded-xl bg-[#8faaba] text-white hover:bg-[#7a98a7] sm:w-auto"
               onClick={paid ? onContinue : onRetry}
             >
-              Перейти к моим вопросам
+              {paid ? "Перейти к моим вопросам" : "Попробовать ещё раз"}
             </Button>
           </div>
 
