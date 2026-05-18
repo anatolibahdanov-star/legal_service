@@ -11,6 +11,7 @@ import { Upload, Eye, EyeOff, Star, Edit, Trash2, StarOff, Share2, Check, Credit
 
 import { CustomGetRequest, CustomRequest } from "@/src/libs/request";
 import { emitBalanceRefresh } from "@/src/libs/balanceEvents";
+import { isPhoneEmail } from "@/src/libs/phoneIdentity";
 import { DBQuestion, DBUser } from "@/src/interfaces/db";
 import { profileDataQuestionsI } from '@/src/interfaces/component';
 import { QuestionStatusesE, dFormat } from "@/src/interfaces/data";
@@ -81,7 +82,15 @@ const ProfileAccount = ({data, is_user, setData, user}: ProfileAccountPropsI) =>
 
   const name = formData?.name ?? data?.name ?? user?.name ?? ''
   const username = formData?.username ?? data?.username ?? user?.username ?? ''
-  const email = formData?.email ?? data?.email ?? user?.email ?? ''
+  // При phone-OTP регистрации бэк генерирует placeholder вида
+  // <phone>@phone.local. В LK его показывать не нужно — поле должно быть
+  // пустым, пока пользователь сам не введёт реальный email. Если в formData
+  // уже что-то есть (включая пустую строку после ручной очистки) — берём её
+  // как есть; иначе фильтруем placeholder из data/session.
+  const rawEmail = formData?.email ?? data?.email ?? user?.email ?? ''
+  const email = formData?.email !== null && formData?.email !== undefined
+    ? formData.email
+    : (isPhoneEmail(rawEmail) ? '' : rawEmail)
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -104,9 +113,13 @@ const ProfileAccount = ({data, is_user, setData, user}: ProfileAccountPropsI) =>
 
   const handleSave = async () => {
     const path = "/" + entity + "/" + user.id
+    // Если в поле пусто (юзер ещё не ввёл свой email после phone-OTP
+    // регистрации), отправляем исходный placeholder из БД, чтобы не
+    // затереть колонку email пустой строкой.
+    const emailToSave = email || rawEmail
     const adminUpdatedData = {
         name: name,
-        email: email,
+        email: emailToSave,
         username: username,
         status: data?.status,
         is_super: data?.is_super,
@@ -143,7 +156,8 @@ const ProfileAccount = ({data, is_user, setData, user}: ProfileAccountPropsI) =>
     const path = "/" + entity + "/" + user.id
     const adminUpdatedData = {
         name: name,
-        email: email,
+        // То же, что в handleSave — не затираем placeholder пустой строкой.
+        email: email || rawEmail,
         username: username,
         new_password: passwordData.new_password,
         status: data?.status,
@@ -415,7 +429,10 @@ const ProfileJobList = ({is_user, user}: ProfileJobListPropsI) => {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setOpenRatingSection(false);
-    setIsRefresh(true)
+    // Toggle через функциональный сеттер — иначе если isRefresh уже true,
+    // React пропустит обновление и useEffect рефетча списка не сработает
+    // (рейтинг не появится в списке после закрытия модалки).
+    setIsRefresh(prev => !prev)
     setTimeout(() => setSelectedCase(null), 300);
   };
 

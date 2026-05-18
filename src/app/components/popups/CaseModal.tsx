@@ -30,7 +30,7 @@ export function CaseModal({ caseItem, isOpen, onClose, openRatingSection, user, 
   useEffect(() => {
       const path = "/requests/" + caseItem.id
       const request = {parent_id: caseItem.id}
-      
+
       const fetchData = async () => {
           const jobData = await CustomGetRequest(path, request)
           console.log('jobData', jobData)
@@ -38,6 +38,17 @@ export function CaseModal({ caseItem, isOpen, onClose, openRatingSection, user, 
           if(jobData.status) {
               const count = jobData.count ?? 0
               setData({data: jobData.data, count: count})
+              // Синхронизируем рейтинг-стейт со свежим parent question.
+              // caseItem-проп может быть stale, если родительский список ещё не
+              // рефетчнулся после предыдущего сохранения — иначе пользователь
+              // увидит «оценка не сохранена», хотя в БД она есть.
+              const root = jobData.data?.[0] as DBQuestion | undefined
+              if (root) {
+                  setRating(root.rating || 0)
+                  setIsRatingSubmitted(!!root.rating)
+                  setRatingDate(root.rating_date)
+                  setSavedComment(root.comment ?? "")
+              }
           }
       };
 
@@ -76,6 +87,13 @@ export function CaseModal({ caseItem, isOpen, onClose, openRatingSection, user, 
   // Find the lawyer's latest message
   const lastLawyerMessage = jobs.at(-1);
 
+  // Гейт рейтинга/уточнения по факту наличия ответа юриста, а не по
+  // job_status. ChatMessage показывает ответ при непустом final_reply
+  // ([ChatMessage.tsx:83]) — статус job_status при этом может остаться
+  // InProgress, если админ забыл переключить его в Approved. Без этого
+  // пользователь видит ответ, но не может оценить.
+  const hasLawyerAnswer = jobs.some(m => !!m.final_reply && m.final_reply.trim() !== '')
+
   const getStatusBadge = (status: number) => {
   
       const isValidColor = (value: number): value is QuestionStatusesE => {
@@ -102,7 +120,7 @@ export function CaseModal({ caseItem, isOpen, onClose, openRatingSection, user, 
   const statusInfo = getStatusBadge(caseItem.job_status);
 
   const handleRateClick = () => {
-    if ([QuestionStatusesE.Approved, QuestionStatusesE.Spam].includes(caseItem.job_status)) {
+    if (hasLawyerAnswer) {
       setIsRatingExpanded(!isRatingExpanded);
     }
   };
@@ -235,7 +253,7 @@ export function CaseModal({ caseItem, isOpen, onClose, openRatingSection, user, 
               {/* Action buttons */}
               <div className="flex gap-3 mt-4">
                 {/* Ask follow-up question button */}
-                {lastLawyerMessage && [QuestionStatusesE.Approved, QuestionStatusesE.Spam].includes(caseItem.job_status) && (
+                {lastLawyerMessage && hasLawyerAnswer && (
                   <button onClick={() => setAskClarificationMessageId(lastLawyerMessage.id)}
                     className="text-[#8faaba] hover:text-white text-sm font-medium transition-colors flex items-center gap-2"
                   >
@@ -273,7 +291,7 @@ export function CaseModal({ caseItem, isOpen, onClose, openRatingSection, user, 
               <div className="flex items-center gap-4">
                 <button
                   onClick={handleRateClick}
-                  disabled={!!caseItem.rating || (!caseItem.rating && ![QuestionStatusesE.Approved, QuestionStatusesE.Spam].includes(caseItem.job_status))}
+                  disabled={isRatingSubmitted || !hasLawyerAnswer}
                   className="flex gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {[1, 2, 3, 4, 5].map((star) => (
@@ -283,12 +301,12 @@ export function CaseModal({ caseItem, isOpen, onClose, openRatingSection, user, 
                         star <= rating
                           ? "fill-[#fbbf24] text-[#fbbf24]"
                           : "text-[rgba(255,255,255,0.3)]"
-                      } ${[QuestionStatusesE.Approved, QuestionStatusesE.Spam].includes(caseItem.job_status) ? "cursor-pointer hover:text-[#fbbf24]" : ""}`}
-                      onMouseEnter={() => [QuestionStatusesE.Approved, QuestionStatusesE.Spam].includes(caseItem.job_status) && setHoveredRating(star)}
+                      } ${hasLawyerAnswer && !isRatingSubmitted ? "cursor-pointer hover:text-[#fbbf24]" : ""}`}
+                      onMouseEnter={() => hasLawyerAnswer && !isRatingSubmitted && setHoveredRating(star)}
                       onMouseLeave={() => setHoveredRating(0)}
                       onClick={(e) => {
                         e.stopPropagation();
-                        if ([QuestionStatusesE.Approved, QuestionStatusesE.Spam].includes(caseItem.job_status) && star) {
+                        if (hasLawyerAnswer && !isRatingSubmitted && star) {
                           setRating(star);
                           setIsRatingExpanded(true);
                         }

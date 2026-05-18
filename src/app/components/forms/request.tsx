@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { Dispatch, SetStateAction, useRef, useState } from "react";
 import {
   Select,
   SelectContent,
@@ -45,7 +45,7 @@ import { cn } from "@/src/app/components/ui/utils";
 
 interface RequestFormOptionsI {
     parent?: number|null;
-    setCurrent?: (page: boolean) => void;
+    setCurrent?: Dispatch<SetStateAction<boolean>>;
     setPage?: (page: number) => void;
     onClose?: () => void;
     isProfile?: boolean;
@@ -174,7 +174,7 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
                 router.push('/consultation/' + request.uuid);
             } else {
                 if(setPage) setPage(1)
-                if(setCurrent) setCurrent(true)
+                if(setCurrent) setCurrent(prev => !prev)
                 if(onClose) onClose()
             }
 
@@ -369,8 +369,22 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
     };
 
     const goToMyQuestions = () => {
-        router.push("/profile?tab=questions");
         if (onClose) onClose();
+        // Hard-navigation + сохранение locale-префикса: см. handleTopUpBalance —
+        // Profile.tsx читает ?tab= один раз в useState-инициализаторе, soft-push
+        // на тот же путь не переключит вкладку, а валидные значения таба —
+        // "account" | "cases" | "balance" (Profile.tsx:623-628).
+        if (typeof window !== "undefined") {
+            const path = window.location.pathname.replace(/\/$/, "") || "";
+            const profileBase = path.match(/^(.*?\/profile)(\/.*)?$/);
+            const localeMatch = path.match(/^(\/[^/]+)/);
+            const target = profileBase
+                ? profileBase[1]
+                : localeMatch
+                    ? `${localeMatch[1]}/profile`
+                    : "/profile";
+            window.location.assign(`${target}?tab=cases`);
+        }
     };
 
     /**
