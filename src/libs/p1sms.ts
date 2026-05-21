@@ -17,6 +17,8 @@ const templates: Record<SmsTemplateE, (params: Record<string, string>) => string
   [SmsTemplateE.Test]: ({ text = 'Hello' }) => `Enki.legal: ${text}`,
   [SmsTemplateE.OtpCode]: ({ code }) =>
     `Enki.legal: код подтверждения ${code}. Никому не сообщайте.`,
+  [SmsTemplateE.ResetPassword]: ({ password }) =>
+    `Enki.legal: ваш временный пароль ${password}. Войдите и смените его в профиле.`,
   [SmsTemplateE.ApprovedTest]: () => `Enki.legal: тестовый шаблон для юридической компании`,
   [SmsTemplateE.ServiceTest]: () => `Enki.legal: тест сервиса`,
 };

@@ -145,7 +145,8 @@ const ProfileAccount = ({data, is_user, setData, user}: ProfileAccountPropsI) =>
   };
 
   const handleChangePassword = async () => {
-    if (!passwordData.old_password || !passwordData.new_password || !passwordData.repeat_new_password) {
+    // "Текущий пароль" скрыт из UI; в guard его не требуем (на сервер он и так не уходит).
+    if (!passwordData.new_password || !passwordData.repeat_new_password) {
       alert("Не все поля формы смены пароля заполнены.");
       return;
     }
@@ -226,7 +227,8 @@ const ProfileAccount = ({data, is_user, setData, user}: ProfileAccountPropsI) =>
           <p className="text-xs text-[#757575] mb-4">Для изменения пароля подтвердите здесь</p>
 
           <div className="space-y-3">
-            <div>
+            {/* "Текущий пароль" скрыто из UI per product spec; логика скоро вернётся — JSX оставлен. */}
+            <div className="hidden">
               <label className="block text-xs text-[#757575] mb-1.5">Текущий пароль</label>
               <div className="relative">
                 <input type="password" name="old_password" value={passwordData.old_password}

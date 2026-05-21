@@ -13,6 +13,8 @@ export default function ProfileForm() {
     }
     const user = session.user
     const [name, setName] = useState(user.name ?? '');
+    // "Текущий пароль" is hidden from the form for now but will return soon —
+    // keep state/handlers/JSX in place so reactivating is a one-line CSS change.
     const [currentPassword, setCurrentPassword] = useState("");
     const [newPassword, setNewPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
@@ -140,8 +142,8 @@ export default function ProfileForm() {
                     Изменение пароля
                 </h3>
 
-                {/* Current password */}
-                <div className="flex flex-col gap-[8px]">
+                {/* Current password — hidden for now per product spec; will be re-enabled soon, keep JSX intact. */}
+                <div className="hidden flex-col gap-[8px]">
                     <label className="font-['Inter:Medium',sans-serif] font-medium leading-[20px] text-[14px] text-[rgba(255,255,255,0.9)]">
                     Текущий пароль:
                     </label>
@@ -157,8 +159,8 @@ export default function ProfileForm() {
                         }}
                         placeholder="Введите текущий пароль"
                         className={`w-full h-full px-[20px] py-[16px] bg-transparent font-['Inter:Regular',sans-serif] font-normal text-[16px] text-white placeholder:text-[rgba(255,255,255,0.4)] rounded-[16px] border-2 ${
-                        errors.currentPassword 
-                            ? "border-red-400 focus:border-red-500" 
+                        errors.currentPassword
+                            ? "border-red-400 focus:border-red-500"
                             : "border-[rgba(255,255,255,0.2)] focus:border-[rgba(255,255,255,0.4)]"
                         } focus:outline-none transition-colors`}
                     />

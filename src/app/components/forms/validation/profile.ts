@@ -13,20 +13,23 @@ export const validateProfileForm = (data: ProfileFormI): ValidationFormReplyI =>
         isValid = false;
     }
 
-    if (!data.oldPassword) {
-        newErrors.push({
-            field: "oldPassword",
-            error: ["Пожалуйста, введите старый пароль."]
-        });
-        isValid = false;
-    } else if (data.oldPassword.length < 6) {
-        newErrors.push({
-            field: "oldPassword",
-            error: ["Старый пароль должен содержать минимум 6 символов."]
-        });
-        isValid = false;
-    }
-    
+    // The "Текущий пароль" field is currently hidden in the UI (per product spec)
+    // and will be re-enabled soon. Keep this block as a comment so reactivation
+    // is a one-step uncomment, paired with removing the `hidden` class in profile.tsx.
+    // if (!data.oldPassword) {
+    //     newErrors.push({
+    //         field: "oldPassword",
+    //         error: ["Пожалуйста, введите старый пароль."]
+    //     });
+    //     isValid = false;
+    // } else if (data.oldPassword.length < 6) {
+    //     newErrors.push({
+    //         field: "oldPassword",
+    //         error: ["Старый пароль должен содержать минимум 6 символов."]
+    //     });
+    //     isValid = false;
+    // }
+
     if (!data.password) {
         newErrors.push({
             field: "password",

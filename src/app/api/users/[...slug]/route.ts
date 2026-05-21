@@ -5,6 +5,7 @@ import logger from "@/src/libs/logger"
 import { SendSendGridEmailForgot } from '@/src/libs/sendgrid';
 import { EmailDataForgotI } from '@/src/interfaces/email';
 import { verifyCaptcha } from "@/src/libs/captcha"
+import { maskEmail } from "@/src/helpers/maskEmail"
 
 export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
@@ -121,11 +122,11 @@ export async function POST(request: Request) {
           );
         }
         user = await reset(data.email)
-        logger.info(msg + 'user', requestUrlId, user)
+        logger.info(msg + 'user', requestUrlId, user?.id)
         if(!user) {
-          logger.error("(ERROR)" + msg + 'not found.', requestUrlId, data)
+          logger.error("(ERROR)" + msg + 'not found.', requestUrlId, data?.email)
           return NextResponse.json(
-              { success: false, message: 'Пользователь с таким емэйлом не найден.', requestUrlId, data},
+              { success: false, message: 'Аккаунт с таким E-mail не найден.', requestUrlId},
               { status: 404 }
           );
         }
@@ -139,13 +140,18 @@ export async function POST(request: Request) {
         }
         const isSendEmail = await SendSendGridEmailForgot(emailData)
         if(!isSendEmail) {
-            logger.error("(ERROR)" + msg + "email on question ready was not sent", emailData)
+            logger.error("(ERROR)" + msg + "reset email was not sent", { user_id: user.id })
             return NextResponse.json(
-                { success: false, message: 'Возникла техническая ошибка при отправке почты.', requestUrlId, data},
-                { status: 404 }
+                { success: false, message: 'Возникла техническая ошибка при отправке почты.', requestUrlId},
+                { status: 500 }
             );
         }
-        break;
+        // Strip the plaintext password before responding — the client only
+        // needs a confirmation + the masked email for the success screen.
+        return NextResponse.json(
+            { success: true, maskedEmail: maskEmail(user.email) },
+            { status: 200 }
+        );
       default:
         logger.error("(ERROR)" + msg + 'incorrect request.', requestUrlId, data)
         return NextResponse.json(
