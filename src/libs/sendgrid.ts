@@ -54,33 +54,117 @@ export async function SendSendGridEmail(emailData: EmailDataI): Promise<boolean 
   }
 }
 
+const FORGOT_EMAIL_SUBJECT = 'Новый временный пароль — Enki.legal';
+
+const escapeHtml = (s: string): string =>
+  s.replace(/[&<>"']/g, (c) =>
+    c === '&' ? '&amp;' :
+    c === '<' ? '&lt;' :
+    c === '>' ? '&gt;' :
+    c === '"' ? '&quot;' : '&#39;'
+  );
+
+const buildForgotEmailText = (recipient: string, password: string, loginUrl: string): string => `Добрый день!
+
+Вы запросили восстановление пароля на платформе Enki.legal.
+
+Мы сгенерировали для вас новый временный пароль.
+
+Ваши данные для входа:
+Email: ${recipient}
+Временный пароль: ${password}
+
+Что нужно сделать дальше:
+1. Войдите в личный кабинет, используя email и новый временный пароль
+2. Перейдите в настройки и смените пароль на постоянный
+
+Войти в личный кабинет: ${loginUrl}
+
+После первого входа рекомендуем сразу сменить временный пароль в настройках безопасности.
+
+С уважением,
+Команда Enki.legal
+`;
+
+const buildForgotEmailHtml = (recipient: string, password: string, loginUrl: string): string => {
+  const safeEmail = escapeHtml(recipient);
+  const safePassword = escapeHtml(password);
+  const safeUrl = escapeHtml(loginUrl);
+  return `<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>${FORGOT_EMAIL_SUBJECT}</title>
+  </head>
+  <body style="margin:0; padding:0; background:#F5F7FA; font-family: Arial, Helvetica, sans-serif; color:#0F1B2D;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F5F7FA; padding:32px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px; background:#FFFFFF; border-radius:16px; padding:40px;">
+            <tr>
+              <td>
+                <h1 style="margin:0 0 24px; font-size:22px; line-height:28px; color:#0F1B2D;">Добрый день!</h1>
+                <p style="margin:0 0 12px; font-size:15px; line-height:22px; color:#3a4452;">Вы запросили восстановление пароля на платформе Enki.legal.</p>
+                <p style="margin:0 0 24px; font-size:15px; line-height:22px; color:#3a4452;">Мы сгенерировали для вас новый временный пароль.</p>
+
+                <div style="background:#EFE7D8; border-radius:12px; padding:20px; margin:0 0 24px;">
+                  <p style="margin:0 0 12px; font-size:14px; color:#0F1B2D; font-weight:600;">Ваши данные для входа:</p>
+                  <p style="margin:0 0 8px; font-size:15px; color:#0F1B2D;">Email: <strong>${safeEmail}</strong></p>
+                  <p style="margin:0; font-size:15px; color:#0F1B2D;">Временный пароль: <strong style="font-family: 'Courier New', monospace; letter-spacing:0.5px;">${safePassword}</strong></p>
+                </div>
+
+                <p style="margin:0 0 12px; font-size:15px; line-height:22px; color:#0F1B2D; font-weight:600;">Что нужно сделать дальше:</p>
+                <ol style="margin:0 0 24px; padding-left:20px; font-size:15px; line-height:22px; color:#3a4452;">
+                  <li style="margin-bottom:6px;">Войдите в личный кабинет, используя email и новый временный пароль</li>
+                  <li>Перейдите в настройки и смените пароль на постоянный</li>
+                </ol>
+
+                <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:0 auto 28px;">
+                  <tr>
+                    <td style="background:#5A8FB5; border-radius:12px;">
+                      <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" style="display:inline-block; padding:14px 32px; font-size:15px; font-weight:600; color:#FFFFFF; text-decoration:none;">Войти в личный кабинет</a>
+                    </td>
+                  </tr>
+                </table>
+
+                <p style="margin:0 0 8px; font-size:13px; line-height:20px; color:#6B7280;">После первого входа рекомендуем сразу сменить временный пароль в настройках безопасности.</p>
+
+                <hr style="border:none; border-top:1px solid #E6EBF0; margin:24px 0;" />
+                <p style="margin:0; font-size:13px; line-height:20px; color:#6B7280;">С уважением,<br />Команда Enki.legal</p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
+};
+
 export async function SendSendGridEmailForgot(emailData: EmailDataForgotI): Promise<boolean | null> {
   const msg = "SENDGRID SEND SendSendGridEmailForgot - "
-  if (!emailData.recipient || !emailData.username || !emailData.password) {
-    logger.error(msg + "Missing required fields", emailData)
+  if (!emailData.recipient || !emailData.password) {
+    logger.error(msg + "Missing required fields", { recipient: emailData.recipient })
     return null;
   }
-  const templateId = process.env.SENDGRID_API_TPL_FORGOT ?? 'd-ece3bc8e46eb404aa2319b06c5308f64'
   const verifiedEmail = process.env.SENDGRID_API_EMAIL ?? 'anatoli.bahdanov@gmail.com'
+  const loginUrl = emailData.url || (process.env.NEXTAUTH_URL ?? 'https://enki.legal')
 
   const email = {
-    to: emailData.recipient, // Recipient email address
-    from: verifiedEmail, // Your verified sender email address
-    templateId: templateId, // The ID of your SendGrid dynamic template
-    dynamicTemplateData: {
-      firstname: emailData.username, // Data for the {{firstName}} placeholder in your template
-      lllms_url: emailData.url,
-      lllms_url_about: emailData.url_about,
-      password: emailData.password,
-    },
+    to: emailData.recipient,
+    from: verifiedEmail,
+    subject: FORGOT_EMAIL_SUBJECT,
+    text: buildForgotEmailText(emailData.recipient, emailData.password, loginUrl),
+    html: buildForgotEmailHtml(emailData.recipient, emailData.password, loginUrl),
   };
 
   try {
     await sgMail.send(email);
-    logger.info(msg + "Email sent successfully", emailData)
+    logger.info(msg + "Email sent successfully", { recipient: emailData.recipient })
     return true
   } catch (error) {
-    logger.error(msg + "Error in sending email", (error as Error).message, emailData)
+    logger.error(msg + "Error in sending email", (error as Error).message, { recipient: emailData.recipient })
     return false
   }
 }

@@ -18,6 +18,7 @@ import {
 import { submitRequestFormAction } from "@/src/app/components/forms/action/request";
 import { signInWithPhoneOtp } from "@/src/app/components/forms/action/register-phone";
 import { PHONE_MASK_TEMPLATE, formatPhoneInput, isPhoneComplete } from "@/src/libs/phoneMask";
+import { formatRetryAfter } from "@/src/helpers/duration";
 import { FormDataObjectT } from "@/src/interfaces/form";
 import { DBQuestion } from "@/src/interfaces/db";
 import { SelectCategories } from "@/src/app/components/data/select-category";
@@ -58,17 +59,6 @@ type WizardStep = "question" | "phone" | "otp" | "profile" | "payment" | "succes
 
 /** Discriminates success-screen variants — drives copy + icon + amount. */
 type SuccessKind = "free" | "balance" | "card" | "later";
-
-/** Formats seconds into a human-readable Russian duration: "1 ч 23 мин", "5 мин", "45 с". */
-const formatRetryAfter = (totalSeconds: number): string => {
-    if (totalSeconds <= 0) return "несколько секунд";
-    const h = Math.floor(totalSeconds / 3600);
-    const m = Math.floor((totalSeconds % 3600) / 60);
-    const s = totalSeconds % 60;
-    if (h > 0) return m > 0 ? `${h} ч ${m} мин` : `${h} ч`;
-    if (m > 0) return `${m} мин`;
-    return `${s} с`;
-};
 
 export default function RequestForm({parent = null, setCurrent, setPage, onClose, isProfile = false}: RequestFormOptionsI) {
 

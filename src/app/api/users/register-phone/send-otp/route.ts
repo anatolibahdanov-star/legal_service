@@ -7,6 +7,7 @@ import { getUserByPhone } from '@/src/repositories/users/repo';
 import { getPhoneStatus, recordFailedAttempt } from '@/src/repositories/otp_attempts/repo';
 import { sendSmsTemplate, isDryRun } from '@/src/libs/p1sms';
 import { SmsTemplateE } from '@/src/interfaces/sms';
+import { formatRetryAfter } from '@/src/helpers/duration';
 
 export const dynamic = 'force-dynamic';
 
@@ -151,7 +152,7 @@ export async function POST(request: NextRequest) {
       {
         success: false,
         code: 'cooldown',
-        message: `Подождите ${result.retryAfterSec} сек. перед повторной отправкой.`,
+        message: `Подождите ${formatRetryAfter(result.retryAfterSec)} перед повторной отправкой.`,
         retryAfterSec: result.retryAfterSec,
       },
       { status: 429 },

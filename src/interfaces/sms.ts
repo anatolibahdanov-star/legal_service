@@ -1,6 +1,7 @@
 export enum SmsTemplateE {
   Test = 'test',
   OtpCode = 'otp_code',
+  ResetPassword = 'reset_password',
   ApprovedTest = 'approved_test',
   ServiceTest = 'service_test',
 }

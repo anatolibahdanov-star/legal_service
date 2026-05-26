@@ -16,6 +16,7 @@ const GENERIC_PHONE_ERROR = 'Введите корректный номер те
 const BLOCKED_MESSAGE = 'Ваш номер телефона заблокирован. Свяжитесь с тех.поддержкой.';
 const COOLDOWN_MESSAGE = 'Слишком много попыток. Попробуйте через 5 минут.';
 const LOCKOUT_MESSAGE = 'Слишком много попыток. Номер заблокирован на 24 часа.';
+const NOT_FOUND_MESSAGE = 'Аккаунт с таким номером не найден.';
 
 interface SendOtpBody {
   phone?: string;
@@ -23,7 +24,7 @@ interface SendOtpBody {
 }
 
 export async function POST(request: NextRequest) {
-  const msg = 'API login-phone/send-otp - ';
+  const msg = 'API reset-phone/send-otp - ';
   let body: SendOtpBody;
   try {
     body = (await request.json()) as SendOtpBody;
@@ -49,11 +50,7 @@ export async function POST(request: NextRequest) {
   if (!captcha.success) {
     logger.warn(msg + 'captcha failed', { reason: captcha.reason });
     return NextResponse.json(
-      {
-        success: false,
-        code: 'captcha_failed',
-        message: 'CAPTCHA введена не верно.',
-      },
+      { success: false, code: 'captcha_failed', message: 'CAPTCHA введена не верно.' },
       { status: 400 },
     );
   }
@@ -70,13 +67,13 @@ export async function POST(request: NextRequest) {
   if (!existing) {
     logger.info(msg + 'phone not registered', { phone_tail: normalized.digits.slice(-4) });
     return NextResponse.json(
-      { success: false, code: 'phone_not_found', message: GENERIC_PHONE_ERROR },
-      { status: 400 },
+      { success: false, code: 'phone_not_found', message: NOT_FOUND_MESSAGE },
+      { status: 404 },
     );
   }
 
   if (existing.status !== undefined && existing.status !== UserStatusesE.Activated) {
-    logger.warn(msg + 'user banned', {
+    logger.warn(msg + 'user blocked', {
       user_id: existing.id,
       phone_tail: normalized.digits.slice(-4),
       status: existing.status,
@@ -89,7 +86,7 @@ export async function POST(request: NextRequest) {
 
   const phoneStatus = await getPhoneStatus(normalized.e164);
   if (phoneStatus.locked) {
-    logger.warn(msg + 'phone temporarily locked', {
+    logger.warn(msg + 'phone locked', {
       phone_tail: normalized.digits.slice(-4),
       remaining_sec: phoneStatus.lockedRemainingSec,
     });
@@ -104,7 +101,7 @@ export async function POST(request: NextRequest) {
     );
   }
   if (phoneStatus.cooldown) {
-    logger.warn(msg + 'phone in cooldown, rejecting send-otp', {
+    logger.warn(msg + 'phone in cooldown', {
       phone_tail: normalized.digits.slice(-4),
       remaining_sec: phoneStatus.cooldownRemainingSec,
     });
@@ -122,8 +119,6 @@ export async function POST(request: NextRequest) {
 
   const result = createOtp(normalized.e164);
   if (!result.ok) {
-    // Existing OTP is still valid. Count this repeated "Получить код" press
-    // as a failed attempt so abuse hits the 3/5 attempt thresholds.
     const fail = await recordFailedAttempt(normalized.e164);
     logger.info(msg + 'repeat send-otp counted as attempt', {
       phone_tail: normalized.digits.slice(-4),
@@ -172,7 +167,7 @@ export async function POST(request: NextRequest) {
     phone: normalized.e164,
     template: SmsTemplateE.OtpCode,
     params: { code: result.code },
-    reference: `login_${Date.now()}`,
+    reference: `reset_${Date.now()}`,
   });
   if (!sms.success) {
     invalidateOtp(normalized.e164);

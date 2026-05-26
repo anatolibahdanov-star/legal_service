@@ -314,11 +314,37 @@ export async function login(email: string, password: string): Promise<DBUser | n
         return null
     }
     const user = rows[0]
-    if(md5(password) !== user.password) {
-        logger.error(msg + 'Incorrect login/password', email, password, user)
-        return undefined
+    const hashed = md5(password)
+    if (hashed === user.password) {
+        return user
     }
-    return user
+    // Forgot-password flow: a freshly issued temporary password may be active.
+    // Activate it on this successful login — promote temp_password to password
+    // and clear the temp slot so it can only be used once.
+    if (user.temp_password && hashed === user.temp_password) {
+        await promoteTempPassword(user.id, hashed)
+        user.password = hashed
+        user.temp_password = null
+        return user
+    }
+    logger.error(msg + 'Incorrect login/password', email, password, user)
+    return undefined
+}
+
+async function promoteTempPassword(userId: string | number, newPasswordHash: string): Promise<void> {
+    const msg = msgGlobal + "promoteTempPassword - "
+    const query = 'UPDATE user SET password=?, temp_password=NULL WHERE id=?'
+    const params = [newPasswordHash, userId]
+    const updateFunc = update({ query, values: params })
+    const executed = await executeTransactionWrapper<ResultSetHeader>([updateFunc], msg)
+    if (!executed) {
+        logger.error(msg + 'SQL failed', { user_id: userId })
+        return
+    }
+    const [result] = executed
+    if (result[0]?.affectedRows) {
+        logger.info(msg + 'temp password promoted to password', { user_id: userId })
+    }
 }
 
 export async function profile(id: string, name: string, password: string, oldPassword: string): Promise<DBUser | null | undefined> {
@@ -464,23 +490,45 @@ export async function reset(email: string): Promise<DBUser | undefined | null> {
         logger.error(msg + 'User not found by email', email)
         return undefined
     }
+    return issueTempPassword(user, msg)
+}
+
+export async function resetByPhone(phone: string): Promise<DBUser | undefined | null> {
+    const msg = msgGlobal + "resetByPhone - ";
+    const user = await getUserByPhone(phone)
+    if(user === null) {
+        logger.error(msg + 'User not found by phone', { phone_tail: phone.slice(-4) })
+        return undefined
+    }
+    return issueTempPassword(user, msg)
+}
+
+/**
+ * Generates a fresh password, stores it in the user's `temp_password` slot
+ * (md5'd) and returns the user with the plaintext password attached so the
+ * caller can deliver it via the chosen channel (SendGrid email, p1sms).
+ *
+ * The original `password` is left untouched — the old credentials stay valid
+ * until the user logs in with the new temporary password, at which point
+ * `login()` promotes temp_password → password.
+ */
+async function issueTempPassword(user: DBUser, msg: string): Promise<DBUser | null> {
     const newPass = passGenerator(10)
-    const query = 'UPDATE user SET password=? WHERE id=?'
-    const params = [md5(newPass), user.id];
-    const updateFunc = update({ query, values: params});
-    const executedQueries = await executeTransactionWrapper<ResultSetHeader>([updateFunc], msg);
+    const query = 'UPDATE user SET temp_password=? WHERE id=?'
+    const params = [md5(newPass), user.id]
+    const updateFunc = update({ query, values: params })
+    const executedQueries = await executeTransactionWrapper<ResultSetHeader>([updateFunc], msg)
     if (!executedQueries) {
         logger.error(msg + "SQL not results from execution", query)
         return null
     }
-    const [result] = executedQueries;
+    const [result] = executedQueries
     const updated = result[0]?.affectedRows
     if (updated > 0) {
-        logger.info(msg + 'updated', result)
-    } else { 
+        logger.info(msg + 'temp password issued', { user_id: user.id })
+    } else {
         logger.warn(msg + "No updates", result[0])
     }
     user.password = newPass
-
     return user
 }
