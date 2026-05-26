@@ -3,7 +3,7 @@ import nodemailer from 'nodemailer';
 import logger from "@/src/libs/logger"
 import { format } from 'date-fns';
 import { dFormat } from '@/src/interfaces/data';
-import {EmailDataI, EmailDataForgotI, EmailDataNewRequestI, EmailLawRatingDataI, EmailContactDataI} from "@/src/interfaces/email"
+import {EmailDataI, EmailDataForgotI, EmailDataNewRequestI, EmailLawRatingDataI, EmailContactDataI, EmailPdfAttachmentI} from "@/src/interfaces/email"
 import { getAdministrators } from '../repositories/administrators/repo';
 import { DBFilterAdministrators } from '../interfaces/filters';
 import { getAdminAdminUrl, getAdminContactUrl, getAdminQuestionUrl, getAdminUserUrl } from '../helpers/tools';
@@ -202,4 +202,95 @@ export async function sendEmailContact(emailData: EmailContactDataI): Promise<bo
   }
 
   return result
+}
+
+/**
+ * Sends the lawyer's PDF answer to the user as an attachment via SendGrid.
+ *
+ * The body wording is fixed by product requirements — no SendGrid dynamic
+ * template is used so we can keep the exact copy in one place.
+ *
+ * Returns `true` on success, `false` on any SendGrid / network failure.
+ * Errors are logged via the shared winston logger; the caller decides how to
+ * surface them to the end user.
+ */
+export async function SendSendGridPdfAttachment(
+  emailData: EmailPdfAttachmentI,
+): Promise<boolean> {
+  const msg = "SENDGRID SEND SendSendGridPdfAttachment - "
+  if (!emailData.recipient) {
+    logger.error(msg + "Missing recipient", { question_id: emailData.question_id })
+    return false
+  }
+  if (!emailData.pdf || emailData.pdf.byteLength === 0) {
+    logger.error(msg + "Empty PDF buffer", { question_id: emailData.question_id })
+    return false
+  }
+  const verifiedEmail = process.env.SENDGRID_API_EMAIL ?? 'anatoli.bahdanov@gmail.com'
+
+  const subject = `Ответ юриста на ваш вопрос — Enki.legal`
+  const textBody = [
+    'Добрый день!',
+    '',
+    'Во вложении находится PDF-документ с ответом юриста на платформе Enki.legal.',
+    '',
+    `Тема вопроса: ${emailData.question_subject || '—'}`,
+    `Дата обращения: ${emailData.question_date || '—'}`,
+    '',
+    'С уважением,',
+    'Команда Enki.legal',
+  ].join('\n')
+  const htmlBody = `
+    <div style="font-family: sans-serif; font-size: 14px; line-height: 1.5; color: #29282b;">
+      <p>Добрый день!</p>
+      <p>Во вложении находится PDF-документ с ответом юриста на платформе Enki.legal.</p>
+      <p>
+        <strong>Тема вопроса:</strong> ${escapeHtml(emailData.question_subject) || '—'}<br/>
+        <strong>Дата обращения:</strong> ${escapeHtml(emailData.question_date) || '—'}
+      </p>
+      <p>С уважением,<br/>Команда Enki.legal</p>
+    </div>
+  `
+
+  const email = {
+    to: emailData.recipient,
+    from: verifiedEmail,
+    subject,
+    text: textBody,
+    html: htmlBody,
+    attachments: [
+      {
+        content: Buffer.from(emailData.pdf).toString('base64'),
+        filename: emailData.filename,
+        type: 'application/pdf',
+        disposition: 'attachment' as const,
+      },
+    ],
+  }
+
+  try {
+    await sgMail.send(email)
+    logger.info(msg + "sent", {
+      recipient: emailData.recipient,
+      question_id: emailData.question_id,
+      bytes: emailData.pdf.byteLength,
+    })
+    return true
+  } catch (error) {
+    logger.error(msg + "send failed", {
+      recipient: emailData.recipient,
+      question_id: emailData.question_id,
+      error: (error as Error).message,
+    })
+    return false
+  }
+}
+
+function escapeHtml(value: string): string {
+  return (value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
 }

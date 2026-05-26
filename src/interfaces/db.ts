@@ -102,3 +102,24 @@ export interface DBStatistic extends RowDataPacket, User {
   avg_manager_time: number;
   avg_request_time: number;
 }
+
+export interface DBQuestionPdf extends RowDataPacket {
+  id: number;
+  question_id: number;
+  user_id: number;
+  storage_key: string;
+  file_size: number;
+  content_hash: string;
+  generated_at: DateTime;
+  updated_at: DateTime;
+}
+
+export interface DBPdfShareLink extends RowDataPacket {
+  id: number;
+  question_id: number;
+  user_id: number;
+  token: string;
+  revoked: number;
+  created_at: DateTime;
+  updated_at: DateTime;
+}
