@@ -3,6 +3,10 @@ import { defaultLocale, locales } from "@/i18n.config";
 
 const PUBLIC_FILE = /\.[^/]+$/; // exclude files with extensions
 
+// Locale auto-redirect to "/en" disabled per product spec — users must stay on
+// the URL they requested. We still need to serve the default-locale content for
+// non-prefixed paths, so the proxy now rewrites (not redirects) "/" and other
+// bare paths to the [locale] segment without changing the visible URL.
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -21,11 +25,9 @@ export function proxy(request: NextRequest) {
       pathname === "/" + locale || pathname.startsWith("/" + locale + "/")
   );
   if (!hasLocale) {
-    console.log('redirect!!!')
-    const locale = defaultLocale;
     const url = request.nextUrl.clone();
-    url.pathname = "/" + locale + (pathname === "/" ? "" : pathname);
-    return NextResponse.redirect(url);
+    url.pathname = "/" + defaultLocale + (pathname === "/" ? "" : pathname);
+    return NextResponse.rewrite(url);
   }
 }
 

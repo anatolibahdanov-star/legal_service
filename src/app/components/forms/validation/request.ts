@@ -2,7 +2,7 @@ import {ValidationErrorI, ValidationFormReplyI, RequestFormI} from "@/src/interf
 import { EmailValidator, emptyValidator } from "@/src/app/components/forms/validation/common";
 
 export const QUESTION_MIN_LENGTH = 30;
-export const QUESTION_MAX_LENGTH = 2000;
+export const QUESTION_MAX_LENGTH = 4000;
 
 export const validateQuestionText = (value: string): string | null => {
     const length = value.length;

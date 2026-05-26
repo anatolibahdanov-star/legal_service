@@ -10,6 +10,7 @@ import { PHONE_MASK_TEMPLATE, formatPhoneInput, isPhoneComplete } from "@/src/li
 import { YandexSmartCaptcha } from "@/src/app/components/forms/YandexSmartCaptcha";
 import { useYandexInvisibleCaptcha } from "@/src/app/components/forms/useYandexInvisibleCaptcha";
 import OtpCodeStep, { OtpStepResult } from "@/src/app/components/forms/OtpCodeStep";
+import { usePhoneBlockCountdown } from "@/src/app/components/forms/hooks/usePhoneBlockCountdown";
 
 type Step = "phone" | "code" | "success";
 
@@ -33,9 +34,10 @@ export default function ForgotPhoneForm({ onSwitchToLogin, onHeaderlessChange }:
     common: "",
   });
   const [submitting, setSubmitting] = useState(false);
+  const block = usePhoneBlockCountdown();
 
   const phoneValid = useMemo(() => isPhoneComplete(phone), [phone]);
-  const canSubmitPhone = phoneValid && !!captchaToken && !submitting;
+  const canSubmitPhone = phoneValid && !!captchaToken && !submitting && !block.blocked;
 
   // OTP and success steps render their own self-contained heading; tell the
   // popup to hide its header in those stages so we don't show two titles.
@@ -55,6 +57,10 @@ export default function ForgotPhoneForm({ onSwitchToLogin, onHeaderlessChange }:
     setSubmitting(false);
     setCaptchaToken(null);
     if (!response.status) {
+      const errData = response.data as
+        | { lockedUntil?: string | null; cooldownUntil?: string | null }
+        | null;
+      block.applyFromServer(errData);
       setErrors((prev) => ({
         ...prev,
         common: response.error || "Не удалось отправить код.",
@@ -173,9 +179,15 @@ export default function ForgotPhoneForm({ onSwitchToLogin, onHeaderlessChange }:
           <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-px" />
           <div>
             <p className="font-semibold text-[14px] text-red-700 leading-[18px]">
-              Не удалось отправить код
+              {block.locked ? "Номер временно заблокирован" : "Не удалось отправить код"}
             </p>
             <p className="text-[13px] text-red-600 leading-[18px]">{errors.common}</p>
+            {block.blocked && (
+              <p className="text-[13px] text-red-600 leading-[18px] mt-[4px]">
+                Попробуйте через{" "}
+                <span className="font-semibold tabular-nums">{block.remainingLabel}</span>
+              </p>
+            )}
           </div>
         </div>
       )}
@@ -200,6 +212,8 @@ export default function ForgotPhoneForm({ onSwitchToLogin, onHeaderlessChange }:
                     : "Введите корректный номер телефона",
                 common: "",
               }));
+              // Block is per-phone; switching numbers drops the stale timer.
+              block.reset();
             }}
             placeholder={PHONE_MASK_TEMPLATE}
             className={`w-full h-full pl-[44px] pr-[16px] bg-transparent text-[15px] text-[#0F1B2D] placeholder:text-[#0F1B2D]/40 rounded-[14px] outline-none ring-2 ${

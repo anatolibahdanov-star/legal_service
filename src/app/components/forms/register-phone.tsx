@@ -12,6 +12,13 @@ import { PHONE_MASK_TEMPLATE, formatPhoneInput, isPhoneComplete } from "@/src/li
 import { YandexSmartCaptcha } from "@/src/app/components/forms/YandexSmartCaptcha";
 import { useYandexInvisibleCaptcha } from "@/src/app/components/forms/useYandexInvisibleCaptcha";
 import OtpCodeStep, { OtpStepResult } from "@/src/app/components/forms/OtpCodeStep";
+import {
+  LegalConsents,
+  emptyLegalConsents,
+  allConsentsAccepted,
+  type LegalConsentsValue,
+} from "@/src/app/components/LegalConsents";
+import { usePhoneBlockCountdown } from "@/src/app/components/forms/hooks/usePhoneBlockCountdown";
 
 type Step = "phone" | "code";
 
@@ -30,12 +37,24 @@ export default function RegisterPhoneForm({ onClose, onSwitchToLogin }: FormCont
     common: "",
   });
   const [submitting, setSubmitting] = useState(false);
+  const [consents, setConsents] = useState<LegalConsentsValue>(emptyLegalConsents);
+  const [consentErrors, setConsentErrors] = useState<Partial<Record<keyof LegalConsentsValue, string>>>({});
+  const block = usePhoneBlockCountdown();
 
   const phoneValid = useMemo(() => isPhoneComplete(phone), [phone]);
-  const canSubmitPhone = phoneValid && !!captchaToken && !submitting;
+  const consentsOk = allConsentsAccepted(consents);
+  const canSubmitPhone = phoneValid && !!captchaToken && consentsOk && !submitting && !block.blocked;
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!consentsOk) {
+      const next: Partial<Record<keyof LegalConsentsValue, string>> = {};
+      if (!consents.privacy) next.privacy = "Подтвердите согласие.";
+      if (!consents.data) next.data = "Подтвердите согласие.";
+      if (!consents.offer) next.offer = "Подтвердите согласие.";
+      setConsentErrors(next);
+      return;
+    }
     if (!canSubmitPhone) return;
     setErrors({ phone: "", common: "" });
     setSubmitting(true);
@@ -43,12 +62,19 @@ export default function RegisterPhoneForm({ onClose, onSwitchToLogin }: FormCont
     setSubmitting(false);
     setCaptchaToken(null);
     if (!response.status) {
-      const errData = response.data as { code?: string; phone?: string } | null;
+      const errData = response.data as
+        | { code?: string; phone?: string; lockedUntil?: string | null; cooldownUntil?: string | null }
+        | null;
       if (errData?.code === "phone_exists") {
         // Per BPMN: "Phone exists?" → Yes → switch to login flow
         onSwitchToLogin({ phone: errData.phone ?? phone });
         return;
       }
+      // If the server returned a deadline (lockedUntil / cooldownUntil),
+      // feed it into the countdown so the UI shows MM:SS instead of
+      // raw server text. The error banner falls back to the plain message
+      // when no deadline is present.
+      block.applyFromServer(errData);
       setErrors((prev) => ({ ...prev, common: response.error || "Не удалось отправить код." }));
       return;
     }
@@ -163,9 +189,15 @@ export default function RegisterPhoneForm({ onClose, onSwitchToLogin }: FormCont
               <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-px" />
               <div>
                 <p className="font-semibold text-[14px] text-red-700 leading-[18px]">
-                  Не удалось зарегистрироваться
+                  {block.locked ? "Номер временно заблокирован" : "Не удалось зарегистрироваться"}
                 </p>
                 <p className="text-[13px] text-red-600 leading-[18px]">{errors.common}</p>
+                {block.blocked && (
+                  <p className="text-[13px] text-red-600 leading-[18px] mt-[4px]">
+                    Попробуйте через{" "}
+                    <span className="font-semibold tabular-nums">{block.remainingLabel}</span>
+                  </p>
+                )}
               </div>
             </div>
           )}
@@ -190,6 +222,9 @@ export default function RegisterPhoneForm({ onClose, onSwitchToLogin }: FormCont
                         : "Введите корректный номер телефона",
                     common: "",
                   }));
+                  // Clearing the input switches to a different phone — the previous
+                  // server-issued block is per-phone, so we drop it locally.
+                  block.reset();
                 }}
                 placeholder={PHONE_MASK_TEMPLATE}
                 className={`w-full h-full pl-[44px] pr-[16px] bg-transparent text-[15px] text-[#0F1B2D] placeholder:text-[#0F1B2D]/40 rounded-[14px] outline-none ring-2 ${
@@ -207,6 +242,16 @@ export default function RegisterPhoneForm({ onClose, onSwitchToLogin }: FormCont
             onChange={setCaptchaToken}
             disabled={submitting}
             fullWidth
+          />
+
+          <LegalConsents
+            value={consents}
+            onChange={(next) => {
+              setConsents(next);
+              setConsentErrors({});
+            }}
+            errors={consentErrors}
+            idPrefix="register-consent"
           />
 
           <button

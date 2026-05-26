@@ -5,6 +5,7 @@ import "./globals.css";
 import { Header } from "@/src/app/components/Header";
 // import Footer from "@/src/components/Footer";
 import { Footer } from "@/src/app/components/Footer";
+import { CookieConsent } from "@/src/app/components/CookieConsent";
 import {NextAuthProvider} from "@/src/app/providers/NextAuthProvider"
 import {YandexCaptchaProvider} from "@/src/app/providers/YandexCaptchaProvider"
 import { Toaster } from "@/src/app/components/ui/sonner";
@@ -25,6 +26,7 @@ export default function RootLayout({
               <Header />
               {children}
               <Footer />
+              <CookieConsent />
               <Toaster richColors position="top-right" />
             </YandexCaptchaProvider>
           </NextAuthProvider>

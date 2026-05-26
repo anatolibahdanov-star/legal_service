@@ -18,3 +18,11 @@ export async function sendLoginPhoneOtpAction(payload: SendOtpPayload): Promise<
 export async function verifyLoginPhoneOtpAction(payload: VerifyOtpPayload): Promise<CustomResponseDataI> {
   return CustomRequest('/users/login-phone/verify-otp', payload);
 }
+
+export interface CheckPhonePayload {
+  phone: string;
+}
+
+export async function checkLoginPhoneExistsAction(payload: CheckPhonePayload): Promise<CustomResponseDataI> {
+  return CustomRequest('/users/login-phone/check', payload);
+}
