@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation';
 import Image from 'next/image'
 import Link from 'next/link';
 import Swal from 'sweetalert2'
+import { toast } from 'sonner'
 
 import { Upload, Eye, EyeOff, Star, Edit, Trash2, StarOff, Share2, Check, CreditCard, Link as LucideLink } from "lucide-react";
 
@@ -22,6 +23,12 @@ import {ProfileBalance} from "@/src/app/components/screen/profile/ProfileBalance
 import { PaginationApp } from '@/src/app/components/data/pagination';
 import { Tooltip } from "@/src/app/components/Tooltip";
 import { CaseModal } from "@/src/app/components/popups/CaseModal";
+import {
+  PdfActionsModal,
+  PdfIcon,
+  PdfSuccessModal,
+  type PdfShareChannel,
+} from "@/src/app/components/popups/pdf";
 import { AlfaOrderStatusE, OrderStatusE } from "@/src/interfaces/payment";
 
 export const detectOrderStatusByAlpha = (status: number): OrderStatusE => {
@@ -341,6 +348,20 @@ const ProfileJobList = ({is_user, user}: ProfileJobListPropsI) => {
   const [showLinkCopied, setShowLinkCopied] = useState(false);
   /** id вопроса, для которого открыто окно оплаты; null — окно закрыто. */
   const [payingQuestionId, setPayingQuestionId] = useState<string | number | null>(null);
+  /** Question the PDF actions modal is open for; null when closed. */
+  const [pdfCase, setPdfCase] = useState<DBQuestion | null>(null);
+  /** Cached-PDF flag for the currently-open question — toggles the modal's
+   *  download button label between "Загружаем…" and "Генерируем…". */
+  const [pdfHasCached, setPdfHasCached] = useState(false);
+  /** Public share URL for the currently-open question. Minted server-side on
+   *  modal open (one stable token per question, stored in pdf_share_link). */
+  const [pdfShareUrl, setPdfShareUrl] = useState<string>('');
+  /** Payload for the post-share success modal; null when closed. */
+  const [pdfSuccess, setPdfSuccess] = useState<{
+    questionId: string | number;
+    questionDate: string;
+    channel: PdfShareChannel;
+  } | null>(null);
 
   const getStatusBadge = (status: number) => {
       const isValidColor = (value: number): value is QuestionStatusesE => {
@@ -545,6 +566,50 @@ const ProfileJobList = ({is_user, user}: ProfileJobListPropsI) => {
                             <Share2 className="size-5" />
                           </button>
                         </Tooltip>
+                        {(() => {
+                          const isAnswered = caseItem.job_status === QuestionStatusesE.Approved;
+                          const tooltip = isAnswered
+                            ? "Действия с PDF"
+                            : "PDF будет доступен после ответа юриста";
+                          return (
+                            <Tooltip content={tooltip}>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (!isAnswered) return;
+                                  setPdfHasCached(false);
+                                  setPdfShareUrl('');
+                                  setPdfCase(caseItem);
+                                  // Best-effort cache probe; if it fails the
+                                  // modal stays on "Генерируем…" which is the
+                                  // safe default.
+                                  fetch(`/api/pdf/${caseItem.uuid}/exists`)
+                                    .then((r) => r.ok ? r.json() : null)
+                                    .then((d) => setPdfHasCached(!!d?.exists))
+                                    .catch(() => {});
+                                  // Mint (or fetch) the persistent share URL
+                                  // so the "copy link" action has something
+                                  // to put on the clipboard immediately.
+                                  fetch(`/api/pdf/${caseItem.uuid}/share-link`, { method: 'POST' })
+                                    .then((r) => r.ok ? r.json() : null)
+                                    .then((d) => {
+                                      if (d?.url) setPdfShareUrl(d.url);
+                                    })
+                                    .catch(() => {});
+                                }}
+                                disabled={!isAnswered}
+                                aria-label={tooltip}
+                                className={`p-2 rounded-lg border-2 transition-colors ${
+                                  isAnswered
+                                    ? "border-[#8faaba] text-[#8faaba] hover:border-[#ef4444] hover:text-[#ef4444]"
+                                    : "border-[#e0e0e0] text-[#c0c0c0] cursor-not-allowed opacity-60"
+                                }`}
+                              >
+                                <PdfIcon />
+                              </button>
+                            </Tooltip>
+                          );
+                        })()}
                       </>
                     )}
                   </td>
@@ -625,6 +690,95 @@ const ProfileJobList = ({is_user, user}: ProfileJobListPropsI) => {
           openNewQuestionWindow={openNewQuestionWindowInner}
         />
       )}
+
+      {pdfCase && (
+        <PdfActionsModal
+          open={pdfCase !== null}
+          onOpenChange={(v) => { if (!v) setPdfCase(null); }}
+          questionId={pdfCase.id}
+          questionUuid={pdfCase.uuid}
+          questionDate={format(new Date(pdfCase.created_at), dFormat)}
+          questionText={pdfCase.question}
+          hasPdf={pdfHasCached}
+          shareLink={pdfShareUrl || `${domainUrl ?? ''}/api/pdf/${pdfCase.uuid}`}
+          onDownload={async () => {
+            const url = `/api/pdf/${pdfCase.uuid}?download=1`;
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `enki-answer-${pdfCase.id}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            toast.success('PDF загружается');
+          }}
+          onPreview={async () => {
+            window.open(`/api/pdf/${pdfCase.uuid}`, '_blank', 'noopener,noreferrer');
+            toast.success('Предпросмотр открыт в новой вкладке');
+          }}
+          onSendSms={async (phone) => {
+            const res = await fetch(`/api/pdf/${pdfCase.uuid}/sms`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ phone }),
+            });
+            if (!res.ok) {
+              const data = await res.json().catch(() => null);
+              throw new Error(data?.message ?? 'Не удалось отправить SMS.');
+            }
+            toast.success('SMS отправлено');
+          }}
+          onSendEmail={async (email) => {
+            const res = await fetch(`/api/pdf/${pdfCase.uuid}/email`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email }),
+            });
+            if (!res.ok) {
+              const data = await res.json().catch(() => null);
+              throw new Error(data?.message ?? 'Не удалось отправить email.');
+            }
+            toast.success('Email отправлен');
+          }}
+          onCopyLink={async () => {
+            // Always re-fetch — the endpoint mints/returns the persistent
+            // share token AND kicks off background PDF generation if missing,
+            // so the URL on the user's clipboard always points at a real PDF.
+            const res = await fetch(`/api/pdf/${pdfCase.uuid}/share-link`, {
+              method: 'POST',
+            });
+            if (!res.ok) {
+              const data = await res.json().catch(() => null);
+              throw new Error(data?.message ?? 'Не удалось сформировать ссылку.');
+            }
+            const data = await res.json();
+            const url = data?.url as string | undefined;
+            if (!url) throw new Error('Ссылка не получена.');
+            setPdfShareUrl(url);
+            toast.success('Ссылка скопирована');
+            return url;
+          }}
+          onShareSuccess={(channel) => {
+            const successData = {
+              questionId: pdfCase.id,
+              questionDate: format(new Date(pdfCase.created_at), dFormat),
+              channel,
+            };
+            // Close the actions modal first, then open the success modal in
+            // a separate dialog instance — the small gap keeps the close
+            // animation of one from overlapping the open animation of the other.
+            setPdfCase(null);
+            setTimeout(() => setPdfSuccess(successData), 200);
+          }}
+        />
+      )}
+
+      <PdfSuccessModal
+        open={pdfSuccess !== null}
+        onOpenChange={(v) => { if (!v) setPdfSuccess(null); }}
+        questionId={pdfSuccess?.questionId ?? ""}
+        questionDate={pdfSuccess?.questionDate}
+        message="PDF успешно отправлен"
+      />
     </>
   )
 }

@@ -7,6 +7,7 @@ import { Header } from "@/src/app/components/Header";
 import { Footer } from "@/src/app/components/Footer";
 import {NextAuthProvider} from "@/src/app/providers/NextAuthProvider"
 import {YandexCaptchaProvider} from "@/src/app/providers/YandexCaptchaProvider"
+import { Toaster } from "@/src/app/components/ui/sonner";
 import '@/src/styles/index.css';
 import "./enki.css";
 
@@ -24,6 +25,7 @@ export default function RootLayout({
               <Header />
               {children}
               <Footer />
+              <Toaster richColors position="top-right" />
             </YandexCaptchaProvider>
           </NextAuthProvider>
         </div>
