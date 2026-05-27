@@ -2,7 +2,6 @@ import logger from '@/src/libs/logger';
 
 const OTP_TTL_MS = 24 * 60 * 60 * 1000;
 const TOKEN_TTL_MS = 20 * 60 * 1000;
-const RESEND_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 
 interface OtpEntry {
   code: string;
@@ -37,23 +36,11 @@ export interface CreateOtpResult {
   expiresInSec: number;
 }
 
-export interface CreateOtpCooldown {
-  ok: false;
-  reason: 'cooldown';
-  retryAfterSec: number;
-}
-
-export const createOtp = (phone: string): CreateOtpResult | CreateOtpCooldown => {
+// A new code can be requested at any time. Writing a fresh entry overwrites the
+// previous one, so the previously sent unused code becomes invalid immediately.
+export const createOtp = (phone: string): CreateOtpResult => {
   const now = Date.now();
-  const existing = otpStore.get(phone);
-  if (existing && now - existing.createdAt < RESEND_COOLDOWN_MS) {
-    return {
-      ok: false,
-      reason: 'cooldown',
-      retryAfterSec: Math.ceil((RESEND_COOLDOWN_MS - (now - existing.createdAt)) / 1000),
-    };
-  }
-
+  const replaced = otpStore.has(phone);
   const code = generateCode();
   otpStore.set(phone, {
     code,
@@ -63,6 +50,7 @@ export const createOtp = (phone: string): CreateOtpResult | CreateOtpCooldown =>
   logger.info('OTP store - created', {
     phone_tail: phone.slice(-4),
     expires_in_sec: OTP_TTL_MS / 1000,
+    replaced_previous: replaced,
   });
   return { ok: true, code, expiresInSec: OTP_TTL_MS / 1000 };
 };

@@ -4,18 +4,16 @@ import { verifyCaptcha } from '@/src/libs/captcha';
 import { normalizePhoneE164 } from '@/src/libs/phoneIdentity';
 import { createOtp, invalidateOtp } from '@/src/libs/otpStore';
 import { getUserByPhone } from '@/src/repositories/users/repo';
-import { getPhoneStatus, recordFailedAttempt } from '@/src/repositories/otp_attempts/repo';
+import { getPhoneStatus } from '@/src/repositories/otp_attempts/repo';
 import { sendSmsTemplate, isDryRun } from '@/src/libs/p1sms';
 import { SmsTemplateE } from '@/src/interfaces/sms';
 import { UserStatusesE } from '@/src/interfaces/data';
-import { formatRetryAfter } from '@/src/helpers/duration';
 
 export const dynamic = 'force-dynamic';
 
 const GENERIC_PHONE_ERROR = 'Введите корректный номер телефона.';
 const BLOCKED_MESSAGE = 'Ваш номер телефона заблокирован. Свяжитесь с тех.поддержкой.';
 const COOLDOWN_MESSAGE = 'Слишком много попыток. Попробуйте через 5 минут.';
-const LOCKOUT_MESSAGE = 'Слишком много попыток. Номер заблокирован на 24 часа.';
 const NOT_FOUND_MESSAGE = 'Аккаунт с таким номером не найден.';
 
 interface SendOtpBody {
@@ -118,45 +116,6 @@ export async function POST(request: NextRequest) {
   }
 
   const result = createOtp(normalized.e164);
-  if (!result.ok) {
-    const fail = await recordFailedAttempt(normalized.e164);
-    logger.info(msg + 'repeat send-otp counted as attempt', {
-      phone_tail: normalized.digits.slice(-4),
-      attempts: fail.attempts,
-      action: fail.action,
-    });
-    if (fail.action === 'lock_24h') {
-      return NextResponse.json(
-        {
-          success: false,
-          code: 'phone_blocked',
-          message: LOCKOUT_MESSAGE,
-          lockedUntil: fail.lockedUntil,
-        },
-        { status: 403 },
-      );
-    }
-    if (fail.action === 'cooldown_5min') {
-      return NextResponse.json(
-        {
-          success: false,
-          code: 'cooldown_5min',
-          message: COOLDOWN_MESSAGE,
-          cooldownUntil: fail.cooldownUntil,
-        },
-        { status: 429 },
-      );
-    }
-    return NextResponse.json(
-      {
-        success: false,
-        code: 'cooldown',
-        message: `Подождите ${formatRetryAfter(result.retryAfterSec)} перед повторной отправкой.`,
-        retryAfterSec: result.retryAfterSec,
-      },
-      { status: 429 },
-    );
-  }
 
   logger.info(msg + 'OTP issued', {
     phone_tail: normalized.digits.slice(-4),

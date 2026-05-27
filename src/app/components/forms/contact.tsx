@@ -5,11 +5,19 @@ import { FormDataObjectT } from '@/src/interfaces/form';
 import { validateContactForm } from "@/src/app/components/forms/validation/contact";
 import { submitContactFormAction } from "@/src/app/components/forms/action/contact";
 import { DBContact } from '@/src/interfaces/db';
+import {
+    LegalConsents,
+    emptyLegalConsents,
+    allConsentsAccepted,
+    type LegalConsentsValue,
+} from "@/src/app/components/LegalConsents";
 
 export default function ContactForm() {
     const { data: session, status } = useSession()
 
     const [errors, setErrors] = useState<FormDataObjectT>({ phone: "", email: "", message: "", consent: false, common: ""});
+    const [consents, setConsents] = useState<LegalConsentsValue>(emptyLegalConsents);
+    const [consentErrors, setConsentErrors] = useState<Partial<Record<keyof LegalConsentsValue, string>>>({});
     const [formData, setFormData] = useState({email: "", phone: "", message: "", consent: false, user_id: ""});
     const [submitted, setSubmitted] = useState(false);
 
@@ -32,6 +40,19 @@ export default function ContactForm() {
             dataRequest.phone = dataRequest.phone.slice(1);
         }
 
+        const newConsentErrors: Partial<Record<keyof LegalConsentsValue, string>> = {};
+        if (!consents.privacy) newConsentErrors.privacy = "Подтвердите согласие.";
+        if (!consents.data) newConsentErrors.data = "Подтвердите согласие.";
+        if (!consents.offer) newConsentErrors.offer = "Подтвердите согласие.";
+        setConsentErrors(newConsentErrors);
+        if (!allConsentsAccepted(consents)) {
+            newErrors.common = "Подтвердите все согласия ниже.";
+            setErrors(newErrors);
+            return false;
+        }
+        // Backend field expects a single bool — true once all three boxes are ticked.
+        dataRequest.consent = true;
+
         const validResult = validateContactForm(dataRequest)
         if (validResult.is_success) {
             const formatter = new AsYouType('RU');
@@ -51,6 +72,8 @@ export default function ContactForm() {
             setTimeout(() => {
                 setSubmitted(false);
                 setFormData({phone: '', email: '', message: '', consent: false, user_id: ""});
+                setConsents(emptyLegalConsents);
+                setConsentErrors({});
                 setErrors(newErrors);
             }, 3000);
             
@@ -139,29 +162,29 @@ export default function ContactForm() {
                 <div>
                     <label className="block font-['Inter:Medium',sans-serif] font-medium text-[13px] text-white/90 mb-1">Сообщение</label>
                     <textarea name="message" value={formData.message} onChange={handleChange} placeholder="Опишите ваш вопрос или проблему"
-                    rows={3} required
+                    rows={3} required maxLength={4000}
                     className={`w-full px-3 py-2.5 rounded-[10px] border bg-white/10 font-['Inter:Regular',sans-serif] text-[15px] text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#87b7ce]/20 transition-all resize-none ${
-                        errors.message 
-                            ? "border-red-400 focus:border-red-500" 
+                        errors.message
+                            ? "border-red-400 focus:border-red-500"
                             : "border-white/20 focus:border-[#87b7ce]"
                         }`}
                     />
-                    {errors.message && (
-                    <p className="font-['Inter:Regular',sans-serif] font-normal text-[12px] text-red-400 ml-[4px]">{errors.message}</p>
-                    )}
+                    <div className="flex items-center justify-between text-[12px] mt-1 ml-[4px]">
+                        <span className="text-red-400">{errors.message || ""}</span>
+                        <span className="tabular-nums text-white/60">{formData.message.length} / 4000</span>
+                    </div>
                 </div>
 
-                <div className="flex items-center">
-                    <input type="checkbox" name="consent" checked={formData.consent} onChange={handleChange} required className={`w-4 h-4 mr-2 border ${
-                        errors.consent 
-                            ? "border-red-400 focus:border-red-500" 
-                            : "border-white/20 focus:border-[#87b7ce]"
-                        }`} />
-                    <label className="font-['Inter:Regular',sans-serif] text-[13px] text-white/90"> Я согласен с обработкой персональных данных</label>
-                    {errors.consent && (
-                    <p className="font-['Inter:Regular',sans-serif] font-normal text-[12px] text-red-400 ml-[4px]">{errors.consent}</p>
-                    )}
-                </div>
+                <LegalConsents
+                    value={consents}
+                    onChange={(next) => {
+                        setConsents(next);
+                        setConsentErrors({});
+                    }}
+                    tone="dark"
+                    errors={consentErrors}
+                    idPrefix="contact-consent"
+                />
                 </div>
 
                 <div className="text-center">

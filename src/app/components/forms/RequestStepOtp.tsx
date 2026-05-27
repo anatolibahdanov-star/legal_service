@@ -34,7 +34,7 @@ export default function RequestStepOtp({
   onChangePhone,
   onVerify,
   onResend,
-  initialResendCooldownSec = 24 * 60 * 60,
+  initialResendCooldownSec = 0,
   initialDevCode,
 }: RequestStepOtpProps) {
   const otp = useOtpStep({

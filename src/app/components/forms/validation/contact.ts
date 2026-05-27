@@ -45,10 +45,10 @@ export const validateContactForm = (data: ContactFormI): ValidationFormReplyI =>
         isValid = false;
     }
 
-    if (data.message.length >= 500) {
+    if (data.message.length > 4000) {
         newErrors.push({
             field: "message",
-            error: ["Пожалуйста, сократите ваше сообщение до 500 символов."]
+            error: ["Пожалуйста, сократите ваше сообщение до 4000 символов."]
         });
         isValid = false;
     }

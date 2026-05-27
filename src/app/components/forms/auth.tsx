@@ -8,12 +8,13 @@ import { PHONE_MASK_TEMPLATE, formatPhoneInput, isPhoneComplete } from "@/src/li
 import {
   sendLoginPhoneOtpAction,
   verifyLoginPhoneOtpAction,
+  checkLoginPhoneExistsAction,
 } from "@/src/app/components/forms/action/login-phone";
+import { usePhoneBlockCountdown } from "@/src/app/components/forms/hooks/usePhoneBlockCountdown";
 import { signInWithPhoneOtp } from "@/src/app/components/forms/action/register-phone";
 import { YandexSmartCaptcha } from "@/src/app/components/forms/YandexSmartCaptcha";
 import { useYandexInvisibleCaptcha } from "@/src/app/components/forms/useYandexInvisibleCaptcha";
 import OtpCodeStep, { OtpStepResult } from "@/src/app/components/forms/OtpCodeStep";
-import { formatOtpDuration } from "@/src/app/components/forms/hooks/useOtpStep";
 
 type Tab = "email" | "phone";
 type PhoneStep = "phone" | "code";
@@ -132,35 +133,20 @@ export default function AuthForm({
   const [normalizedPhone, setNormalizedPhone] = useState("");
   const [phoneErrors, setPhoneErrors] = useState({ phone: "", code: "", common: "" });
   const [phoneSubmitting, setPhoneSubmitting] = useState(false);
-  const [phoneLockedUntil, setPhoneLockedUntil] = useState<Date | null>(null);
-  const [phoneCooldownUntil, setPhoneCooldownUntil] = useState<Date | null>(null);
+  const phoneBlock = usePhoneBlockCountdown();
+  /** null = unknown / not checked; true/false = result of /login-phone/check. */
+  const [phoneExists, setPhoneExists] = useState<boolean | null>(null);
+  const [checkingPhone, setCheckingPhone] = useState(false);
 
+  // When the countdown clears (timer expired or user reset), drop the stale
+  // common error — same UX as before the refactor.
   useEffect(() => {
-    if (!phoneLockedUntil && !phoneCooldownUntil) return;
-    const id = setInterval(() => setNowTs(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, [phoneLockedUntil, phoneCooldownUntil]);
-
-  useEffect(() => {
-    if (phoneLockedUntil && phoneLockedUntil.getTime() <= nowTs) {
-      setPhoneLockedUntil(null);
-      setPhoneErrors((prev) => ({ ...prev, common: "" }));
+    if (!phoneBlock.blocked) {
+      setPhoneErrors((prev) => (prev.common ? { ...prev, common: "" } : prev));
     }
-    if (phoneCooldownUntil && phoneCooldownUntil.getTime() <= nowTs) {
-      setPhoneCooldownUntil(null);
-      setPhoneErrors((prev) => ({ ...prev, common: "" }));
-    }
-  }, [phoneLockedUntil, phoneCooldownUntil, nowTs]);
+  }, [phoneBlock.blocked]);
 
-  const phoneLockRemainingSec = phoneLockedUntil
-    ? Math.max(0, Math.ceil((phoneLockedUntil.getTime() - nowTs) / 1000))
-    : 0;
-  const phoneCooldownRemainingSec = phoneCooldownUntil
-    ? Math.max(0, Math.ceil((phoneCooldownUntil.getTime() - nowTs) / 1000))
-    : 0;
-  const isPhoneLocked = phoneLockRemainingSec > 0;
-  const isPhoneCoolingDown = phoneCooldownRemainingSec > 0;
-  const isPhoneBlocked = isPhoneLocked || isPhoneCoolingDown;
+  const isPhoneBlocked = phoneBlock.blocked;
 
   useEffect(() => {
     if (prefillPhone) {
@@ -171,7 +157,11 @@ export default function AuthForm({
 
   const phoneValid = useMemo(() => isPhoneComplete(phone), [phone]);
   const canSubmitPhone =
-    phoneValid && !!phoneCaptchaToken && !phoneSubmitting && !isPhoneBlocked;
+    phoneValid &&
+    !!phoneCaptchaToken &&
+    !phoneSubmitting &&
+    !isPhoneBlocked &&
+    phoneExists === true;
 
   const handlePhoneChange = (raw: string) => {
     const formatted = formatPhoneInput(raw);
@@ -184,9 +174,59 @@ export default function AuthForm({
           : "Введите корректный номер телефона",
       common: "",
     }));
-    setPhoneLockedUntil(null);
-    setPhoneCooldownUntil(null);
+    phoneBlock.reset();
+    // Reset the existence flag — a new check fires from the effect below
+    // once the input is complete again.
+    setPhoneExists(null);
   };
+
+  // Auto-check phone against DB once the user has typed a complete number.
+  // Debounced 400ms so we don't hammer the endpoint while the user is still
+  // typing. If the number isn't registered, mirror the "Введите корректный
+  // номер телефона" red message style with "Указанный номер телефона не найден!"
+  useEffect(() => {
+    if (!phoneValid) {
+      setPhoneExists(null);
+      setCheckingPhone(false);
+      return;
+    }
+    let cancelled = false;
+    const t = window.setTimeout(async () => {
+      setCheckingPhone(true);
+      try {
+        const response = await checkLoginPhoneExistsAction({ phone });
+        if (cancelled) return;
+        if (!response.status) {
+          // Network/server error — don't block submission on a check
+          // failure; the send-otp endpoint is still authoritative.
+          setPhoneExists(null);
+          return;
+        }
+        const data = response.data as { exists?: boolean };
+        const exists = !!data?.exists;
+        setPhoneExists(exists);
+        if (!exists) {
+          setPhoneErrors((prev) => ({
+            ...prev,
+            phone: "Указанный номер телефона не найден!",
+          }));
+        } else {
+          // Clear any prior "not found" message but keep validity errors intact.
+          setPhoneErrors((prev) =>
+            prev.phone === "Указанный номер телефона не найден!"
+              ? { ...prev, phone: "" }
+              : prev,
+          );
+        }
+      } finally {
+        if (!cancelled) setCheckingPhone(false);
+      }
+    }, 400);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(t);
+    };
+  }, [phone, phoneValid]);
 
   const finishSignInRedirect = async () => {
     await update();
@@ -249,22 +289,7 @@ export default function AuthForm({
       const errData = response.data as
         | { cooldownUntil?: string | null; lockedUntil?: string | null }
         | null;
-      const lockedUntilRaw = errData?.lockedUntil ?? null;
-      const cooldownUntilRaw = errData?.cooldownUntil ?? null;
-      if (lockedUntilRaw) {
-        const d = new Date(lockedUntilRaw);
-        if (!Number.isNaN(d.getTime())) {
-          setPhoneLockedUntil(d);
-          setNowTs(Date.now());
-        }
-      }
-      if (cooldownUntilRaw) {
-        const d = new Date(cooldownUntilRaw);
-        if (!Number.isNaN(d.getTime())) {
-          setPhoneCooldownUntil(d);
-          setNowTs(Date.now());
-        }
-      }
+      phoneBlock.applyFromServer(errData);
       return;
     }
     const data = response.data as { phone: string; expiresInSec: number; devCode?: string };
@@ -342,7 +367,6 @@ export default function AuthForm({
         onChangePhone={() => {
           goBackToPhoneStep();
         }}
-        initialResendCooldown={24 * 60 * 60}
       />
     );
   }
@@ -517,23 +541,13 @@ export default function AuthForm({
               <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-px" />
               <div>
                 <p className="font-semibold text-[14px] text-red-700 leading-[18px]">
-                  Не удалось отправить код
+                  {phoneBlock.locked ? "Номер временно заблокирован" : "Не удалось отправить код"}
                 </p>
                 <p className="text-[13px] text-red-600 leading-[18px]">{phoneErrors.common}</p>
-                {isPhoneLocked && (
+                {phoneBlock.blocked && (
                   <p className="text-[13px] text-red-600 leading-[18px] mt-[4px]">
-                    Попробуйте через{" "}
-                    <span className="font-semibold tabular-nums">
-                      {formatOtpDuration(phoneLockRemainingSec)}
-                    </span>
-                  </p>
-                )}
-                {!isPhoneLocked && isPhoneCoolingDown && (
-                  <p className="text-[13px] text-red-600 leading-[18px] mt-[4px]">
-                    Повторная отправка через{" "}
-                    <span className="font-semibold tabular-nums">
-                      {formatOtpDuration(phoneCooldownRemainingSec)}
-                    </span>
+                    {phoneBlock.locked ? "Попробуйте через" : "Повторная отправка через"}{" "}
+                    <span className="font-semibold tabular-nums">{phoneBlock.remainingLabel}</span>
                   </p>
                 )}
               </div>
@@ -583,9 +597,9 @@ export default function AuthForm({
           >
             {phoneSubmitting
               ? "Отправляем…"
-              : isPhoneLocked
+              : phoneBlock.locked
                 ? "Заблокировано"
-                : isPhoneCoolingDown
+                : phoneBlock.cooldown
                   ? "Подождите"
                   : "Получить код"}
             {!phoneSubmitting && !isPhoneBlocked && <ArrowRight className="w-4 h-4" />}

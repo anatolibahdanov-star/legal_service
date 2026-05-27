@@ -9,7 +9,7 @@ import {
 } from "@/src/app/components/ui/select";
 import { useSession } from "next-auth/react"
 import { useRouter } from 'next/navigation';
-import { AlertCircle, ArrowLeft, Check } from "lucide-react";
+import { AlertCircle, ArrowLeft } from "lucide-react";
 import {
   validateRequestForm,
   validateQuestionText,
@@ -18,7 +18,6 @@ import {
 import { submitRequestFormAction } from "@/src/app/components/forms/action/request";
 import { signInWithPhoneOtp } from "@/src/app/components/forms/action/register-phone";
 import { PHONE_MASK_TEMPLATE, formatPhoneInput, isPhoneComplete } from "@/src/libs/phoneMask";
-import { formatRetryAfter } from "@/src/helpers/duration";
 import { FormDataObjectT } from "@/src/interfaces/form";
 import { DBQuestion } from "@/src/interfaces/db";
 import { SelectCategories } from "@/src/app/components/data/select-category";
@@ -40,9 +39,16 @@ import {
   createWizardCardOrderAction,
   payWithBalanceAction,
 } from "@/src/app/components/forms/action/wizard";
-import { needsProfileCompletion, isPhoneEmail, phoneToDefaultName, normalizePhoneE164 } from "@/src/libs/phoneIdentity";
+import { needsProfileCompletion, isPhoneEmail, phoneToDefaultName } from "@/src/libs/phoneIdentity";
 import { emitBalanceRefresh } from "@/src/libs/balanceEvents";
 import { cn } from "@/src/app/components/ui/utils";
+import {
+    LegalConsents,
+    emptyLegalConsents,
+    allConsentsAccepted,
+    type LegalConsentsValue,
+} from "@/src/app/components/LegalConsents";
+import { usePhoneBlockCountdown } from "@/src/app/components/forms/hooks/usePhoneBlockCountdown";
 
 interface RequestFormOptionsI {
     parent?: number|null;
@@ -69,6 +75,9 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
     const [captchaToken, setCaptchaToken] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
     const [questionTouched, setQuestionTouched] = useState(false);
+    const [consents, setConsents] = useState<LegalConsentsValue>(emptyLegalConsents);
+    const [consentErrors, setConsentErrors] = useState<Partial<Record<keyof LegalConsentsValue, string>>>({});
+    const block = usePhoneBlockCountdown();
     const [step, setStep] = useState<WizardStep>("question");
     const [formData, setFormData] = useState({
         email: "",
@@ -203,20 +212,13 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
         setSendingOtp(false);
 
         if (!response.status) {
-            const errData = response.data as { code?: string; retryAfterSec?: number } | null;
+            const errData = response.data as
+                | { code?: string; lockedUntil?: string | null; cooldownUntil?: string | null }
+                | null;
             const code = errData?.code;
 
-            // Special case: createOtp resend cooldown — the previously issued OTP
-            // is still valid. Jump straight to the OTP screen so the user can
-            // enter the code they already received.
-            if (code === "cooldown") {
-                const normalized = normalizePhoneE164(phone);
-                if (normalized) {
-                    setNormalizedPhone(normalized.e164);
-                    setStep("otp");
-                    return;
-                }
-            }
+            // Feed deadlines into the countdown so the banner gets MM:SS.
+            block.applyFromServer(errData);
 
             if (code === "invalid_phone" || code === "phone_required") {
                 setPhoneError(response.error || "Введите корректный номер телефона.");
@@ -228,8 +230,6 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
                 setPhoneCommonError(response.error || "Не удалось пройти проверку. Попробуйте снова.");
             } else if (code === "sms_failed") {
                 setPhoneCommonError(response.error || "Не удалось отправить SMS. Попробуйте позже.");
-            } else if (errData?.retryAfterSec) {
-                setPhoneCommonError(`Попробуйте через ${formatRetryAfter(errData.retryAfterSec)}.`);
             } else {
                 setPhoneCommonError(response.error || "Не удалось отправить код.");
             }
@@ -610,6 +610,7 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
                             onChange={(e) => setFormData({ ...formData, question: e.target.value })}
                             onBlur={() => setQuestionTouched(true)}
                             placeholder="Опишите вашу ситуацию"
+                            maxLength={QUESTION_MAX_LENGTH}
                             className={cn(
                                 "w-full px-5 py-4 bg-transparent border-2 rounded-2xl text-white placeholder-white/40 focus:outline-none focus:border-[#8faaba] transition-colors resize-none",
                                 questionTouched && questionError
@@ -656,13 +657,29 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
         // Captcha is only required for guests; authed users have already
         // proven themselves via the existing session.
         const isCaptchaValid = isAuthed || !!captchaToken;
-        const isAgreed = formData.agree === true;
+        // Authed users have already accepted the legal documents at registration;
+        // guests need to tick all three boxes before submitting.
+        const isAgreed = isAuthed || allConsentsAccepted(consents);
         const canProceed = !questionError && isCaptchaValid && isAgreed && !submitting;
+
+        const validateConsentsForGuests = () => {
+            if (isAuthed) return true;
+            if (allConsentsAccepted(consents)) return true;
+            const next: Partial<Record<keyof LegalConsentsValue, string>> = {};
+            if (!consents.privacy) next.privacy = "Подтвердите согласие.";
+            if (!consents.data) next.data = "Подтвердите согласие.";
+            if (!consents.offer) next.offer = "Подтвердите согласие.";
+            setConsentErrors(next);
+            return false;
+        };
 
         const handleNext = () => {
             setQuestionTouched(true);
             const err = validateQuestionText(formData.question);
-            if (err || !isCaptchaValid || !isAgreed) return;
+            if (err || !isCaptchaValid) return;
+            if (!validateConsentsForGuests()) return;
+            // Mirror into legacy single-flag so downstream validators stay green.
+            setFormData((prev) => ({ ...prev, agree: true }));
             setStep("phone");
         };
 
@@ -675,7 +692,7 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
         const handleNextAuthed = async () => {
             setQuestionTouched(true);
             const err = validateQuestionText(formData.question);
-            if (err || !isAgreed || submitting) return;
+            if (err || submitting) return;
 
             setSubmitting(true);
             setErrors((prev) => ({ ...prev, common: "" }));
@@ -798,6 +815,7 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
                                 onBlur={() => setQuestionTouched(true)}
                                 placeholder="Опишите вашу ситуацию"
                                 aria-invalid={questionTouched && !!questionError}
+                                maxLength={QUESTION_MAX_LENGTH}
                                 className="w-full min-h-[150px] resize-none bg-transparent border-0 px-2 py-1 text-base text-white placeholder:text-white/60 focus:outline-none focus:ring-0"
                                 required
                             />
@@ -840,29 +858,18 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
                         {submitting ? "Обрабатываем…" : "Далее"}
                     </button>
 
-                    <div className="flex items-start gap-3 text-xs text-white/70 leading-relaxed pt-1">
-                        <button
-                            type="button"
-                            role="checkbox"
-                            id="agree"
-                            aria-checked={formData.agree}
-                            onClick={() => setFormData({ ...formData, agree: !formData.agree })}
-                            className={cn(
-                                "mt-0.5 w-5 h-5 shrink-0 rounded-full border-2 flex items-center justify-center transition-colors cursor-pointer",
-                                formData.agree
-                                    ? "bg-white border-white"
-                                    : "bg-transparent border-white/60"
-                            )}
-                        >
-                            {formData.agree && <Check className="w-3.5 h-3.5 text-[#3d4b5e] pointer-events-none" strokeWidth={3} />}
-                        </button>
-                        <span>
-                            Согласен с{" "}
-                            <a href="/terms" className="underline hover:text-white">Условиями обработки персональных данных</a>{" "}
-                            и{" "}
-                            <a href="/terms" className="underline hover:text-white">Пользовательским соглашением</a>
-                        </span>
-                    </div>
+                    {!isAuthed && (
+                        <LegalConsents
+                            value={consents}
+                            onChange={(next) => {
+                                setConsents(next);
+                                setConsentErrors({});
+                            }}
+                            tone="dark"
+                            errors={consentErrors}
+                            idPrefix="request-consent"
+                        />
+                    )}
                 </div>
             </div>
         );
@@ -871,7 +878,7 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
     // Step 2: phone input + send-otp
     if (step === "phone") {
         const phoneValid = isPhoneComplete(phone);
-        const canRequestCode = phoneValid && !sendingOtp;
+        const canRequestCode = phoneValid && !sendingOtp && !block.blocked;
 
         return (
             <div className="bg-[#3d4b5e] rounded-2xl sm:rounded-3xl p-5 sm:p-8 lg:p-10 shadow-2xl">
@@ -883,7 +890,15 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
                 {phoneCommonError && (
                     <div className="mb-4 px-4 py-3 rounded-xl bg-red-500/15 border border-red-400/40 flex items-start gap-2">
                         <AlertCircle className="w-5 h-5 text-red-300 shrink-0 mt-px" />
-                        <p className="text-sm text-red-200">{phoneCommonError}</p>
+                        <div>
+                            <p className="text-sm text-red-200">{phoneCommonError}</p>
+                            {block.blocked && (
+                                <p className="text-sm text-red-200 mt-1">
+                                    Попробуйте через{" "}
+                                    <span className="font-semibold tabular-nums">{block.remainingLabel}</span>
+                                </p>
+                            )}
+                        </div>
                     </div>
                 )}
 
@@ -916,6 +931,8 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
                                             : "Введите корректный номер телефона"
                                     );
                                     setPhoneCommonError("");
+                                    // Block is per-phone; switching numbers drops the stale timer.
+                                    block.reset();
                                 }}
                                 placeholder={PHONE_MASK_TEMPLATE}
                                 aria-invalid={!!phoneError}

@@ -1,96 +1,101 @@
-import { Mail, Phone, MapPin } from "lucide-react";
-import Image from 'next/image'
-import Link from 'next/link';
+"use client";
+
+import { useState } from "react";
+import { Mail } from "lucide-react";
+import Image from "next/image";
+import { PdfDocumentModal } from "@/src/app/components/PdfDocumentModal";
+import {
+  LEGAL_DOCUMENTS,
+  type LegalDocumentKey,
+} from "@/src/app/components/legalDocuments";
 
 export function Footer() {
+  const [openDoc, setOpenDoc] = useState<LegalDocumentKey | null>(null);
+
+  const handleOpen = (key: LegalDocumentKey) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    setOpenDoc(key);
+  };
+
   return (
-    <footer id="contact" className="bg-[#3d4b5e] text-white py-12">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid md:grid-cols-3 gap-8 mb-8">
-          {/* About the company */}
-          <div>
-            <div className="flex items-center gap-3 mb-4">
-              <Image
-                src="/design/logowhite.svg"
-                width={9}
-                height={9}
-                className="w-9 h-9 object-contain"
-                alt="LLLMS Logo"
-              />
-              <div>
-                <h3 className="text-lg font-bold">ЮристПро онлайн</h3>
-                <p className="text-xs text-white/60">Быстрая юридическая помощь онлайн.</p>
+    <>
+      <footer id="contact" className="bg-[#3d4b5e] text-white py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid md:grid-cols-3 gap-8 mb-8">
+            {/* About the company */}
+            <div>
+              <div className="flex items-center gap-3 mb-4">
+                <Image
+                  src="/design/logowhite.svg"
+                  width={36}
+                  height={36}
+                  className="w-9 h-9 object-contain"
+                  alt="ЭНКИ"
+                />
+                <div>
+                  <h3 className="text-lg font-bold">ЭНКИ</h3>
+                  <p className="text-xs text-white/60">Быстрая юридическая помощь онлайн.</p>
+                </div>
               </div>
+              <p className="text-white/70 text-sm leading-relaxed">
+                ©2026 гг. ЭНКИ
+                <br />
+                Все права защищены
+              </p>
             </div>
-            <p className="text-white/70 text-sm mb-4">
-              Профессиональная юридическая помощь и консультации.
-            </p>
-            <p className="text-white/70 text-sm">
-              Работаем с 2014 года. Более 5000 успешных дел.
-            </p>
-          </div>
 
-          {/* Contacts */}
-          <div>
-            <h3 className="text-lg font-bold mb-4">Контакты</h3>
-            <ul className="space-y-3 text-sm">
-              <li className="flex items-start gap-3">
-                <Mail className="w-5 h-5 text-[#8faaba] mt-0.5 flex-shrink-0" />
-                <a href="mailto:info@urconsult.ru" className="text-white/70 hover:text-white transition-colors">
-                  info@urconsult.ru
-                </a>
-              </li>
-              <li className="flex items-start gap-3">
-                <Phone className="w-5 h-5 text-[#8faaba] mt-0.5 flex-shrink-0" />
-                <a href="tel:+79991234567" className="text-white/70 hover:text-white transition-colors">
-                  +7 (999) 123-45-67
-                </a>
-              </li>
-              <li className="flex items-start gap-3">
-                <MapPin className="w-5 h-5 text-[#8faaba] mt-0.5 flex-shrink-0" />
-                <span className="text-white/70">
-                  г. Москва, ул. Юридическая, д. 1
-                </span>
-              </li>
-            </ul>
-          </div>
+            {/* Company legal info */}
+            <div>
+              <h3 className="text-lg font-bold mb-4">Реквизиты</h3>
+              <ul className="space-y-2 text-sm text-white/70">
+                <li>ООО «ЭНКИ-Л»</li>
+                <li>ОГРН: 1267700058130</li>
+                <li>ИНН: 9704269974</li>
+                <li className="flex items-center gap-2">
+                  <Mail className="w-4 h-4 text-[#8faaba] shrink-0" />
+                  <a
+                    href="mailto:contact@enki.legal"
+                    className="hover:text-white transition-colors"
+                  >
+                    contact@enki.legal
+                  </a>
+                </li>
+              </ul>
+            </div>
 
-          {/* Working hours */}
-          <div>
-            <h3 className="text-lg font-bold mb-4">Навигация</h3>
-            <ul className="space-y-2 text-sm text-white/70">
-              <li>
-                <a href="#about" className="hover:text-white transition-colors">
-                  Почему мы
-                </a>
-              </li>
-              <li>
-                <a href="#how-it-works" className="hover:text-white transition-colors">
-                  Как это работает
-                </a>
-              </li>
-              <li>
-                <Link href="/about" className="hover:text-white transition-colors">О нас</Link>
-              </li>
-              <li>
-                <Link href="/contact" className="hover:text-white transition-colors">Контакты</Link>
-              </li>
-            </ul>
-          </div>
-        </div>
-
-        <div className="border-t border-white/20 pt-8 mt-8">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-sm text-white/70">
-              © 2026 ЮристПро. Все права защищены.
-            </p>
-            <div className="flex gap-6 text-sm text-white/70">
-              <Link href="/privacy_policy" className="hover:text-white transition-colors">Политика конфиденциальности</Link>
-              <Link href="/terms_and_conditions" className="hover:text-white transition-colors">Пользовательское соглашение</Link>
+            {/* Legal documents */}
+            <div>
+              <h3 className="text-lg font-bold mb-4">Документы</h3>
+              <ul className="space-y-2 text-sm">
+                {(
+                  [
+                    "privacy-policy",
+                    "personal-data-consent",
+                    "public-offer",
+                  ] as LegalDocumentKey[]
+                ).map((key) => (
+                  <li key={key}>
+                    <a
+                      href={LEGAL_DOCUMENTS[key].src}
+                      onClick={handleOpen(key)}
+                      className="text-white/70 hover:text-white underline-offset-2 hover:underline transition-colors"
+                    >
+                      {LEGAL_DOCUMENTS[key].title}
+                    </a>
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
         </div>
-      </div>
-    </footer>
+      </footer>
+
+      <PdfDocumentModal
+        open={openDoc !== null}
+        title={openDoc ? LEGAL_DOCUMENTS[openDoc].title : ""}
+        src={openDoc ? LEGAL_DOCUMENTS[openDoc].src : ""}
+        onClose={() => setOpenDoc(null)}
+      />
+    </>
   );
 }
