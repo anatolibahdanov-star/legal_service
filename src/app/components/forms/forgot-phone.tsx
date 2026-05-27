@@ -167,7 +167,6 @@ export default function ForgotPhoneForm({ onSwitchToLogin, onHeaderlessChange }:
         onVerify={handleVerify}
         onResend={handleResend}
         onChangePhone={goBackToPhoneStep}
-        initialResendCooldown={24 * 60 * 60}
       />
     );
   }

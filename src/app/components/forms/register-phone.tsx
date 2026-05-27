@@ -163,7 +163,6 @@ export default function RegisterPhoneForm({ onClose, onSwitchToLogin }: FormCont
         onChangePhone={() => {
           goBackToPhoneStep();
         }}
-        initialResendCooldown={24 * 60 * 60}
       />
     );
   }

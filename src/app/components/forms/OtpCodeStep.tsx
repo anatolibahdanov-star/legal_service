@@ -21,7 +21,7 @@ interface Props {
   onResend: () => Promise<OtpStepResult>;
   /** Synchronous "go back to phone step" callback. */
   onChangePhone: () => void;
-  /** Resend cooldown seconds set by parent after first send. */
+  /** Resend cooldown seconds set by parent after first send. 0 means resend is allowed immediately. */
   initialResendCooldown?: number;
 }
 
@@ -30,7 +30,7 @@ export default function OtpCodeStep({
   onVerify,
   onResend,
   onChangePhone,
-  initialResendCooldown = 24 * 60 * 60,
+  initialResendCooldown = 0,
 }: Props) {
   const otp = useOtpStep({
     codeLength: CODE_LENGTH,

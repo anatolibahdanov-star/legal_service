@@ -367,7 +367,6 @@ export default function AuthForm({
         onChangePhone={() => {
           goBackToPhoneStep();
         }}
-        initialResendCooldown={24 * 60 * 60}
       />
     );
   }

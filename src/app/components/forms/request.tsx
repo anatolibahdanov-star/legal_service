@@ -18,7 +18,6 @@ import {
 import { submitRequestFormAction } from "@/src/app/components/forms/action/request";
 import { signInWithPhoneOtp } from "@/src/app/components/forms/action/register-phone";
 import { PHONE_MASK_TEMPLATE, formatPhoneInput, isPhoneComplete } from "@/src/libs/phoneMask";
-import { formatRetryAfter } from "@/src/helpers/duration";
 import { FormDataObjectT } from "@/src/interfaces/form";
 import { DBQuestion } from "@/src/interfaces/db";
 import { SelectCategories } from "@/src/app/components/data/select-category";
@@ -40,7 +39,7 @@ import {
   createWizardCardOrderAction,
   payWithBalanceAction,
 } from "@/src/app/components/forms/action/wizard";
-import { needsProfileCompletion, isPhoneEmail, phoneToDefaultName, normalizePhoneE164 } from "@/src/libs/phoneIdentity";
+import { needsProfileCompletion, isPhoneEmail, phoneToDefaultName } from "@/src/libs/phoneIdentity";
 import { emitBalanceRefresh } from "@/src/libs/balanceEvents";
 import { cn } from "@/src/app/components/ui/utils";
 import {
@@ -214,24 +213,12 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
 
         if (!response.status) {
             const errData = response.data as
-                | { code?: string; retryAfterSec?: number; lockedUntil?: string | null; cooldownUntil?: string | null }
+                | { code?: string; lockedUntil?: string | null; cooldownUntil?: string | null }
                 | null;
             const code = errData?.code;
 
             // Feed deadlines into the countdown so the banner gets MM:SS.
             block.applyFromServer(errData);
-
-            // Special case: createOtp resend cooldown — the previously issued OTP
-            // is still valid. Jump straight to the OTP screen so the user can
-            // enter the code they already received.
-            if (code === "cooldown") {
-                const normalized = normalizePhoneE164(phone);
-                if (normalized) {
-                    setNormalizedPhone(normalized.e164);
-                    setStep("otp");
-                    return;
-                }
-            }
 
             if (code === "invalid_phone" || code === "phone_required") {
                 setPhoneError(response.error || "Введите корректный номер телефона.");
@@ -243,8 +230,6 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
                 setPhoneCommonError(response.error || "Не удалось пройти проверку. Попробуйте снова.");
             } else if (code === "sms_failed") {
                 setPhoneCommonError(response.error || "Не удалось отправить SMS. Попробуйте позже.");
-            } else if (errData?.retryAfterSec) {
-                setPhoneCommonError(`Попробуйте через ${formatRetryAfter(errData.retryAfterSec)}.`);
             } else {
                 setPhoneCommonError(response.error || "Не удалось отправить код.");
             }
