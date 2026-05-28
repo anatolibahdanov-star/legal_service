@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import logger from '@/src/libs/logger';
 import { getOrGeneratePdf, PdfNotFoundError } from '@/src/services/pdf';
+import { PDF_ID_REGEX } from '@/src/services/pdf/shortId';
 
 export const dynamic = 'force-dynamic';
-
-const UUID_RE = /^[0-9a-fA-F-]{32,36}$/;
 
 /**
  * Public, non-expiring endpoint that serves the PDF for a question by uuid.
@@ -20,9 +19,9 @@ export async function GET(
 ) {
   const msg = 'API pdf GET - ';
   const { uuid } = await params;
-  if (!UUID_RE.test(uuid)) {
+  if (!PDF_ID_REGEX.test(uuid)) {
     return NextResponse.json(
-      { success: false, message: 'Invalid uuid' },
+      { success: false, message: 'Invalid id' },
       { status: 400 },
     );
   }

@@ -5,6 +5,10 @@ import { Dispatch, SetStateAction } from 'react';
 
 export interface SwitchToLoginPrefill {
   phone?: string;
+  /** True when an OTP has already been sent to `phone`; the login form should
+   * mount directly in the OTP code-entry step instead of asking for the
+   * captcha + phone input again. */
+  otpAlreadySent?: boolean;
 }
 
 export interface FormProps {
@@ -24,6 +28,10 @@ export interface AuthFormPropsI {
   onSwitchToReset: () => void;
   onClose: () => void;
   prefillPhone?: string;
+  /** When true (with `prefillPhone`), the form mounts directly in the OTP
+   * code-entry step — used when the OTP was already issued upstream
+   * (e.g. user tried to register a number that's already taken). */
+  prefillPhoneOtpSent?: boolean;
 }
 
 export interface AuthWindowProps extends AuthFormPropsI  {

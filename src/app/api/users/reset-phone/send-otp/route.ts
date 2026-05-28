@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import logger from '@/src/libs/logger';
 import { verifyCaptcha } from '@/src/libs/captcha';
-import { normalizePhoneE164 } from '@/src/libs/phoneIdentity';
+import { normalizePhoneE164, needsProfileCompletion } from '@/src/libs/phoneIdentity';
 import { createOtp, invalidateOtp } from '@/src/libs/otpStore';
 import { getUserByPhone } from '@/src/repositories/users/repo';
 import { getPhoneStatus } from '@/src/repositories/otp_attempts/repo';
@@ -15,6 +15,8 @@ const GENERIC_PHONE_ERROR = 'Введите корректный номер те
 const BLOCKED_MESSAGE = 'Ваш номер телефона заблокирован. Свяжитесь с тех.поддержкой.';
 const COOLDOWN_MESSAGE = 'Слишком много попыток. Попробуйте через 5 минут.';
 const NOT_FOUND_MESSAGE = 'Аккаунт с таким номером не найден.';
+const NO_EMAIL_MESSAGE =
+  'Email не указан. Восстановление невозможно. Вы можете авторизоваться по телефону.';
 
 interface SendOtpBody {
   phone?: string;
@@ -67,6 +69,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { success: false, code: 'phone_not_found', message: NOT_FOUND_MESSAGE },
       { status: 404 },
+    );
+  }
+
+  // Password recovery requires a real email — phone-OTP-only users (synthetic
+  // *@phone.local address) have nowhere to receive the temporary password and
+  // should sign in via phone OTP instead.
+  if (needsProfileCompletion(existing)) {
+    logger.info(msg + 'user has no real email; blocking reset', {
+      user_id: existing.id,
+      phone_tail: normalized.digits.slice(-4),
+    });
+    return NextResponse.json(
+      { success: false, code: 'email_missing', message: NO_EMAIL_MESSAGE },
+      { status: 400 },
     );
   }
 

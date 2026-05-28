@@ -55,6 +55,7 @@ export default function AuthForm({
   onSwitchToRegister,
   onSwitchToReset,
   prefillPhone,
+  prefillPhoneOtpSent,
 }: AuthFormPropsI) {
   const router = useRouter();
   const { update } = useSession();
@@ -127,10 +128,14 @@ export default function AuthForm({
     setAttemptsLeft(null);
   };
 
-  const [phoneStep, setPhoneStep] = useState<PhoneStep>("phone");
+  const [phoneStep, setPhoneStep] = useState<PhoneStep>(
+    prefillPhone && prefillPhoneOtpSent ? "code" : "phone",
+  );
   const [phone, setPhone] = useState(prefillPhone ? formatPhoneInput(prefillPhone) : "");
   const [phoneCaptchaToken, setPhoneCaptchaToken] = useState<string | null>(null);
-  const [normalizedPhone, setNormalizedPhone] = useState("");
+  const [normalizedPhone, setNormalizedPhone] = useState(
+    prefillPhone && prefillPhoneOtpSent ? prefillPhone : "",
+  );
   const [phoneErrors, setPhoneErrors] = useState({ phone: "", code: "", common: "" });
   const [phoneSubmitting, setPhoneSubmitting] = useState(false);
   const phoneBlock = usePhoneBlockCountdown();
@@ -152,8 +157,12 @@ export default function AuthForm({
     if (prefillPhone) {
       setTab("phone");
       setPhone(formatPhoneInput(prefillPhone));
+      if (prefillPhoneOtpSent) {
+        setNormalizedPhone(prefillPhone);
+        setPhoneStep("code");
+      }
     }
-  }, [prefillPhone]);
+  }, [prefillPhone, prefillPhoneOtpSent]);
 
   const phoneValid = useMemo(() => isPhoneComplete(phone), [phone]);
   const canSubmitPhone =
@@ -182,8 +191,8 @@ export default function AuthForm({
 
   // Auto-check phone against DB once the user has typed a complete number.
   // Debounced 400ms so we don't hammer the endpoint while the user is still
-  // typing. If the number isn't registered, mirror the "Введите корректный
-  // номер телефона" red message style with "Указанный номер телефона не найден!"
+  // typing. When the number isn't registered, the form renders the
+  // "user not found" block above the input (with a link to the register flow).
   useEffect(() => {
     if (!phoneValid) {
       setPhoneExists(null);
@@ -205,19 +214,6 @@ export default function AuthForm({
         const data = response.data as { exists?: boolean };
         const exists = !!data?.exists;
         setPhoneExists(exists);
-        if (!exists) {
-          setPhoneErrors((prev) => ({
-            ...prev,
-            phone: "Указанный номер телефона не найден!",
-          }));
-        } else {
-          // Clear any prior "not found" message but keep validity errors intact.
-          setPhoneErrors((prev) =>
-            prev.phone === "Указанный номер телефона не найден!"
-              ? { ...prev, phone: "" }
-              : prev,
-          );
-        }
       } finally {
         if (!cancelled) setCheckingPhone(false);
       }
@@ -438,7 +434,7 @@ export default function AuthForm({
                 autoComplete="email"
                 value={email}
                 onChange={(e) => handleEmailChange(e.target.value)}
-                placeholder="you@company.com"
+                placeholder="email"
                 className={`w-full h-full pl-[44px] pr-[16px] bg-transparent text-[15px] text-[#0F1B2D] placeholder:text-[#0F1B2D]/40 rounded-[14px] outline-none ring-2 ${
                   emailErrors.email ? "ring-red-400" : "ring-transparent focus:ring-[#9BB7C9]"
                 } transition-all`}
@@ -550,6 +546,28 @@ export default function AuthForm({
                     <span className="font-semibold tabular-nums">{phoneBlock.remainingLabel}</span>
                   </p>
                 )}
+              </div>
+            </div>
+          )}
+
+          {!phoneErrors.common && phoneExists === false && (
+            <div className="px-[16px] py-[12px] rounded-[12px] bg-red-50 border border-red-200 flex items-start gap-[10px]">
+              <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-px" />
+              <div>
+                <p className="font-semibold text-[14px] text-red-700 leading-[18px]">
+                  Пользователь не найден
+                </p>
+                <p className="text-[13px] text-red-600 leading-[18px]">
+                  Проверьте номер или{" "}
+                  <button
+                    type="button"
+                    onClick={onSwitchToRegister}
+                    className="font-semibold text-[#3B82F6] hover:text-[#2563EB] transition-colors cursor-pointer"
+                  >
+                    зарегистрируйтесь
+                  </button>
+                  .
+                </p>
               </div>
             </div>
           )}

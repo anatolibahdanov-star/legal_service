@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import logger from '@/src/libs/logger';
-import { normalizePhoneE164 } from '@/src/libs/phoneIdentity';
+import { normalizePhoneE164, needsProfileCompletion } from '@/src/libs/phoneIdentity';
 import { verifyOtp, consumeVerifyToken } from '@/src/libs/otpStore';
-import { resetByPhone } from '@/src/repositories/users/repo';
+import { getUserByPhone, resetByPhone } from '@/src/repositories/users/repo';
 import {
   getPhoneStatus,
   recordFailedAttempt,
@@ -19,6 +19,8 @@ const COOLDOWN_MESSAGE = 'Слишком много попыток. Попроб
 const LOCKOUT_MESSAGE = 'Слишком много попыток. Номер заблокирован на 24 часа.';
 const SMS_FAILED = 'Не удалось отправить SMS с паролем. Попробуйте позже.';
 const NOT_FOUND_MESSAGE = 'Аккаунт с таким номером не найден.';
+const NO_EMAIL_MESSAGE =
+  'Email не указан. Восстановление невозможно. Вы можете авторизоваться по телефону.';
 
 interface VerifyOtpBody {
   phone?: string;
@@ -142,6 +144,21 @@ export async function POST(request: NextRequest) {
   // here purely to invalidate it so it can't be replayed elsewhere.
   consumeVerifyToken(normalized.e164, result.verifyToken);
   await resetAttempts(normalized.e164);
+
+  // Defense-in-depth: send-otp already rejects this case, but if a stale OTP
+  // is replayed after the user's email was cleared, don't issue a temp
+  // password we can't deliver. Mirrors the check in send-otp.
+  const existing = await getUserByPhone(normalized.e164);
+  if (existing && needsProfileCompletion(existing)) {
+    logger.info(msg + 'user has no real email; blocking reset', {
+      user_id: existing.id,
+      phone_tail: normalized.digits.slice(-4),
+    });
+    return NextResponse.json(
+      { success: false, code: 'email_missing', message: NO_EMAIL_MESSAGE },
+      { status: 400 },
+    );
+  }
 
   const user = await resetByPhone(normalized.e164);
   if (!user) {

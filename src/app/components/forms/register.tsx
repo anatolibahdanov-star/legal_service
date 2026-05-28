@@ -6,6 +6,12 @@ import { AlertCircle, ArrowRight, Eye, EyeOff, Lock, Mail, User } from "lucide-r
 import { validateRegisterForm } from "@/src/app/components/forms/validation/register";
 import { submitRegisterFormAction } from "@/src/app/components/forms/action/register";
 import { RegisterFormI, FormContainerProps } from "@/src/interfaces/form";
+import {
+  LegalConsents,
+  emptyLegalConsents,
+  allConsentsAccepted,
+  type LegalConsentsValue,
+} from "@/src/app/components/LegalConsents";
 
 const FIELD_BG = "bg-[#EFE7D8]";
 const PASSWORD_MIN_LENGTH = 6;
@@ -31,17 +37,21 @@ export default function RegisterForm({ onClose, onSwitchToLogin }: FormContainer
     common: "",
   });
   const [submitting, setSubmitting] = useState(false);
+  const [consents, setConsents] = useState<LegalConsentsValue>(emptyLegalConsents);
+  const [consentErrors, setConsentErrors] = useState<Partial<Record<keyof LegalConsentsValue, string>>>({});
 
   const emailValid = useMemo(() => EMAIL_REGEX.test(email), [email]);
   // const passwordValid =
   //   password.length >= PASSWORD_MIN_LENGTH && HAS_LATIN_LETTER.test(password);
   const passwordValid = password.length >= PASSWORD_MIN_LENGTH;
+  const consentsOk = allConsentsAccepted(consents);
   const canSubmit =
     name.trim().length > 0 &&
     emailValid &&
     passwordValid &&
     password === confirmPassword &&
     confirmPassword.length > 0 &&
+    consentsOk &&
     !submitting;
 
   const passwordPolicyError = (value: string): string => {
@@ -88,6 +98,14 @@ export default function RegisterForm({ onClose, onSwitchToLogin }: FormContainer
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!consentsOk) {
+      const next: Partial<Record<keyof LegalConsentsValue, string>> = {};
+      if (!consents.privacy) next.privacy = "Подтвердите согласие.";
+      if (!consents.data) next.data = "Подтвердите согласие.";
+      if (!consents.offer) next.offer = "Подтвердите согласие.";
+      setConsentErrors(next);
+      return;
+    }
     const data: RegisterFormI = { email, name, password, confirmPassword };
 
     const validResult = validateRegisterForm(data);
@@ -130,15 +148,6 @@ export default function RegisterForm({ onClose, onSwitchToLogin }: FormContainer
 
   return (
     <>
-      <div className="mb-[24px] pr-[24px]">
-        <h1 className="font-bold text-[26px] leading-[32px] text-[#0F1B2D] mb-[10px]">
-          Регистрация
-        </h1>
-        <p className="font-normal text-[14px] leading-[22px] text-[#6B7280]">
-          Создайте учётную запись для доступа к консультациям юристов и личному кабинету.
-        </p>
-      </div>
-
       <form onSubmit={handleSubmit} className="flex flex-col gap-[18px]" noValidate>
         {errors.common && (
           <div className="px-[16px] py-[12px] rounded-[12px] bg-red-50 border border-red-200 flex items-start gap-[10px]">
@@ -178,7 +187,7 @@ export default function RegisterForm({ onClose, onSwitchToLogin }: FormContainer
               autoComplete="email"
               value={email}
               onChange={(e) => handleEmailChange(e.target.value)}
-              placeholder="you@company.com"
+              placeholder="email"
               className={`w-full h-full pl-[44px] pr-[16px] bg-transparent text-[15px] text-[#0F1B2D] placeholder:text-[#0F1B2D]/40 rounded-[14px] outline-none ring-2 ${
                 errors.email ? "ring-red-400" : "ring-transparent focus:ring-[#9BB7C9]"
               } transition-all`}
@@ -267,10 +276,15 @@ export default function RegisterForm({ onClose, onSwitchToLogin }: FormContainer
           </button>
         </div>
 
-        <p className="text-[11px] leading-[16px] text-[#0F1B2D]/40 text-center">
-          Нажимая «Зарегистрироваться», вы принимаете условия Пользовательского соглашения и
-          Политики конфиденциальности.
-        </p>
+        <LegalConsents
+          value={consents}
+          onChange={(next) => {
+            setConsents(next);
+            setConsentErrors({});
+          }}
+          errors={consentErrors}
+          idPrefix="register-email-consent"
+        />
       </form>
     </>
   );

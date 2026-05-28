@@ -2,14 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import logger from '@/src/libs/logger';
 import { authOptions } from '@/src/app/api/auth/[...nextauth]/route';
-import { getQuestionsByIds } from '@/src/repositories/requests/repo';
+import { getQuestionByShortId, getQuestionsByIds } from '@/src/repositories/requests/repo';
 import { sendSms, normalizePhone } from '@/src/libs/p1sms';
 import { triggerBackgroundGeneration } from '@/src/services/pdf';
-import { getOrCreateShareUrl } from '@/src/services/pdf/shareLink';
+import { PDF_ID_REGEX, isShortId } from '@/src/services/pdf/shortId';
 
 export const dynamic = 'force-dynamic';
-
-const UUID_RE = /^[0-9a-fA-F-]{32,36}$/;
 
 interface SmsRequestBody {
   phone?: string;
@@ -29,9 +27,9 @@ export async function POST(
 ) {
   const msg = 'API pdf SMS - ';
   const { uuid } = await params;
-  if (!UUID_RE.test(uuid)) {
+  if (!PDF_ID_REGEX.test(uuid)) {
     return NextResponse.json(
-      { success: false, message: 'Invalid uuid' },
+      { success: false, message: 'Invalid id' },
       { status: 400 },
     );
   }
@@ -61,8 +59,9 @@ export async function POST(
     );
   }
 
-  const rows = await getQuestionsByIds([uuid], false);
-  const question = rows?.[0];
+  const question = isShortId(uuid)
+    ? await getQuestionByShortId(uuid)
+    : (await getQuestionsByIds([uuid], false))?.[0] ?? null;
   if (!question) {
     return NextResponse.json(
       { success: false, message: 'Вопрос не найден.' },
@@ -76,17 +75,15 @@ export async function POST(
     );
   }
 
-  const shareUrl = await getOrCreateShareUrl(Number(question.id), Number(question.user_id));
-  if (!shareUrl) {
-    return NextResponse.json(
-      { success: false, message: 'Не удалось сформировать ссылку.' },
-      { status: 500 },
-    );
-  }
+  // Send the canonical short PDF URL (e.g. /api/pdf/AbCd). It's a few chars
+  // instead of a 64-char share token, which keeps the SMS under one Cyrillic
+  // segment with room to spare. If the question somehow has no short_id yet
+  // (legacy row that escaped lazy backfill), fall back to the uuid.
+  const base = (process.env.NEXT_PUBLIC_URL ?? process.env.NEXTAUTH_URL ?? '').replace(/\/+$/, '');
+  const pdfId = question.short_id ?? question.uuid;
+  const shareUrl = `${base}/api/pdf/${pdfId}`;
 
-  // Fixed copy per product spec. The whole payload stays under one Cyrillic
-  // SMS segment for typical question_id/url lengths; p1sms logs a warn if it
-  // splits across segments.
+  // Fixed copy per product spec.
   const smsBody = `Enki.legal: PDF-документ по вашему обращению ${shareUrl}`;
 
   // Warm the cache so the link recipient doesn't see a cold-start delay.

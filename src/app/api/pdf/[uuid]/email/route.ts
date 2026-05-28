@@ -3,14 +3,14 @@ import { getServerSession } from 'next-auth/next';
 import { format } from 'date-fns';
 import logger from '@/src/libs/logger';
 import { authOptions } from '@/src/app/api/auth/[...nextauth]/route';
-import { getQuestionsByIds } from '@/src/repositories/requests/repo';
+import { getQuestionByShortId, getQuestionsByIds } from '@/src/repositories/requests/repo';
 import { getOrGeneratePdf } from '@/src/services/pdf';
 import { SendSendGridPdfAttachment } from '@/src/libs/sendgrid';
 import { dFormat } from '@/src/interfaces/data';
+import { PDF_ID_REGEX, isShortId } from '@/src/services/pdf/shortId';
 
 export const dynamic = 'force-dynamic';
 
-const UUID_RE = /^[0-9a-fA-F-]{32,36}$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 interface EmailRequestBody {
@@ -37,9 +37,9 @@ export async function POST(
 ) {
   const msg = 'API pdf email - ';
   const { uuid } = await params;
-  if (!UUID_RE.test(uuid)) {
+  if (!PDF_ID_REGEX.test(uuid)) {
     return NextResponse.json(
-      { success: false, message: 'Invalid uuid' },
+      { success: false, message: 'Invalid id' },
       { status: 400 },
     );
   }
@@ -69,8 +69,9 @@ export async function POST(
     );
   }
 
-  const rows = await getQuestionsByIds([uuid], false);
-  const question = rows?.[0];
+  const question = isShortId(uuid)
+    ? await getQuestionByShortId(uuid)
+    : (await getQuestionsByIds([uuid], false))?.[0] ?? null;
   if (!question) {
     return NextResponse.json(
       { success: false, message: 'Вопрос не найден.' },
