@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Lock, Mail, Phone, X } from "lucide-react";
+import { Mail, Phone, X } from "lucide-react";
 import { FormWindowProps } from "@/src/interfaces/form";
 import ForgotEmailForm from "@/src/app/components/forms/forgot-email";
 import ForgotPhoneForm from "@/src/app/components/forms/forgot-phone";
@@ -47,10 +47,6 @@ export function ResetPasswordFormWindow({ isOpen, onClose, onSwitchToLogin }: Fo
 
         {!headerless && (
           <>
-            <div className="w-[56px] h-[56px] rounded-[14px] bg-[#D6E3EF] flex items-center justify-center mb-[20px]">
-              <Lock className="w-6 h-6 text-[#0F1B2D]" strokeWidth={2.25} />
-            </div>
-
             <h1 className="font-bold text-[26px] leading-[32px] text-[#0F1B2D] mb-[8px]">
               Восстановление пароля
             </h1>

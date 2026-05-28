@@ -5,7 +5,6 @@ import { validateResetPasswordForm } from "@/src/app/components/forms/validation
 import { submitResetPasswordFormAction } from "@/src/app/components/forms/action/forgot";
 import { ResetPasswordFormI, FormProps } from "@/src/interfaces/form";
 import { YandexSmartCaptcha } from "@/src/app/components/forms/YandexSmartCaptcha";
-import { CaptchaDisclaimer } from "@/src/app/components/forms/CaptchaDisclaimer";
 import { maskEmail } from "@/src/helpers/maskEmail";
 
 interface ForgotEmailFormProps extends FormProps {
@@ -121,7 +120,7 @@ export default function ForgotEmailForm({ onSwitchToLogin, onHeaderlessChange }:
             autoComplete="email"
             value={email}
             onChange={(e) => handleEmailChange(e.target.value)}
-            placeholder="you@company.com"
+            placeholder="email"
             className={`w-full h-full pl-[44px] pr-[16px] bg-transparent text-[15px] text-[#0F1B2D] placeholder:text-[#0F1B2D]/40 rounded-[14px] outline-none ring-2 ${
               errors.email ? "ring-red-400" : "ring-transparent focus:ring-[#9BB7C9]"
             } transition-all`}
@@ -149,8 +148,6 @@ export default function ForgotEmailForm({ onSwitchToLogin, onHeaderlessChange }:
         {submitting ? "Отправляем…" : "Получить новый пароль"}
         {!submitting && <ArrowRight className="w-4 h-4" />}
       </button>
-
-      <CaptchaDisclaimer />
 
       <button
         type="button"

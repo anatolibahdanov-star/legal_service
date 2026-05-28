@@ -105,34 +105,42 @@ export function buildQuarkdownSource(input: QuarkdownTemplateInput): string {
     .filter((block) => block.length > 0)
     .join('\n\n---\n\n');
 
-  // Quarkdown source. Doctype is left as default (`paged`) — `plain` would
-  // strip page-level concepts (page margins, footer) which we rely on for the
-  // letterhead. `<br>` is used inside `.pagemargin {topright}` so the company
-  // details stack as three lines instead of flowing as one paragraph.
+  // Quarkdown source. Notes on the choices below:
+  //  - `.doctype {paged}` is REQUIRED — the default `plain` doctype lays out
+  //    everything in a single scrollable area and does NOT reserve space for
+  //    `.pagemargin` boxes, so on multi-page output the body text bleeds
+  //    straight through the header/footer regions (bug repro'd locally).
+  //  - `.numbering headings:{none}` disables `paged`'s default `1.1.1`
+  //    auto-numbering of headings so our "Юридическая консультация №X" stays
+  //    as written instead of being prefixed with `0.0.1`.
+  //  - The header is rendered as a single `.pagemargin {topleft}` containing
+  //    a 16cm-wide `.row` so the credentials block stays on the right of the
+  //    page (not constrained to the narrow ~5cm-wide default topright box,
+  //    which would force the address to wrap to 4-5 lines and overflow the
+  //    top margin into the body area). Same trick for `.footer`.
+  //  - Credentials and footer use `size:{small}` (75%) so the long address
+  //    fits comfortably on one line within the 16cm container.
   return [
+    `.doctype {paged}`,
+    `.numbering`,
+    `    - headings: none`,
     `.docname {Ответ юриста #${root.id}}`,
-    `.pageformat size:{A4} margin:{2cm}`,
+    `.pageformat size:{A4} margin:{3cm}`,
     `.font {GoogleFonts:Inter} heading:{GoogleFonts:Inter} size:{11pt}`,
     ``,
-    // Logo image is wrapped in a `.container width:{...}` so it doesn't render
-    // at its native pixel size (the source PNG is ~1000px wide, which would
-    // span the whole page without constraint).
     `.pagemargin {topleft}`,
-    `    .container width:{4cm}`,
-    `        ![Логотип ЭНКИ](${escapeInline(logoPath)})`,
+    `    .container width:{16cm}`,
+    `        .row alignment:{spacebetween} cross:{center} gap:{1cm}`,
+    `            .container width:{3.5cm}`,
+    `                ![Логотип ЭНКИ](${escapeInline(logoPath)})`,
     ``,
-    // Bare markdown with two trailing spaces on each line = hard line break
-    // (renders as a tight stack of 3 lines, no paragraph spacing). `.align
-    // {end}` right-aligns the whole block so company info hugs the right page
-    // margin (matches the letterhead reference).
-    `.pagemargin {topright}`,
-    `    .align {end}`,
-    `        ${escapeInline(COMPANY_NAME)}  `,
-    `        ${escapeInline(COMPANY_OGRN)}  `,
-    `        ${escapeInline(COMPANY_ADDRESS)}`,
+    `            .align {end}`,
+    `                .text {${escapeInline(COMPANY_NAME)}} size:{small}.br .text {${escapeInline(COMPANY_OGRN)}} size:{small}.br .text {${escapeInline(COMPANY_ADDRESS)}} size:{small}`,
     ``,
     `.footer`,
-    `    ${escapeInline(FOOTER_TEXT)}`,
+    `    .container width:{16cm}`,
+    `        .align {center}`,
+    `            .text {${escapeInline(FOOTER_TEXT)}} size:{small}`,
     ``,
     `### Юридическая консультация №${root.id}`,
     ``,

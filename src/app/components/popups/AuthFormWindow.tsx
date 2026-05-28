@@ -9,6 +9,7 @@ export function AuthFormWindow({
   onSwitchToRegister,
   onSwitchToReset,
   prefillPhone,
+  prefillPhoneOtpSent,
 }: AuthWindowProps) {
   if (!isOpen) return null;
 
@@ -34,6 +35,7 @@ export function AuthFormWindow({
           onSwitchToReset={onSwitchToReset}
           onClose={onClose}
           prefillPhone={prefillPhone}
+          prefillPhoneOtpSent={prefillPhoneOtpSent}
         />
       </div>
     </div>

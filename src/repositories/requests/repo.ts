@@ -1,6 +1,6 @@
 import logger from "@/src/libs/logger"
 import {find, findOne, insert, queryTransactionWrapper, executeTransactionWrapper, update, remove} from '@/src/libs/db';
-import { ResultSetHeader } from 'mysql2/promise';
+import { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 import {addAnonymousUser, markFirstQuestionUsed} from "@/src/repositories/users/repo"
 import { randomUUID } from 'node:crypto';
 import {CountResult, DBQuestion, DBUser} from "@/src/interfaces/db"
@@ -8,8 +8,35 @@ import {DBFilterQuestions} from "@/src/interfaces/filters"
 import {UserRatingRequest, UserRequest} from "@/src/interfaces/api"
 import {getCategoryByName} from "@/src/repositories/categories/repo"
 import { ReplyStatusesE, FinalReplyStatusesE, QuestionStatusesE, QuestionInfoStatusesE } from '@/src/interfaces/data';
+import { generateShortId } from '@/src/services/pdf/shortId';
 
 const msgGlobal = "REPO QUESTION "
+
+// Probe-then-insert is enough for a 14.7M-value space at our scale (~10^4
+// questions): collision rate per attempt is < 0.1%, retry handles the rest.
+// The unique constraint on `short_id` is the ultimate safety net for the
+// SELECT/INSERT race window.
+const SHORT_ID_MAX_ATTEMPTS = 8;
+
+async function pickFreeShortId(): Promise<string | null> {
+    const msg = msgGlobal + "pickFreeShortId - ";
+    for (let attempt = 0; attempt < SHORT_ID_MAX_ATTEMPTS; attempt++) {
+        const candidate = generateShortId();
+        const findFunc = find({
+            query: 'SELECT 1 FROM question WHERE short_id=? LIMIT 1',
+            values: [candidate],
+        });
+        const executed = await queryTransactionWrapper<RowDataPacket>([findFunc], msg);
+        if (!executed) {
+            logger.error(msg + 'DB probe failed');
+            return null;
+        }
+        const [[rows]] = executed;
+        if (rows.length === 0) return candidate;
+    }
+    logger.error(msg + 'exhausted attempts to find unique short_id');
+    return null;
+}
 
 export async function getQuestions(
     page: string = '1', _limit: string = '10', _sorter: string[] = ['id', 'DESC'], filter: DBFilterQuestions | null = null, isChild: boolean = false,
@@ -24,10 +51,10 @@ export async function getQuestions(
     }
     const orderBy = getAdminQuestionOrder(_sorter);
     const where = getAdminQuestionFilter(filter)
-    const query =  `SELECT q.*, u.name username, BIN_TO_UUID(q.uuid) uuid, u.email email,
-    c.id category_id, c.name category_name, adi.name owner 
-    FROM question q JOIN user u ON q.user_id=u.id  
-    LEFT JOIN category c ON q.category_id=c.id 
+    const query =  `SELECT q.*, u.name username, BIN_TO_UUID(q.uuid) uuid, q.short_id short_id, u.email email,
+    c.id category_id, c.name category_name, adi.name owner
+    FROM question q JOIN user u ON q.user_id=u.id
+    LEFT JOIN category c ON q.category_id=c.id
     LEFT JOIN administrator adi ON q.admin_id=adi.id  `
      + where +
     ` ORDER BY ` + orderBy +
@@ -69,16 +96,16 @@ export async function getTotalQuestions(filter: DBFilterQuestions | null = null)
 export async function getQuestionsByIds(ids: string[], is_number: boolean = true): Promise<DBQuestion[] | null> {
     const msg = msgGlobal + "getQuestionsByIds - ";
     let query =  `SELECT q.*, u.name username, r.reply reply, IF(fr.final_reply = '', r.reply, fr.final_reply) final_reply,
-    r.id reply_id, fr.id final_reply_id, r.status reply_status, BIN_TO_UUID(q.uuid) uuid, ad.name lawyer,
+    r.id reply_id, fr.id final_reply_id, r.status reply_status, BIN_TO_UUID(q.uuid) uuid, q.short_id short_id, ad.name lawyer,
     u.email as email, c.id category_id, c.name category_name, fr.updated_at final_reply_date, adi.name owner
     FROM question q JOIN user u ON q.user_id=u.id
-    LEFT JOIN administrator adi ON q.admin_id=adi.id 
-    LEFT JOIN reply r ON q.id=r.question_id 
-    LEFT JOIN final_reply fr ON r.id=fr.reply_id 
-    LEFT JOIN administrator ad ON fr.admin_id=ad.id 
+    LEFT JOIN administrator adi ON q.admin_id=adi.id
+    LEFT JOIN reply r ON q.id=r.question_id
+    LEFT JOIN final_reply fr ON r.id=fr.reply_id
+    LEFT JOIN administrator ad ON fr.admin_id=ad.id
     LEFT JOIN category c ON q.category_id=c.id
     WHERE `;
-    query += is_number ? 'q.id IN (?)' : 'q.uuid = UUID_TO_BIN(?)' 
+    query += is_number ? 'q.id IN (?)' : 'q.uuid = UUID_TO_BIN(?)'
     const params = [ids]
     const findFunc = find({ query, values: params });
     const executedQueries = await queryTransactionWrapper<DBQuestion>([findFunc], msg);
@@ -90,19 +117,80 @@ export async function getQuestionsByIds(ids: string[], is_number: boolean = true
     if (rows.length === 0) {
         return []
     }
+    await backfillShortIds(rows);
     return rows
+}
+
+/** Single-question lookup by the 4-char public short_id. */
+export async function getQuestionByShortId(shortId: string): Promise<DBQuestion | null> {
+    const msg = msgGlobal + "getQuestionByShortId - ";
+    const query = `SELECT q.*, u.name username, r.reply reply, IF(fr.final_reply = '', r.reply, fr.final_reply) final_reply,
+    r.id reply_id, fr.id final_reply_id, r.status reply_status, BIN_TO_UUID(q.uuid) uuid, q.short_id short_id, ad.name lawyer,
+    u.email as email, c.id category_id, c.name category_name, fr.updated_at final_reply_date, adi.name owner
+    FROM question q JOIN user u ON q.user_id=u.id
+    LEFT JOIN administrator adi ON q.admin_id=adi.id
+    LEFT JOIN reply r ON q.id=r.question_id
+    LEFT JOIN final_reply fr ON r.id=fr.reply_id
+    LEFT JOIN administrator ad ON fr.admin_id=ad.id
+    LEFT JOIN category c ON q.category_id=c.id
+    WHERE q.short_id=? LIMIT 1`;
+    const findFunc = find({ query, values: [shortId] });
+    const executed = await queryTransactionWrapper<DBQuestion>([findFunc], msg);
+    if (!executed) return null;
+    const [[rows]] = executed;
+    return rows.length > 0 ? rows[0] : null;
+}
+
+/**
+ * Generates and persists a short_id for any rows missing one. Used to bring
+ * legacy questions (created before the short_id migration) up to spec on
+ * first read so the UI can always construct /api/pdf/<short_id> URLs.
+ *
+ * Failures are logged but do not throw — callers that need a short_id can
+ * still fall back to the long uuid (the /api/pdf route accepts both).
+ */
+async function backfillShortIds(rows: DBQuestion[]): Promise<void> {
+    const msg = msgGlobal + "backfillShortIds - ";
+    const missing = rows.filter((r) => !r.short_id);
+    if (missing.length === 0) return;
+    for (const row of missing) {
+        const shortId = await pickFreeShortId();
+        if (!shortId) continue;
+        const upd = update({
+            query: 'UPDATE question SET short_id=? WHERE id=? AND short_id IS NULL',
+            values: [shortId, row.id],
+        });
+        const executed = await executeTransactionWrapper<ResultSetHeader>([upd], msg);
+        if (!executed) continue;
+        const [result] = executed;
+        if ((result[0]?.affectedRows ?? 0) > 0) {
+            row.short_id = shortId;
+        } else {
+            // Lost the race against another concurrent reader — re-read.
+            const refresh = find({
+                query: 'SELECT short_id FROM question WHERE id=? LIMIT 1',
+                values: [row.id],
+            });
+            const ex = await queryTransactionWrapper<RowDataPacket>([refresh], msg);
+            if (ex) {
+                const [[r]] = ex;
+                const persisted = (r[0] as { short_id?: string | null } | undefined)?.short_id;
+                if (persisted) row.short_id = persisted;
+            }
+        }
+    }
 }
 
 export async function getJobById(id: number): Promise<DBQuestion[] | null> {
     const msg = msgGlobal + "getJobById - ";
     const query =  `SELECT q.*, u.name username, r.reply reply, IF(fr.final_reply = '', r.reply, fr.final_reply) final_reply,
-    r.id reply_id, fr.id final_reply_id, r.status reply_status, BIN_TO_UUID(q.uuid) uuid, ad.name lawyer,
-    u.email as email, c.id category_id, c.name category_name, fr.updated_at final_reply_date, adi.name owner 
-    FROM question q JOIN user u ON q.user_id=u.id 
-    LEFT JOIN administrator adi ON q.admin_id=adi.id 
-    LEFT JOIN reply r ON q.id=r.question_id 
-    LEFT JOIN final_reply fr ON r.id=fr.reply_id 
-    LEFT JOIN administrator ad ON fr.admin_id=ad.id 
+    r.id reply_id, fr.id final_reply_id, r.status reply_status, BIN_TO_UUID(q.uuid) uuid, q.short_id short_id, ad.name lawyer,
+    u.email as email, c.id category_id, c.name category_name, fr.updated_at final_reply_date, adi.name owner
+    FROM question q JOIN user u ON q.user_id=u.id
+    LEFT JOIN administrator adi ON q.admin_id=adi.id
+    LEFT JOIN reply r ON q.id=r.question_id
+    LEFT JOIN final_reply fr ON r.id=fr.reply_id
+    LEFT JOIN administrator ad ON fr.admin_id=ad.id
     LEFT JOIN category c ON q.category_id=c.id
     WHERE q.id=? OR q.parent_id=? ORDER BY q.id ASC`;
     const params = [id, id]
@@ -215,8 +303,9 @@ export function getAdminQuestionFilter(filter: DBFilterQuestions | null = null):
 export async function addQuestion(question: DBQuestion): Promise<DBQuestion[] | null> {
     const msg = msgGlobal + "addQuestion - ";
     const myUuid: string = randomUUID();
-    const query = `INSERT INTO question(name, email, uuid) VALUES(?, ?, UUID_TO_BIN(?))`;
-    const params = [question.name, question.email, myUuid];
+    const shortId = await pickFreeShortId();
+    const query = `INSERT INTO question(name, email, uuid, short_id) VALUES(?, ?, UUID_TO_BIN(?), ?)`;
+    const params = [question.name, question.email, myUuid, shortId];
     const insertFunc = insert({ query, values: params});
     const executedQueries = await executeTransactionWrapper<ResultSetHeader>([insertFunc], msg);
     if (!executedQueries) {
@@ -260,8 +349,9 @@ export async function addWizardQuestion(
 ): Promise<DBQuestion | null> {
     const msg = msgGlobal + "addWizardQuestion - ";
     const myUuid: string = randomUUID();
-    const sql = `INSERT INTO question(user_id, question, status, job_status, uuid, parent_id) VALUES(?, ?, ?, ?, UUID_TO_BIN(?), NULL)`;
-    const values = [userId, questionText, status, status, myUuid];
+    const shortId = await pickFreeShortId();
+    const sql = `INSERT INTO question(user_id, question, status, job_status, uuid, short_id, parent_id) VALUES(?, ?, ?, ?, UUID_TO_BIN(?), ?, NULL)`;
+    const values = [userId, questionText, status, status, myUuid, shortId];
     const insertFunc = insert({ query: sql, values });
     const executed = await executeTransactionWrapper<ResultSetHeader>([insertFunc], msg);
     if (!executed) {
@@ -410,9 +500,10 @@ export async function addClientQuestion(data: UserRequest): Promise<DBQuestion |
     }
     
     const myUuid: string = randomUUID();
+    const shortId = await pickFreeShortId();
     const parent = data.parent && data.parent !== 0 ? data.parent : null
-    const questionInsertSQL = `INSERT INTO question(user_id, question, status, uuid, category_id, parent_id) VALUES(?, ?, ?, UUID_TO_BIN(?), ?, ?)`
-    const insertedData = [user.id, data.question, QuestionStatusesE.New, myUuid, categoryId, parent, ]
+    const questionInsertSQL = `INSERT INTO question(user_id, question, status, uuid, short_id, category_id, parent_id) VALUES(?, ?, ?, UUID_TO_BIN(?), ?, ?, ?)`
+    const insertedData = [user.id, data.question, QuestionStatusesE.New, myUuid, shortId, categoryId, parent, ]
 
     const insertFunc = insert({ query: questionInsertSQL, values: insertedData});
     const executedQueries = await executeTransactionWrapper<ResultSetHeader>([insertFunc], msg);

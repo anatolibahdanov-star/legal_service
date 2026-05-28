@@ -353,9 +353,6 @@ const ProfileJobList = ({is_user, user}: ProfileJobListPropsI) => {
   /** Cached-PDF flag for the currently-open question — toggles the modal's
    *  download button label between "Загружаем…" and "Генерируем…". */
   const [pdfHasCached, setPdfHasCached] = useState(false);
-  /** Public share URL for the currently-open question. Minted server-side on
-   *  modal open (one stable token per question, stored in pdf_share_link). */
-  const [pdfShareUrl, setPdfShareUrl] = useState<string>('');
   /** Payload for the post-share success modal; null when closed. */
   const [pdfSuccess, setPdfSuccess] = useState<{
     questionId: string | number;
@@ -578,23 +575,13 @@ const ProfileJobList = ({is_user, user}: ProfileJobListPropsI) => {
                                 onClick={() => {
                                   if (!isAnswered) return;
                                   setPdfHasCached(false);
-                                  setPdfShareUrl('');
                                   setPdfCase(caseItem);
                                   // Best-effort cache probe; if it fails the
                                   // modal stays on "Генерируем…" which is the
                                   // safe default.
-                                  fetch(`/api/pdf/${caseItem.uuid}/exists`)
+                                  fetch(`/api/pdf/${caseItem.short_id ?? caseItem.uuid}/exists`)
                                     .then((r) => r.ok ? r.json() : null)
                                     .then((d) => setPdfHasCached(!!d?.exists))
-                                    .catch(() => {});
-                                  // Mint (or fetch) the persistent share URL
-                                  // so the "copy link" action has something
-                                  // to put on the clipboard immediately.
-                                  fetch(`/api/pdf/${caseItem.uuid}/share-link`, { method: 'POST' })
-                                    .then((r) => r.ok ? r.json() : null)
-                                    .then((d) => {
-                                      if (d?.url) setPdfShareUrl(d.url);
-                                    })
                                     .catch(() => {});
                                 }}
                                 disabled={!isAnswered}
@@ -700,9 +687,9 @@ const ProfileJobList = ({is_user, user}: ProfileJobListPropsI) => {
           questionDate={format(new Date(pdfCase.created_at), dFormat)}
           questionText={pdfCase.question}
           hasPdf={pdfHasCached}
-          shareLink={pdfShareUrl || `${domainUrl ?? ''}/api/pdf/${pdfCase.uuid}`}
+          shareLink={`${domainUrl ?? ''}/api/pdf/${pdfCase.short_id ?? pdfCase.uuid}`}
           onDownload={async () => {
-            const url = `/api/pdf/${pdfCase.uuid}?download=1`;
+            const url = `/api/pdf/${pdfCase.short_id ?? pdfCase.uuid}?download=1`;
             const a = document.createElement('a');
             a.href = url;
             a.download = `enki-answer-${pdfCase.id}.pdf`;
@@ -712,11 +699,11 @@ const ProfileJobList = ({is_user, user}: ProfileJobListPropsI) => {
             toast.success('PDF загружается');
           }}
           onPreview={async () => {
-            window.open(`/api/pdf/${pdfCase.uuid}`, '_blank', 'noopener,noreferrer');
+            window.open(`/api/pdf/${pdfCase.short_id ?? pdfCase.uuid}`, '_blank', 'noopener,noreferrer');
             toast.success('Предпросмотр открыт в новой вкладке');
           }}
           onSendSms={async (phone) => {
-            const res = await fetch(`/api/pdf/${pdfCase.uuid}/sms`, {
+            const res = await fetch(`/api/pdf/${pdfCase.short_id ?? pdfCase.uuid}/sms`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ phone }),
@@ -728,7 +715,7 @@ const ProfileJobList = ({is_user, user}: ProfileJobListPropsI) => {
             toast.success('SMS отправлено');
           }}
           onSendEmail={async (email) => {
-            const res = await fetch(`/api/pdf/${pdfCase.uuid}/email`, {
+            const res = await fetch(`/api/pdf/${pdfCase.short_id ?? pdfCase.uuid}/email`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ email }),
@@ -740,20 +727,7 @@ const ProfileJobList = ({is_user, user}: ProfileJobListPropsI) => {
             toast.success('Email отправлен');
           }}
           onCopyLink={async () => {
-            // Always re-fetch — the endpoint mints/returns the persistent
-            // share token AND kicks off background PDF generation if missing,
-            // so the URL on the user's clipboard always points at a real PDF.
-            const res = await fetch(`/api/pdf/${pdfCase.uuid}/share-link`, {
-              method: 'POST',
-            });
-            if (!res.ok) {
-              const data = await res.json().catch(() => null);
-              throw new Error(data?.message ?? 'Не удалось сформировать ссылку.');
-            }
-            const data = await res.json();
-            const url = data?.url as string | undefined;
-            if (!url) throw new Error('Ссылка не получена.');
-            setPdfShareUrl(url);
+            const url = `${domainUrl ?? ''}/api/pdf/${pdfCase.short_id ?? pdfCase.uuid}`;
             toast.success('Ссылка скопирована');
             return url;
           }}

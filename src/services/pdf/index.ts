@@ -1,7 +1,8 @@
 import path from 'path';
 import { promises as fs } from 'fs';
 import { createHash } from 'crypto';
-import { getJobById, getQuestionsByIds } from '@/src/repositories/requests/repo';
+import { getJobById, getQuestionByShortId, getQuestionsByIds } from '@/src/repositories/requests/repo';
+import { isShortId } from '@/src/services/pdf/shortId';
 import {
   getQuestionPdfByQuestionId,
   upsertQuestionPdf,
@@ -45,9 +46,11 @@ export class PdfNotFoundError extends Error {
 }
 
 /**
- * Returns the PDF for the given question uuid. Cache flow:
+ * Returns the PDF for a question identified by its full uuid OR its 4-char
+ * short_id. Internally we always pivot to the canonical question.uuid so the
+ * S3 storage key is stable regardless of which alias the caller used.
  *
- *  1. Resolve uuid → question (loads root + user_id).
+ *  1. Resolve id → question (loads root + user_id).
  *  2. Look up `question_pdf` row in DB.
  *  3. If row exists → fetch S3 by `storage_key`.
  *     - hit  → return as cache hit.
@@ -57,23 +60,24 @@ export class PdfNotFoundError extends Error {
  * All steps log to winston. Concurrent generation for the same question
  * coalesces through an in-process inflight map.
  */
-export async function getOrGeneratePdf(uuid: string): Promise<PdfResult | null> {
+export async function getOrGeneratePdf(id: string): Promise<PdfResult | null> {
   const msg = 'pdfService.getOrGeneratePdf - ';
 
-  const loaded = await loadThread(uuid);
+  const loaded = await loadThread(id);
   if (!loaded) {
-    logger.info(msg + 'question not found', { uuid });
+    logger.info(msg + 'question not found', { id });
     return null;
   }
   const { root, thread } = loaded;
   const questionId = Number(root.id);
   const userId = Number(root.user_id);
+  const canonicalUuid = root.uuid;
 
   // --- Cache path ---
-  const cached = await readFromCache(questionId, uuid);
+  const cached = await readFromCache(questionId, canonicalUuid);
   if (cached) {
     logger.info(msg + 'cache hit', {
-      uuid,
+      uuid: canonicalUuid,
       question_id: questionId,
       user_id: userId,
       storage_key: cached.binding.storageKey,
@@ -89,7 +93,7 @@ export async function getOrGeneratePdf(uuid: string): Promise<PdfResult | null> 
     return { ...result, generated: false };
   }
 
-  const work = generateAndStore({ uuid, root, thread, questionId, userId });
+  const work = generateAndStore({ uuid: canonicalUuid, root, thread, questionId, userId });
   inflight.set(questionId, work);
   try {
     const result = await work;
@@ -190,17 +194,23 @@ async function generateAndStore(args: GenerateArgs): Promise<PdfResult> {
  * Fast existence check used by the UI to pick the right loader label
  * ("Загружаем…" if PDF exists, "Генерируем…" if not). Touches only the DB —
  * no S3 round-trip — so it stays in the millisecond range.
+ *
+ * Accepts either the full uuid or the 4-char short_id.
  */
-export async function hasCachedPdf(uuid: string): Promise<boolean> {
+export async function hasCachedPdf(id: string): Promise<boolean> {
   try {
-    const rows = await getQuestionsByIds([uuid], false);
-    const root = rows?.[0];
+    const root = isShortId(id)
+      ? await getQuestionByShortId(id)
+      : await (async () => {
+          const rows = await getQuestionsByIds([id], false);
+          return rows?.[0] ?? null;
+        })();
     if (!root) return false;
     const row = await getQuestionPdfByQuestionId(Number(root.id));
     return !!row;
   } catch (err) {
     logger.error('pdfService.hasCachedPdf - error', {
-      uuid,
+      id,
       error: (err as Error).message,
     });
     return false;
@@ -215,15 +225,15 @@ export async function hasCachedPdf(uuid: string): Promise<boolean> {
  *
  * Errors are logged, never thrown — call sites can ignore the return.
  */
-export function triggerBackgroundGeneration(uuid: string): void {
+export function triggerBackgroundGeneration(id: string): void {
   if (process.env.PDF_PREGENERATE_ON_SHARE === '0') return;
   void (async () => {
     try {
-      if (await hasCachedPdf(uuid)) return;
-      await getOrGeneratePdf(uuid);
+      if (await hasCachedPdf(id)) return;
+      await getOrGeneratePdf(id);
     } catch (err) {
       logger.warn('pdfService.triggerBackgroundGeneration - failed', {
-        uuid,
+        id,
         error: (err as Error).message,
       });
     }
@@ -329,10 +339,17 @@ interface LoadedThread {
   thread: DBQuestion[];
 }
 
-async function loadThread(uuid: string): Promise<LoadedThread | null> {
-  const rows = await getQuestionsByIds([uuid], false);
-  if (!rows || rows.length === 0) return null;
-  const root = rows[0];
+async function loadThread(id: string): Promise<LoadedThread | null> {
+  // Accept either a 4-char public short_id or a full UUID. The route layer
+  // has already validated the format, so a value that matches neither lookup
+  // returns null (same as "not found").
+  const root = isShortId(id)
+    ? await getQuestionByShortId(id)
+    : await (async () => {
+        const rows = await getQuestionsByIds([id], false);
+        return rows && rows.length > 0 ? rows[0] : null;
+      })();
+  if (!root) return null;
   const thread = await getJobById(Number(root.id));
   return { root, thread: thread ?? [root] };
 }

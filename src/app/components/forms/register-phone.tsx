@@ -65,11 +65,6 @@ export default function RegisterPhoneForm({ onClose, onSwitchToLogin }: FormCont
       const errData = response.data as
         | { code?: string; phone?: string; lockedUntil?: string | null; cooldownUntil?: string | null }
         | null;
-      if (errData?.code === "phone_exists") {
-        // Per BPMN: "Phone exists?" → Yes → switch to login flow
-        onSwitchToLogin({ phone: errData.phone ?? phone });
-        return;
-      }
       // If the server returned a deadline (lockedUntil / cooldownUntil),
       // feed it into the countdown so the UI shows MM:SS instead of
       // raw server text. The error banner falls back to the plain message
@@ -78,9 +73,21 @@ export default function RegisterPhoneForm({ onClose, onSwitchToLogin }: FormCont
       setErrors((prev) => ({ ...prev, common: response.error || "Не удалось отправить код." }));
       return;
     }
-    const data = response.data as { phone: string; expiresInSec: number; devCode?: string };
-    setNormalizedPhone(data.phone);
+    const data = response.data as {
+      phone: string;
+      expiresInSec: number;
+      devCode?: string;
+      existingUser?: boolean;
+    };
     if (data.devCode) console.info("[DEV] OTP code:", data.devCode);
+    if (data.existingUser) {
+      // Phone is already registered — the server issued a login-compatible
+      // OTP for us. Hand off to the login form's code step so verifying the
+      // SMS code signs the user in instead of trying to register again.
+      onSwitchToLogin({ phone: data.phone, otpAlreadySent: true });
+      return;
+    }
+    setNormalizedPhone(data.phone);
     setStep("code");
   };
 
@@ -99,11 +106,6 @@ export default function RegisterPhoneForm({ onClose, onSwitchToLogin }: FormCont
         const errData = response.data as
           | { code?: string; cooldownUntil?: string | null; lockedUntil?: string | null; phone?: string }
           | null;
-        if (errData?.code === "phone_exists") {
-          // on resend got "phone already registered" — switch to login flow
-          onSwitchToLogin({ phone: errData.phone ?? targetPhone });
-          return { ok: true };
-        }
         return {
           ok: false,
           message: response.error,
@@ -111,9 +113,21 @@ export default function RegisterPhoneForm({ onClose, onSwitchToLogin }: FormCont
           lockedUntil: errData?.lockedUntil ?? null,
         };
       }
-      const data = response.data as { phone: string; expiresInSec: number; devCode?: string };
-      setNormalizedPhone(data.phone);
+      const data = response.data as {
+        phone: string;
+        expiresInSec: number;
+        devCode?: string;
+        existingUser?: boolean;
+      };
       if (data.devCode) console.info("[DEV] OTP code:", data.devCode);
+      if (data.existingUser) {
+        // Edge case: the phone became registered between the initial send
+        // and the resend. Bail to the login OTP step instead of letting the
+        // register verify endpoint reject it later.
+        onSwitchToLogin({ phone: data.phone, otpAlreadySent: true });
+        return { ok: true };
+      }
+      setNormalizedPhone(data.phone);
       return { ok: true };
     } catch {
       return { ok: false, message: "Не удалось отправить код. Попробуйте позже." };
@@ -169,18 +183,6 @@ export default function RegisterPhoneForm({ onClose, onSwitchToLogin }: FormCont
 
   return (
     <>
-      <div className="mb-[24px] pr-[24px]">
-        <h1 className="font-bold text-[26px] leading-[32px] text-[#0F1B2D] mb-[10px]">
-          Регистрация
-        </h1>
-        <p className="font-normal text-[14px] leading-[22px] text-[#6B7280]">
-          Создайте учётную запись для доступа к консультациям юристов и личному кабинету.
-        </p>
-        <p className="font-normal text-[14px] leading-[22px] text-[#6B7280] mt-[6px]">
-          Укажите номер телефона — отправим SMS-код для подтверждения.
-        </p>
-      </div>
-
       {step === "phone" && (
         <form onSubmit={handleSendOtp} className="flex flex-col gap-[18px]" noValidate>
           {errors.common && (
@@ -243,16 +245,6 @@ export default function RegisterPhoneForm({ onClose, onSwitchToLogin }: FormCont
             fullWidth
           />
 
-          <LegalConsents
-            value={consents}
-            onChange={(next) => {
-              setConsents(next);
-              setConsentErrors({});
-            }}
-            errors={consentErrors}
-            idPrefix="register-consent"
-          />
-
           <button
             type="submit"
             disabled={!canSubmitPhone}
@@ -276,6 +268,16 @@ export default function RegisterPhoneForm({ onClose, onSwitchToLogin }: FormCont
               Войти
             </button>
           </div>
+
+          <LegalConsents
+            value={consents}
+            onChange={(next) => {
+              setConsents(next);
+              setConsentErrors({});
+            }}
+            errors={consentErrors}
+            idPrefix="register-consent"
+          />
         </form>
       )}
 

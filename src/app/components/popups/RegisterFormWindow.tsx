@@ -31,6 +31,15 @@ export function RegisterFormWindow({ isOpen, onClose, onSwitchToLogin }: FormWin
           <X className="w-5 h-5" />
         </button>
 
+        <div className="mb-[24px] pr-[24px]">
+          <h1 className="font-bold text-[26px] leading-[32px] text-[#0F1B2D] mb-[10px]">
+            Регистрация
+          </h1>
+          <p className="font-normal text-[14px] leading-[22px] text-[#6B7280]">
+            Создайте учётную запись для доступа к консультациям юристов и личному кабинету.
+          </p>
+        </div>
+
         <div className={`flex gap-[4px] mb-[24px] p-[6px] ${PILL_BG} rounded-full`}>
           <button
             type="button"

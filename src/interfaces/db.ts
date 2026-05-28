@@ -24,6 +24,9 @@ export interface DBQuestion extends RowDataPacket, User {
   status: QuestionStatusesE;
   email_status: number;
   uuid: string;
+  /** Short 4-char public alias for `uuid`, used in /api/pdf/<short_id> URLs.
+   * Nullable for pre-migration rows; backfilled lazily on read. */
+  short_id?: string | null;
   category_id: string;
   category_name: string;
   reply_id: string;
