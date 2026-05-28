@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import logger from '@/src/libs/logger';
 import { authOptions } from '@/src/app/api/auth/[...nextauth]/route';
-import { getQuestionByShortId, getQuestionsByIds } from '@/src/repositories/requests/repo';
+import { ensureShortId, getQuestionByShortId, getQuestionsByIds } from '@/src/repositories/requests/repo';
 import { sendSms, normalizePhone } from '@/src/libs/p1sms';
 import { triggerBackgroundGeneration } from '@/src/services/pdf';
 import { PDF_ID_REGEX, isShortId } from '@/src/services/pdf/shortId';
@@ -75,16 +75,27 @@ export async function POST(
     );
   }
 
-  // Send the canonical short PDF URL (e.g. /api/pdf/AbCd). It's a few chars
-  // instead of a 64-char share token, which keeps the SMS under one Cyrillic
-  // segment with room to spare. If the question somehow has no short_id yet
-  // (legacy row that escaped lazy backfill), fall back to the uuid.
+  // Send the canonical short PDF URL (e.g. /api/pdf/AbCd). A 4-char short_id
+  // keeps the SMS body within one UCS-2 segment (70 chars); falling back to
+  // the 36-char uuid would push it to 2 segments, which p1sms rejects on the
+  // `char`/VIRTA channel with errorCode "en_ru" for mixed Latin/Cyrillic
+  // concatenated SMS. So if we can't get a short_id, refuse to send.
+  const shortId = await ensureShortId(question);
+  if (!shortId) {
+    logger.error(msg + 'could not ensure short_id', { uuid, question_id: question.id });
+    return NextResponse.json(
+      { success: false, message: 'Не удалось подготовить ссылку. Попробуйте позже.' },
+      { status: 500 },
+    );
+  }
   const base = (process.env.NEXT_PUBLIC_URL ?? process.env.NEXTAUTH_URL ?? '').replace(/\/+$/, '');
-  const pdfId = question.short_id ?? question.uuid;
-  const shareUrl = `${base}/api/pdf/${pdfId}`;
+  const shareUrl = `${base}/api/pdf/${shortId}`;
 
-  // Fixed copy per product spec.
-  const smsBody = `Enki.legal: PDF-документ по вашему обращению ${shareUrl}`;
+  // Keep the body within one UCS-2 segment (70 chars). The cyrillic prefix
+  // forces UCS-2 encoding regardless, so the link itself must stay short
+  // (4-char short_id, ensured above) and the copy must be tight — otherwise
+  // p1sms rejects multi-segment mixed-script SMS with errorCode "en_ru".
+  const smsBody = `Enki.legal: ваш PDF ${shareUrl}`;
 
   // Warm the cache so the link recipient doesn't see a cold-start delay.
   triggerBackgroundGeneration(uuid);
