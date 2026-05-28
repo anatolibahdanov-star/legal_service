@@ -7,7 +7,7 @@ import { useOtpStep, OtpStepResult } from "@/src/app/components/forms/hooks/useO
 
 export type { OtpStepResult };
 
-const CODE_LENGTH = 6;
+const CODE_LENGTH = 4;
 
 /** Human-readable countdown for the resend button (up to 24h). */
 const formatResendCountdown = (seconds: number): string => {

@@ -10,7 +10,7 @@ import {
 } from "@/src/repositories/requests/repo"
 import {DBQuestion} from "@/src/interfaces/db"
 import {EmailDataI, EmailLawRatingDataI} from "@/src/interfaces/email"
-import {sendIIBot, sendConsultantPlusBot} from "@/src/libs/llm";
+import {sendGrokBot, sendConsultantPlusBot} from "@/src/libs/llm";
 import {sendEmailLowRating, SendSendGridEmail} from "@/src/libs/sendgrid"
 import { invalidatePdfCache } from "@/src/services/pdf"
 import logger from "@/src/libs/logger"
@@ -160,7 +160,7 @@ export async function PUT(request: Request) {
     
     if(updatedQuestion?.isGenerate === true && updatedQuestion.reply) {
         const start = performance.now();
-        const llm = await sendIIBot(updatedQuestion.reply)
+        const llm = await sendGrokBot(updatedQuestion.reply)
         const duration = start - performance.now();
         if(llm) {
             logger.info("(LLM)" + msg + "reply length/duration ", llm.length, duration)

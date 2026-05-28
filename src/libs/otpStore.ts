@@ -25,7 +25,7 @@ const otpTokens: Map<string, TokenEntry> =
   globalThis.__otpTokens__ ?? (globalThis.__otpTokens__ = new Map());
 
 const generateCode = (): string =>
-  Math.floor(100000 + Math.random() * 900000).toString();
+  Math.floor(1000 + Math.random() * 9000).toString();
 
 const generateToken = (): string =>
   `vt_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 12)}`;

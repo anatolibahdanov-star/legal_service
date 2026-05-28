@@ -142,42 +142,59 @@ export async function getQuestionByShortId(shortId: string): Promise<DBQuestion 
 }
 
 /**
+ * Generates and persists a short_id for a single question if it doesn't have
+ * one yet. Returns the short_id (existing or newly generated), or null if
+ * generation/persistence failed — the caller must decide what to do without it.
+ *
+ * Mutates `row.short_id` on success so subsequent reads see the value.
+ */
+export async function ensureShortId(row: DBQuestion): Promise<string | null> {
+    const msg = msgGlobal + "ensureShortId - ";
+    if (row.short_id) return row.short_id;
+
+    const shortId = await pickFreeShortId();
+    if (!shortId) return null;
+
+    const upd = update({
+        query: 'UPDATE question SET short_id=? WHERE id=? AND short_id IS NULL',
+        values: [shortId, row.id],
+    });
+    const executed = await executeTransactionWrapper<ResultSetHeader>([upd], msg);
+    if (!executed) return null;
+    const [result] = executed;
+    if ((result[0]?.affectedRows ?? 0) > 0) {
+        row.short_id = shortId;
+        return shortId;
+    }
+
+    // Lost the race against another concurrent reader — re-read.
+    const refresh = find({
+        query: 'SELECT short_id FROM question WHERE id=? LIMIT 1',
+        values: [row.id],
+    });
+    const ex = await queryTransactionWrapper<RowDataPacket>([refresh], msg);
+    if (!ex) return null;
+    const [[r]] = ex;
+    const persisted = (r[0] as { short_id?: string | null } | undefined)?.short_id;
+    if (persisted) {
+        row.short_id = persisted;
+        return persisted;
+    }
+    return null;
+}
+
+/**
  * Generates and persists a short_id for any rows missing one. Used to bring
  * legacy questions (created before the short_id migration) up to spec on
  * first read so the UI can always construct /api/pdf/<short_id> URLs.
  *
- * Failures are logged but do not throw — callers that need a short_id can
- * still fall back to the long uuid (the /api/pdf route accepts both).
+ * Failures are logged but do not throw — callers that need a guaranteed
+ * short_id should use ensureShortId() which surfaces the failure.
  */
 async function backfillShortIds(rows: DBQuestion[]): Promise<void> {
-    const msg = msgGlobal + "backfillShortIds - ";
     const missing = rows.filter((r) => !r.short_id);
-    if (missing.length === 0) return;
     for (const row of missing) {
-        const shortId = await pickFreeShortId();
-        if (!shortId) continue;
-        const upd = update({
-            query: 'UPDATE question SET short_id=? WHERE id=? AND short_id IS NULL',
-            values: [shortId, row.id],
-        });
-        const executed = await executeTransactionWrapper<ResultSetHeader>([upd], msg);
-        if (!executed) continue;
-        const [result] = executed;
-        if ((result[0]?.affectedRows ?? 0) > 0) {
-            row.short_id = shortId;
-        } else {
-            // Lost the race against another concurrent reader — re-read.
-            const refresh = find({
-                query: 'SELECT short_id FROM question WHERE id=? LIMIT 1',
-                values: [row.id],
-            });
-            const ex = await queryTransactionWrapper<RowDataPacket>([refresh], msg);
-            if (ex) {
-                const [[r]] = ex;
-                const persisted = (r[0] as { short_id?: string | null } | undefined)?.short_id;
-                if (persisted) row.short_id = persisted;
-            }
-        }
+        await ensureShortId(row);
     }
 }
 

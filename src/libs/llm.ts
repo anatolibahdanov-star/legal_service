@@ -69,18 +69,19 @@ export async function sendIIBot(question: string): Promise<string | null | undef
 
 export async function sendGrokBot(question: string): Promise<string | null | undefined> {
     const msg = "SEND GROK: "
-    let hints = '\nResponse translate to Russian language.\nLimit response with 1500 symbols.'
-    const filePath: string = path.join(process.cwd(), 'src/services/prompt_7.1.md');
+    let systemPrompt = '\nResponse translate to Russian language.\nLimit response with 1500 symbols.'
+    const filePath: string = path.join(process.cwd(), 'src/libs/Promt 8.1_2604.md');
     try {
-        hints = fs.readFileSync(filePath, 'utf-8');
+        systemPrompt = fs.readFileSync(filePath, 'utf-8');
     } catch (error) {
       console.error("(ERROR)" + msg + "Error reading PROMPT file:", error, filePath);
     }
 
     try {
         const { text } = await generateText({
-            model: xai('grok-4'), // Specify the model, e.g., 'grok-1' or 'grok-3'
-            prompt: 'Explain the importance of low-latency LLMs in a witty tone.',
+            model: xai('grok-4'),
+            system: systemPrompt,
+            prompt: question,
         });
 
         if(text) {

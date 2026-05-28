@@ -11,7 +11,7 @@ import {
 export type { OtpStepResult };
 
 const FIELD_BG = "bg-[#EFE7D8]";
-const CODE_LENGTH = 6;
+const CODE_LENGTH = 4;
 
 interface Props {
   phone: string;
@@ -100,7 +100,7 @@ export default function OtpCodeStep({
               value={otp.code}
               disabled={otp.inputDisabled}
               onChange={(e) => otp.onCodeChange(e.target.value)}
-              placeholder="••••••"
+              placeholder={"•".repeat(CODE_LENGTH)}
               className={`w-full h-full px-[16px] bg-transparent text-[20px] tracking-[8px] text-center text-[#0F1B2D] placeholder:text-[#0F1B2D]/30 rounded-[14px] outline-none ring-2 ${
                 otp.error && !otp.blockBanner
                   ? "ring-red-400"

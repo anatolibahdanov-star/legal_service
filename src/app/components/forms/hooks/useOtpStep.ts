@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-const DEFAULT_CODE_LENGTH = 6;
+const DEFAULT_CODE_LENGTH = 4;
 const DEFAULT_RESEND_COOLDOWN_SEC = 60;
 
 export interface OtpStepResult {
