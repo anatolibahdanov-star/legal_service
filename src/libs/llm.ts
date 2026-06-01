@@ -1,8 +1,46 @@
 import OpenAI from "openai";
 import { xai } from '@ai-sdk/xai';
 import { generateText } from 'ai';
+import { format } from 'date-fns';
 import * as fs from 'fs';
 import path from 'path';
+
+const NO_LEGAL_QUESTION_MARKER = '[NO_LEGAL_QUESTION]';
+
+export interface GrokReplyResult {
+    /** Cleaned reply: wrapper markers stripped, "АКТУАЛЬНО НА" set to today. */
+    reply: string;
+    /** True when the model flagged the request as having no legal question. */
+    noLegalQuestion: boolean;
+}
+
+/**
+ * Post-processes a raw Grok reply:
+ *  - detects and strips the [NO_LEGAL_QUESTION] marker;
+ *  - removes the <<<ОТВЕТ КОНСУЛЬТАНТА>>> / <<<КОНЕЦ ОТВЕТА>>> wrapper (and any
+ *    other stray <<<...>>> tokens) in case the model still emits them;
+ *  - rewrites the "АКТУАЛЬНО НА:" line with today's real date, because the
+ *    model does not know the current date and hallucinates a stale one.
+ */
+export function normalizeGrokReply(raw: string): GrokReplyResult {
+    let text = raw;
+
+    const noLegalQuestion = text.includes(NO_LEGAL_QUESTION_MARKER);
+    text = text.split(NO_LEGAL_QUESTION_MARKER).join('');
+
+    // Defensive: the prompt no longer asks for wrapper markers, but the model
+    // can still add them.
+    text = text.replace(/<<<[^>]*>>>/g, '');
+
+    // Force the "actual as of" date to today.
+    const today = format(new Date(), 'dd.MM.yyyy');
+    text = text.replace(/АКТУАЛЬНО НА:.*/gi, `АКТУАЛЬНО НА: ${today}`);
+
+    // Collapse blank lines left behind by stripped markers, then trim.
+    text = text.replace(/\n{3,}/g, '\n\n').trim();
+
+    return { reply: text, noLegalQuestion };
+}
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -67,7 +105,7 @@ export async function sendIIBot(question: string): Promise<string | null | undef
     return null
 }
 
-export async function sendGrokBot(question: string): Promise<string | null | undefined> {
+export async function sendGrokBot(question: string): Promise<GrokReplyResult | null | undefined> {
     const msg = "SEND GROK: "
     let systemPrompt = '\nResponse translate to Russian language.\nLimit response with 1500 symbols.'
     const filePath: string = path.join(process.cwd(), 'src/libs/Promt 8.1_2604.md');
@@ -85,7 +123,7 @@ export async function sendGrokBot(question: string): Promise<string | null | und
         });
 
         if(text) {
-            return text
+            return normalizeGrokReply(text)
         }
         console.error("(ERROR)" + msg + "Empty response", question);
     } catch (error) {

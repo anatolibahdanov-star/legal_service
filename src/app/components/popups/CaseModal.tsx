@@ -1,6 +1,5 @@
 import { X, Star, MessageSquare, ChevronDown, ChevronUp, Check } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
-import { useYandexInvisibleCaptcha } from "@/src/app/components/forms/useYandexInvisibleCaptcha";
 import { DBQuestion } from "@/src/interfaces/db";
 import { QuestionStatusesE, dFormat } from "@/src/interfaces/data";
 import {CaseModalProps} from "@/src/interfaces/component";
@@ -13,7 +12,6 @@ import { format } from 'date-fns';
 import { ChatMessage } from "@/src/app/components/data/ChatMessage";
 
 export function CaseModal({ caseItem, isOpen, onClose, openRatingSection, user, openNewQuestionWindow }: CaseModalProps) {
-  const { execute: executeCaptcha } = useYandexInvisibleCaptcha({ variant: "dark" });
   const [isRatingExpanded, setIsRatingExpanded] = useState(false);
   const [rating, setRating] = useState(caseItem.rating || 0);
   const [hoveredRating, setHoveredRating] = useState(0);
@@ -179,50 +177,35 @@ export function CaseModal({ caseItem, isOpen, onClose, openRatingSection, user, 
       setAskClarificationMessageId("");
       return;
     }
-    
-    // If this is the question text (long string) — add a message
-    if (questionOrId.length > 10) {
-      const dataRequest: RequestFormI = {
-        name: user.name ?? "",
-        email: user.email ?? "",
-        topic: caseItem.category_name,
-        question: questionOrId,
-        agree: true,
-        parent: parseInt(caseItem.id),
-      }
 
-      let captchaToken: string
-      try {
-        captchaToken = await executeCaptcha()
-      } catch (err) {
-        console.error("SmartCaptcha not ready", err)
-        return false
-      }
-      const responseData = await submitRequestFormAction(dataRequest, captchaToken)
-      if(!responseData.status) {
-        console.log("Error on save new Question to Job", responseData.error)
-        return false
-      }
-
-      const newMessage: DBQuestion = responseData.data
-      console.log('handleSubmit request', newMessage)
-      
-      const newData = data.data
-      newData.push(newMessage)
-      const newCount = data.count + 1
-      setData({data: newData, count: newCount});
-      setAskClarificationMessageId("");
-      setShowQuestionSaved(true);
-      
-      // Hide notification after 3 seconds
-      setTimeout(() => {setShowQuestionSaved(false);}, 3000);
-      
-      // Scroll to the new message
-      setTimeout(() => {messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });}, 100);
-    } else {
-      // If this is an ID — open the form
-      setAskClarificationMessageId(questionOrId);
+    // Otherwise it's the clarification text. Follow-up questions have no length
+    // limit and skip the captcha (handled server-side for parented requests).
+    const dataRequest: RequestFormI = {
+      name: user.name ?? "",
+      email: user.email ?? "",
+      topic: caseItem.category_name,
+      question: questionOrId,
+      agree: true,
+      parent: parseInt(caseItem.id),
     }
+
+    const responseData = await submitRequestFormAction(dataRequest)
+    if(!responseData.status) {
+      console.error("Error on save new Question to Job", responseData.error)
+      return false
+    }
+
+    const newMessage: DBQuestion = responseData.data
+
+    setData({ data: [...data.data, newMessage], count: data.count + 1 });
+    setAskClarificationMessageId("");
+    setShowQuestionSaved(true);
+
+    // Hide notification after 3 seconds
+    setTimeout(() => {setShowQuestionSaved(false);}, 3000);
+
+    // Scroll to the new message
+    setTimeout(() => {messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });}, 100);
   };
 
   if (!isOpen) return null;

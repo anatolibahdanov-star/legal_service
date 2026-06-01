@@ -80,7 +80,7 @@ export const AdminJobView = ({record, jobs}: AdminJobViewPropsI) => {
 
         {/* Messages */}
         {jobs.map((message) => (
-            <ChatMessage key={'user-reply-' + message.id} message={message} isFromUser={false} />
+            <ChatMessage key={'user-reply-' + message.id} message={message} isFromUser={false} isAdmin={true} />
         ))}
     </>
     )

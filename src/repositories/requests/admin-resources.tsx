@@ -1,6 +1,7 @@
 /* eslint-disable react/jsx-key */
 import { RecordContext, ShowControllerProps, FunctionField, useRecordContext, useRefresh, useUpdate, Button, useNotify, useEditController, InputProps, ReferenceInput, Filter, DateInput, Show, SimpleShowLayout, required, SelectInput, TextInput, SimpleForm, Edit, List, Datagrid, DateField, TextField, SelectField, EditButton, DeleteButton, EditControllerProps, useShowController} from 'react-admin';
-import {RichTextInput} from "ra-input-rich-text"
+import {RichTextInput, DefaultEditorOptions} from "ra-input-rich-text"
+import { EditMarkHighlight } from "@/src/app/components/admin/editMarkHighlight"
 import { JSX } from 'react/jsx-runtime';
 import { Typography, Box } from '@mui/material';
 import { QuestionStatusesE, EmailStatusesE } from '@/src/interfaces/data';
@@ -18,6 +19,13 @@ import { DBQuestion } from '@/src/interfaces/db';
 
 const nextMonth = new Date()
 nextMonth.setMonth(nextMonth.getMonth() + 1);
+
+// Rich-text editor options that additionally highlight Grok's {{...}} edit
+// markup in red so the lawyer can see what the AI changed while editing.
+const editorOptions = {
+    ...DefaultEditorOptions,
+    extensions: [...(DefaultEditorOptions.extensions ?? []), EditMarkHighlight],
+};
 
 const RequestFilters = (props: JSX.IntrinsicAttributes) => (
     <Filter {...props}>
@@ -148,9 +156,9 @@ export const RequestEdit = (props: EditControllerProps<any, Error> | undefined) 
                             <TextInput source="reply_id" style={{ display: 'none' }} />
                             <TextInput source="final_reply_id" style={{ display: 'none' }} />
                             <MyCustomHtmlInput source="https://ai.conslegal.ru/" label="Консультант+ AI" />
-                            <RichTextInput source="reply" validate={[required()]} />
+                            <RichTextInput source="reply" validate={[required()]} editorOptions={editorOptions} />
                             <CustomSaveButton />
-                            <RichTextInput source="final_reply" />
+                            <RichTextInput source="final_reply" editorOptions={editorOptions} />
                             <SelectInput label="Статус" source="job_status" choices={getAdminChoices(QuestionStatusesE, "Статус обработки вопроса: ", true)} />
                             {/* <PresetFieldLogic lastRecord={lastLawyerMessage} /> */}
                         </SimpleForm>
