@@ -1,6 +1,7 @@
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { DBQuestion } from '@/src/interfaces/db';
+import { toClientReply } from '@/src/libs/grokReply';
 
 const COMPANY_NAME = 'ООО «ЭНКИ-Л»';
 const COMPANY_OGRN = 'ОГРН 1267700058130';
@@ -180,7 +181,9 @@ function renderDialogMessage(message: DBQuestion): string {
     lines.push(escapeBlock(question));
   }
 
-  const reply = stripHtml((message.final_reply ?? '').trim());
+  // Client document: drop the internal "АНАЛИЗ ЗАПРОСА" section and the {{ }}
+  // edit-markup braces before rendering.
+  const reply = toClientReply(stripHtml((message.final_reply ?? '').trim()));
   if (reply) {
     if (lines.length) lines.push('');
     const lawyerLabel = message.lawyer?.trim()

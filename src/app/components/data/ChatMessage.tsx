@@ -4,9 +4,10 @@ import { format } from 'date-fns';
 
 import { dFormat } from "@/src/interfaces/data";
 import { ChatMessagePropsI } from "@/src/interfaces/component";
+import { stripAnalysisSection, stripEditMarks, highlightEditMarks } from "@/src/libs/grokReply";
 
 
-export const ChatMessage = ({ message, isLastLawyerMessage, onAskClarification, showClarificationForm, isFromUser = true }: ChatMessagePropsI) => {
+export const ChatMessage = ({ message, isLastLawyerMessage, onAskClarification, showClarificationForm, isFromUser = true, isAdmin = false }: ChatMessagePropsI) => {
   const [isContentExpanded, setIsContentExpanded] = useState(false);
   const [isReplyExpanded, setIsReplyExpanded] = useState(false);
   const [error, setError] = useState("");
@@ -22,36 +23,32 @@ export const ChatMessage = ({ message, isLastLawyerMessage, onAskClarification, 
       ? message.question.slice(0, 200) + "..."
       : message.question;
 
-  const needsReplyTruncate = message.final_reply && message.final_reply.length > 200;
-  const displayReplyContent =
-    message.final_reply ? (needsReplyTruncate && !isReplyExpanded
-      ? message.final_reply.slice(0, 200) + "..."
-      : message.final_reply) : '';
+  const replySource = message.final_reply
+    ? (isAdmin ? message.final_reply : stripAnalysisSection(message.final_reply))
+    : '';
+  const needsReplyTruncate = replySource.length > 200;
+  const truncatedReply =
+    needsReplyTruncate && !isReplyExpanded
+      ? replySource.slice(0, 200) + "..."
+      : replySource;
+  const displayReplyContent = isAdmin
+    ? highlightEditMarks(truncatedReply)
+    : stripEditMarks(truncatedReply);
 
   const createdAt = message.created_at ? format(new Date(message.created_at), dFormat) : null
   const replyCreatedAt = message.final_reply_date ? format(new Date(message.final_reply_date), dFormat) : null
 
   const handleSubmitClarification = () => {
+    // Follow-up questions have no length limit; only the empty case is rejected
+    // (the submit button is already disabled while the field is blank).
     const question = clarificationQuestion.trim()
-    if(question.length > 450) {
-        setError("Ваш вопрос слишком длинный. Пожалуйста, сократите его до 450 символов.")
-        return false
-    }
-    if (question) {
-      if(onAskClarification) onAskClarification(question);
-      setClarificationQuestion("");
-    }
+    if (!question) return false
+    if (onAskClarification) onAskClarification(question);
+    setClarificationQuestion("");
   };
 
   const onChangeClarification = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    if(error && e.target.value.length < 3) {
-        setError("")
-    }
-
-    if(error && e.target.value.length >= 3 && e.target.value.length < 450) {
-        setError("")
-    }
-    
+    if (error) setError("")
     setClarificationQuestion(e.target.value)
   }
 

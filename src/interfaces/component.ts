@@ -13,6 +13,8 @@ export interface CaseModalProps {
 export interface ChatMessagePropsI {
   message: DBQuestion;
   isFromUser?: boolean;
+  /** Admin view: highlight AI-edited {{...}} spans in red instead of stripping them. */
+  isAdmin?: boolean;
   isLastLawyerMessage?: boolean;
   onAskClarification?: (questionOrId: string) => void;
   showClarificationForm?: boolean;

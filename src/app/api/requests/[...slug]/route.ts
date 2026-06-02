@@ -163,9 +163,13 @@ export async function PUT(request: Request) {
         const llm = await sendGrokBot(updatedQuestion.reply)
         const duration = start - performance.now();
         if(llm) {
-            logger.info("(LLM)" + msg + "reply length/duration ", llm.length, duration)
-            logger.info("(LLM)" + msg + "reply ", llm)
-            updatedQuestion.final_reply = llm
+            logger.info("(LLM)" + msg + "reply length/duration/noLegalQuestion ", llm.reply.length, duration, llm.noLegalQuestion)
+            logger.info("(LLM)" + msg + "reply ", llm.reply)
+            if(llm.noLegalQuestion) {
+                updatedQuestion.reply = llm.reply
+            } else {
+                updatedQuestion.final_reply = llm.reply
+            }
         }
     } else {
         logger.info(msg + "no llm request!!!")

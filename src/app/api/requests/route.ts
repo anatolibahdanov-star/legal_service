@@ -60,33 +60,44 @@ export async function POST(request: Request) {
     const insertedQuestion: UserRequest & { captchaToken?: string } = await request.json();
     logger.info(msg + "request json", insertedQuestion)
 
-    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null
-    const captcha = await verifyCaptcha(insertedQuestion.captchaToken, ip, { variant: 'dark' })
-    if (!captcha.success) {
-        logger.warn(msg + 'captcha rejected', { reason: captcha.reason })
-        return NextResponse.json(
-            { success: false, message: 'CAPTCHA введена не верно.' },
-            { status: 400 }
-        );
-    }
+    const isFollowUp = insertedQuestion.parent != null && Number(insertedQuestion.parent) !== 0
 
-    const formForValidation: RequestFormI = {
-        name: insertedQuestion.name ?? "",
-        email: insertedQuestion.email ?? "",
-        topic: insertedQuestion.topic ?? "",
-        question: insertedQuestion.question ?? "",
-        agree: true,
-        auth: "1",
-        parent: insertedQuestion.parent,
-    }
-    const validation = validateRequestForm(formForValidation)
-    if (!validation.is_success) {
-        const firstError = validation.errors?.[0]?.error?.[0] ?? 'Некорректные данные.'
-        logger.warn(msg + 'validation failed', { errors: validation.errors })
-        return NextResponse.json(
-            { success: false, message: firstError, errors: validation.errors },
-            { status: 400 }
-        );
+    if (isFollowUp) {
+        if (!insertedQuestion.question || insertedQuestion.question.trim() === '') {
+            return NextResponse.json(
+                { success: false, message: 'Пожалуйста, введите текст вопроса.' },
+                { status: 400 }
+            );
+        }
+    } else {
+        const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null
+        const captcha = await verifyCaptcha(insertedQuestion.captchaToken, ip, { variant: 'dark' })
+        if (!captcha.success) {
+            logger.warn(msg + 'captcha rejected', { reason: captcha.reason })
+            return NextResponse.json(
+                { success: false, message: 'CAPTCHA введена не верно.' },
+                { status: 400 }
+            );
+        }
+
+        const formForValidation: RequestFormI = {
+            name: insertedQuestion.name ?? "",
+            email: insertedQuestion.email ?? "",
+            topic: insertedQuestion.topic ?? "",
+            question: insertedQuestion.question ?? "",
+            agree: true,
+            auth: "1",
+            parent: insertedQuestion.parent,
+        }
+        const validation = validateRequestForm(formForValidation)
+        if (!validation.is_success) {
+            const firstError = validation.errors?.[0]?.error?.[0] ?? 'Некорректные данные.'
+            logger.warn(msg + 'validation failed', { errors: validation.errors })
+            return NextResponse.json(
+                { success: false, message: firstError, errors: validation.errors },
+                { status: 400 }
+            );
+        }
     }
 
     insertedQuestion.llm = ''
