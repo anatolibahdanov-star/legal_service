@@ -516,7 +516,7 @@ async function issueTempPassword(user: DBUser, msg: string): Promise<DBUser | nu
     // passGenerator excludes `&`/`_` (the only specials outside the p1sms `%w`
     // charset) so the SMS-delivered temp password still matches the reset
     // template. Other punctuation is kept. Safe for email reset too.
-    const newPass = passGenerator(10)
+    const newPass = passGenerator(6)
     const query = 'UPDATE user SET temp_password=? WHERE id=?'
     const params = [md5(newPass), user.id]
     const updateFunc = update({ query, values: params })
