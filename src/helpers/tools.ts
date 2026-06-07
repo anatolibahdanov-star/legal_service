@@ -11,8 +11,12 @@ export const md5 = (str: string): string => {
   return createHash('md5').update(str).digest('hex');
 };
 
+// Charset excludes `&` and `_` — the only punctuation in the generator that the
+// p1sms `%w`/`%d` template charset does NOT allow. A temp password is delivered
+// by SMS via the moderation-free reset template, so every char must be matchable
+// by `%w`; the remaining punctuation stays within their allowed set.
 export const passGenerator = (length: number = 12): string => {
-    const char = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_-+=";
+    const char = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^*()-+=";
     let password = "";
     for (let i = 0; i < length; i++) {
         const ind = Math.floor(Math.random() * char.length);
