@@ -16,7 +16,7 @@ const CHANNELS_REQUIRING_SENDER: Channel[] = ['char', 'viber'];
 const templates: Record<SmsTemplateE, (params: Record<string, string>) => string> = {
   [SmsTemplateE.Test]: ({ text = 'Hello' }) => `Enki.legal: ${text}`,
   [SmsTemplateE.OtpCode]: ({ code }) =>
-    `Enki.legal: код подтверждения ${code}. Никому не сообщайте.`,
+    `Enki.legal: номер подтверждения ${code}. Никому не сообщайте.`,
   // Kept to one UCS-2 segment (≈59 chars with a 10-char password): the char/VIRTA
   // channel rejects multi-segment mixed Latin/Cyrillic SMS with errorCode "en_ru".
   // If you change this text, update the matching p1sms moderation-free template.
