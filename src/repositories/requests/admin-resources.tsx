@@ -13,7 +13,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { PdfIcon } from "@/src/app/components/popups/pdf";
 import { Loader2 } from "lucide-react";
 import { useFormContext, useWatch } from 'react-hook-form';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useContext, useCallback, createContext } from 'react';
 import { JobDataI } from '@/src/interfaces/form';
 import { CustomGetRequest } from "@/src/libs/request"
 import { AdminJobView } from '@/src/app/components/admin/AdminJobView';
@@ -90,9 +90,24 @@ const PresetFieldLogic = ({lastRecord}: PresetFieldLogicPropsI) => {
     return null;
 };
 
+// Lets the in-form save buttons trigger a re-fetch of the conversation thread,
+// so the freshly generated final_reply shows after "Обработать в Grok".
+const ReloadJobsContext = createContext<() => void>(() => {});
+
+// Stable signature of the loaded reply/final_reply, used as the form key so it
+// remounts exactly when the SERVER content changes (not while typing).
+const contentSig = (s?: string | null): number => {
+    const str = s ?? '';
+    let h = 0;
+    for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) | 0;
+    return h;
+};
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const RequestEdit = (props: EditControllerProps<any, Error> | undefined) => {
     const [data, setData] = useState<JobDataI | null>(null);
+    const [reloadKey, setReloadKey] = useState(0);
+    const reloadJobs = useCallback(() => setReloadKey((k) => k + 1), []);
     const notify = useNotify();
     const { record, error, isPending } = useEditController(props)
 
@@ -100,7 +115,7 @@ export const RequestEdit = (props: EditControllerProps<any, Error> | undefined) 
         if(record) {
             const path = "/requests/" + record.id
             const request = {parent_id: record.id}
-            
+
             const fetchData = async () => {
                 const jobData = await CustomGetRequest(path, request)
                 if(jobData.status) {
@@ -111,8 +126,8 @@ export const RequestEdit = (props: EditControllerProps<any, Error> | undefined) 
 
             fetchData();
         }
-        
-    }, [record]);
+
+    }, [record, reloadKey]);
 
     if (isPending) {
         return <div>Загружаем запрос...</div>;
@@ -138,13 +153,16 @@ export const RequestEdit = (props: EditControllerProps<any, Error> | undefined) 
 
     const lastLawyerMessage = jobs && jobs.length > 1 ? jobs.at(-1) : record;
 
+    const formKey = `${lastLawyerMessage.id}-${contentSig((lastLawyerMessage.final_reply ?? '') + '|' + (lastLawyerMessage.reply ?? ''))}`;
+
     return (
+        <ReloadJobsContext.Provider value={reloadJobs}>
         <Edit loading={<p>Loading the question details...</p>} mutationOptions={{ onError: onFailure }}>
             <RecordContext.Consumer>
                 {recordContext => {
                     // Modify the record before passing it to the form
-                    const modifiedRecord = { 
-                        ...recordContext, 
+                    const modifiedRecord = {
+                        ...recordContext,
                         child_id: lastLawyerMessage.id,
                         reply_id: lastLawyerMessage.reply_id,
                         reply: lastLawyerMessage.reply,
@@ -152,7 +170,7 @@ export const RequestEdit = (props: EditControllerProps<any, Error> | undefined) 
                         final_reply: lastLawyerMessage.final_reply,
                     };
                     return (
-                        <SimpleForm record={modifiedRecord} toolbar={<EditToolbar />}>
+                        <SimpleForm key={formKey} record={modifiedRecord} toolbar={<EditToolbar />}>
                             <AdminJobView record={record} jobs={jobs} />
                             <TextInput source="child_id" style={{ display: 'none' }} />
                             <TextInput source="reply_id" style={{ display: 'none' }} />
@@ -167,8 +185,8 @@ export const RequestEdit = (props: EditControllerProps<any, Error> | undefined) 
                     );
                 }}
             </RecordContext.Consumer>
-            
         </Edit>
+        </ReloadJobsContext.Provider>
     )
 };
 
@@ -349,6 +367,7 @@ const CustomSaveButton = () => {
   const { handleSubmit } = useFormContext(); // Get form submission handler
   const [update, { isLoading }] = useUpdate();
   const refresh = useRefresh();
+  const reloadJobs = useContext(ReloadJobsContext);
   const record = useRecordContext();
 
   const handleSaveAndPublish = handleSubmit(values => {
@@ -362,6 +381,7 @@ const CustomSaveButton = () => {
             onSuccess: () => {
                 notify('Информация обработана!', { type: 'success' });
                 refresh(); // Refresh the current page to show updated status
+                reloadJobs(); // Re-fetch the thread so the new final_reply is shown
                 // Optional: redirect after success
                 // redirect('list', 'posts'); 
             },

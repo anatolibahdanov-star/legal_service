@@ -11,6 +11,7 @@ import {
 import {DBQuestion} from "@/src/interfaces/db"
 import {EmailDataI, EmailLawRatingDataI} from "@/src/interfaces/email"
 import {sendGrokBot, sendConsultantPlusBot} from "@/src/libs/llm";
+import { toClientReply } from "@/src/libs/grokReply";
 import {sendEmailLowRating, SendSendGridEmail} from "@/src/libs/sendgrid"
 import { invalidatePdfCache, deleteDraftPdf, regenerateCanonicalPdf } from "@/src/services/pdf"
 import logger from "@/src/libs/logger"
@@ -20,6 +21,38 @@ import { authOptions } from '../../auth/[...nextauth]/route';
 
 export const dynamic = 'force-dynamic'; // defaults to auto
 const LOW_RATING_RATE = 3
+
+function stripTags(html: string): string {
+    return (html || '')
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<\/(p|div|li)>/gi, '\n')
+        .replace(/<[^>]+>/g, '')
+        .replace(/&nbsp;/gi, ' ')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+}
+
+async function buildClarifyingGrokPrompt(rootId: number, updatedQuestion: DBQuestion): Promise<string> {
+    const thread = await getJobById(rootId)
+    if (!thread || thread.length === 0) return stripTags(updatedQuestion.reply ?? '')
+
+    const currentId = String(updatedQuestion.child_id)
+    const idx = thread.findIndex((m) => String(m.id) === currentId)
+    const prior = idx >= 0 ? thread.slice(0, idx) : thread
+
+    const lines: string[] = ['Контекст предыдущей консультации:']
+    for (const m of prior) {
+        const q = (m.question ?? '').trim()
+        const a = stripTags(toClientReply(m.final_reply ?? ''))
+        if (q) lines.push(`Вопрос клиента: ${q}`)
+        if (a) lines.push(`Ответ юриста: ${a}`)
+    }
+
+    const current = idx >= 0 ? thread[idx] : null
+    const followup = stripTags(updatedQuestion.reply ?? '') || (current?.question ?? '').trim()
+    lines.push('', `Уточняющий вопрос клиента: ${followup}`)
+    return lines.join('\n')
+}
 
 export async function GET(request: NextRequest) {
     const msg = "API QUESTION GET: "
@@ -158,18 +191,27 @@ export async function PUT(request: Request) {
             { status: 404 }
         );*/
     
-    if(updatedQuestion?.isGenerate === true && updatedQuestion.reply) {
-        const start = performance.now();
-        const llm = await sendGrokBot(updatedQuestion.reply)
-        const duration = start - performance.now();
-        if(llm) {
-            logger.info("(LLM)" + msg + "reply length/duration/noLegalQuestion ", llm.reply.length, duration, llm.noLegalQuestion)
-            logger.info("(LLM)" + msg + "reply ", llm.reply)
-            if(llm.noLegalQuestion) {
-                updatedQuestion.reply = llm.reply
-            } else {
-                updatedQuestion.final_reply = llm.reply
+    if(updatedQuestion?.isGenerate === true) {
+        const isClarifying = !!updatedQuestion.child_id && String(updatedQuestion.child_id) !== requestUrlId
+        const grokInput = isClarifying
+            ? await buildClarifyingGrokPrompt(Number(requestUrlId), updatedQuestion)
+            : updatedQuestion.reply
+
+        if(grokInput) {
+            const start = performance.now();
+            const llm = await sendGrokBot(grokInput)
+            const duration = start - performance.now();
+            if(llm) {
+                logger.info("(LLM)" + msg + "reply length/duration/noLegalQuestion ", llm.reply.length, duration, llm.noLegalQuestion)
+                logger.info("(LLM)" + msg + "reply ", llm.reply)
+                if(llm.noLegalQuestion) {
+                    updatedQuestion.reply = llm.reply
+                } else {
+                    updatedQuestion.final_reply = llm.reply
+                }
             }
+        } else {
+            logger.info(msg + "no llm request!!!")
         }
     } else {
         logger.info(msg + "no llm request!!!")
