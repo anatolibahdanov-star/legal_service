@@ -1,5 +1,5 @@
 /* eslint-disable react/jsx-key */
-import { RecordContext, ShowControllerProps, FunctionField, useRecordContext, useRefresh, useUpdate, Button, useNotify, useEditController, InputProps, ReferenceInput, Filter, DateInput, Show, SimpleShowLayout, required, SelectInput, TextInput, SimpleForm, Edit, List, Datagrid, DateField, TextField, SelectField, EditButton, DeleteButton, EditControllerProps, useShowController} from 'react-admin';
+import { RecordContext, ShowControllerProps, FunctionField, useRecordContext, useRefresh, useUpdate, Button, useNotify, useEditController, InputProps, ReferenceInput, Filter, DateInput, Show, SimpleShowLayout, required, SelectInput, TextInput, SimpleForm, Edit, List, Datagrid, DateField, TextField, SelectField, EditButton, DeleteButton, EditControllerProps, useShowController, Toolbar, SaveButton} from 'react-admin';
 import {RichTextInput, DefaultEditorOptions} from "ra-input-rich-text"
 import { EditMarkHighlight } from "@/src/app/components/admin/editMarkHighlight"
 import { JSX } from 'react/jsx-runtime';
@@ -10,7 +10,9 @@ import CopyToClipboardButton from "@/src/app/components/admin/CopyToClipboardBut
 import {Tooltip, TooltipTrigger, TooltipContent } from "@/src/app/components/ui/tooltip"
 import AdjustIcon from '@mui/icons-material/Adjust';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import { useFormContext } from 'react-hook-form';
+import { PdfIcon } from "@/src/app/components/popups/pdf";
+import { Loader2 } from "lucide-react";
+import { useFormContext, useWatch } from 'react-hook-form';
 import React, { useEffect, useState } from 'react';
 import { JobDataI } from '@/src/interfaces/form';
 import { CustomGetRequest } from "@/src/libs/request"
@@ -150,7 +152,7 @@ export const RequestEdit = (props: EditControllerProps<any, Error> | undefined) 
                         final_reply: lastLawyerMessage.final_reply,
                     };
                     return (
-                        <SimpleForm record={modifiedRecord}>
+                        <SimpleForm record={modifiedRecord} toolbar={<EditToolbar />}>
                             <AdminJobView record={record} jobs={jobs} />
                             <TextInput source="child_id" style={{ display: 'none' }} />
                             <TextInput source="reply_id" style={{ display: 'none' }} />
@@ -242,6 +244,105 @@ const MyCustomHtmlInput: React.FC<MyCustomHtmlInputProps> = (props) => {
         </Box>
     );
 };
+
+const PDF_LOADING_HTML = `<!doctype html><html lang="ru"><head><meta charset="utf-8">
+<title>Генерация PDF…</title><style>
+html,body{height:100%;margin:0}
+body{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;
+font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#fff;color:#64748b}
+.s{width:48px;height:48px;border:5px solid #e2e8f0;border-top-color:#323c54;border-radius:50%;
+animation:r .8s linear infinite}
+@keyframes r{to{transform:rotate(360deg)}}
+</style></head><body><div class="s"></div><div>Генерируем PDF…</div></body></html>`;
+
+const plainText = (html: unknown): string =>
+  typeof html === 'string'
+    ? html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim()
+    : '';
+
+const htmlHasText = (html: unknown): boolean => plainText(html).length > 0;
+
+const PdfDraftButton = () => {
+  const notify = useNotify();
+  const record = useRecordContext();
+  const finalReply = useWatch({ name: 'final_reply' });
+  const childId = useWatch({ name: 'child_id' });
+  const [loading, setLoading] = useState(false);
+
+  const pdfId = record?.short_id ?? record?.uuid;
+  const hasAnswer = htmlHasText(finalReply);
+
+  const answerChanged = plainText(finalReply) !== plainText(record?.final_reply);
+
+  const handleClick = async () => {
+    if (!pdfId || !hasAnswer || loading) return;
+    const viewer = window.open('', '_blank');
+    if (viewer) {
+      viewer.document.write(PDF_LOADING_HTML);
+      viewer.document.close();
+    }
+
+    if (!answerChanged) {
+      const url = `/api/pdf/${pdfId}`;
+      if (viewer) viewer.location.href = url;
+      else window.open(url, '_blank', 'noopener,noreferrer');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/pdf/${pdfId}/draft`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ replyHtml: finalReply, childId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.message || 'Не удалось сформировать PDF.');
+      }
+      const url = `/api/pdf/${pdfId}/draft`;
+      if (viewer) viewer.location.href = url;
+      else window.open(url, '_blank', 'noopener,noreferrer');
+    } catch (err) {
+      if (viewer) viewer.close();
+      notify((err as Error).message, { type: 'warning' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const disabled = !hasAnswer || loading;
+
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      disabled={disabled}
+      aria-label="Сгенерировать и открыть PDF"
+      title={
+        !hasAnswer
+          ? 'Доступно после получения ответа от Grok'
+          : answerChanged
+            ? 'Сгенерировать PDF из текущего (несохранённого) ответа и открыть в новой вкладке'
+            : 'Открыть актуальный PDF в новой вкладке'
+      }
+      className={`ml-4 inline-flex items-center justify-center p-2 rounded-lg border-2 transition-colors ${
+        disabled
+          ? 'border-[#e0e0e0] text-[#c0c0c0] cursor-not-allowed opacity-60'
+          : 'border-[#8faaba] text-[#8faaba] hover:border-[#ef4444] hover:text-[#ef4444]'
+      }`}
+    >
+      {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <PdfIcon />}
+    </button>
+  );
+};
+
+const EditToolbar = () => (
+  <Toolbar>
+    <SaveButton />
+    <PdfDraftButton />
+  </Toolbar>
+);
 
 const CustomSaveButton = () => {
   const notify = useNotify();

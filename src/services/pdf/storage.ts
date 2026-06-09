@@ -64,6 +64,11 @@ export function buildStorageKey(questionId: number | string, uuid: string): stri
   return `${cfg.prefix}/${questionId}/${uuid}.pdf`;
 }
 
+export function buildDraftStorageKey(questionId: number | string): string {
+  const cfg = readConfig();
+  return `${cfg.prefix}/${questionId}/draft.pdf`;
+}
+
 export interface PdfObject {
   body: Uint8Array;
   contentType: string;
