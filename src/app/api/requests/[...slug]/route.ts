@@ -12,7 +12,7 @@ import {DBQuestion} from "@/src/interfaces/db"
 import {EmailDataI, EmailLawRatingDataI} from "@/src/interfaces/email"
 import {sendGrokBot, sendConsultantPlusBot} from "@/src/libs/llm";
 import {sendEmailLowRating, SendSendGridEmail} from "@/src/libs/sendgrid"
-import { invalidatePdfCache } from "@/src/services/pdf"
+import { invalidatePdfCache, deleteDraftPdf, regenerateCanonicalPdf } from "@/src/services/pdf"
 import logger from "@/src/libs/logger"
 import { UserRatingRequest } from '@/src/interfaces/api';
 import { getServerSession } from 'next-auth/next';
@@ -194,12 +194,13 @@ export async function PUT(request: Request) {
     }
     logger.info(msg + 'response out', updatedQuestion, question)
 
-    // Invalidate any cached PDF for this thread — the saved question may have
-    // changed `final_reply` or other content baked into the document. Root id
-    // is `parent_id` for child messages, otherwise the question itself.
     if (question) {
         const rootId = question.parent_id ?? question.id
-        invalidatePdfCache(rootId)
+        void (async () => {
+            await invalidatePdfCache(rootId)
+            await deleteDraftPdf(rootId)
+            await regenerateCanonicalPdf(rootId)
+        })()
     }
 
     if(question?.status === 4 && question.email_status === 0) {

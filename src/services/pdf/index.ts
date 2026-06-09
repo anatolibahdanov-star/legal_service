@@ -14,6 +14,7 @@ import { buildQuarkdownSource } from './template';
 import { renderQuarkdownToPdf } from './render';
 import {
   buildStorageKey,
+  buildDraftStorageKey,
   deletePdfByKey,
   getPdfByKey,
   pdfExistsByKey,
@@ -269,6 +270,118 @@ export async function invalidatePdfCache(questionId: number | string): Promise<v
       error: (err as Error).message,
     });
   }
+}
+
+export interface DraftPdfInput {
+  replyHtml: string;
+  childId?: number | string | null;
+}
+
+export async function generateDraftPdf(
+  id: string,
+  input: DraftPdfInput,
+): Promise<PdfObject | null> {
+  const msg = 'pdfService.generateDraftPdf - ';
+
+  const loaded = await loadThread(id);
+  if (!loaded) {
+    logger.info(msg + 'question not found', { id });
+    return null;
+  }
+  const { root, thread } = loaded;
+  const questionId = Number(root.id);
+  const userId = Number(root.user_id);
+
+  const patchedThread = spliceDraftReply(thread, input);
+
+  const logoPath = path.join(process.cwd(), LOGO_PUBLIC_PATH);
+  await assertFileExists(logoPath);
+
+  const source = buildQuarkdownSource({ root, thread: patchedThread, logoPath });
+  const contentHash = sha256(source);
+  const storageKey = buildDraftStorageKey(questionId);
+
+  let pdf: Uint8Array;
+  try {
+    const res = await renderQuarkdownToPdf({ source, jobId: `draft-${root.uuid}` });
+    pdf = res.pdf;
+  } catch (err) {
+    logger.error(msg + 'quarkdown render failed', {
+      uuid: root.uuid,
+      question_id: questionId,
+      error: (err as Error).message,
+    });
+    throw err;
+  }
+
+  await putPdfByKey(storageKey, pdf, { userId, questionId, contentHash });
+
+  logger.info(msg + 'generated', {
+    uuid: root.uuid,
+    question_id: questionId,
+    user_id: userId,
+    storage_key: storageKey,
+    bytes: pdf.byteLength,
+    content_hash: contentHash,
+  });
+
+  return {
+    body: pdf,
+    contentType: 'application/pdf',
+    contentLength: pdf.byteLength,
+    metadata: {
+      'user-id': String(userId),
+      'question-id': String(questionId),
+      'content-hash': contentHash,
+    },
+  };
+}
+
+export async function getDraftPdf(id: string): Promise<PdfObject | null> {
+  const loaded = await loadThread(id);
+  if (!loaded) return null;
+  return getPdfByKey(buildDraftStorageKey(Number(loaded.root.id)));
+}
+
+export async function deleteDraftPdf(questionId: number | string): Promise<void> {
+  try {
+    await deletePdfByKey(buildDraftStorageKey(questionId));
+  } catch (err) {
+    logger.warn('pdfService.deleteDraftPdf - S3 delete failed', {
+      question_id: questionId,
+      error: (err as Error).message,
+    });
+  }
+}
+
+export async function regenerateCanonicalPdf(rootQuestionId: number | string): Promise<void> {
+  const msg = 'pdfService.regenerateCanonicalPdf - ';
+  try {
+    const rows = await getQuestionsByIds([String(rootQuestionId)], true);
+    const root = rows?.[0];
+    if (!root?.uuid) {
+      logger.warn(msg + 'root question not found', { root_question_id: rootQuestionId });
+      return;
+    }
+    await getOrGeneratePdf(root.uuid);
+    logger.info(msg + 'regenerated', { root_question_id: rootQuestionId, uuid: root.uuid });
+  } catch (err) {
+    logger.warn(msg + 'failed', {
+      root_question_id: rootQuestionId,
+      error: (err as Error).message,
+    });
+  }
+}
+
+function spliceDraftReply(thread: DBQuestion[], input: DraftPdfInput): DBQuestion[] {
+  if (thread.length === 0) return thread;
+  const targetId = input.childId != null ? String(input.childId) : null;
+  let targetIdx =
+    targetId != null ? thread.findIndex((m) => String(m.id) === targetId) : -1;
+  if (targetIdx < 0) targetIdx = thread.length - 1;
+  return thread.map((m, i) =>
+    i === targetIdx ? { ...m, final_reply: input.replyHtml } : m,
+  );
 }
 
 async function readFromCache(
