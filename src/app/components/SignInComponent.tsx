@@ -37,7 +37,7 @@ export default function SignInComponent() {
           </Link>) : (
             <Link href="/admin/"
               className="bg-[#3d4b5e] hover:bg-[#2d3b4e] text-white px-4 py-2 rounded-full transition-colors flex items-center text-sm font-medium">
-            Админка
+            Кабинет
             </Link>
           )}
           <button className="bg-[#3d4b5e] hover:bg-[#2d3b4e] text-white px-4 py-2 rounded-full transition-colors flex items-center text-sm font-medium" onClick={() => signOut({ callbackUrl: '/' })}>Выйти</button>

@@ -79,6 +79,7 @@ export enum LangItemsE {
 }
 
 export const statusesDesign: Record<number, StatusColorI> = {
+    5: {color: "#94a3b8", name: "Не оплачен"},
     4: {color: "#10b981", name: "Ответ получен"},
     3: {color: "#ef4444", name: "СПАМ"},
     2: {color: "#3b82f6", name: "В работе"},

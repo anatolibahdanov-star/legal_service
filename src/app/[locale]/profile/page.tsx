@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSession } from "next-auth/react"
 import ProfileForm from "@/src/app/components/forms/profile"
@@ -9,17 +10,29 @@ import {ProfileScreen} from '@/src/app/components/screen/Profile';
 export default function ProfilePage() {
   const router = useRouter();
   const { data: session, status } = useSession()
- 
+
+  const isStaff = !!session?.user && session.user.role !== 'user';
+  useEffect(() => {
+    if (status === 'loading') return;
+    if (isStaff) {
+      window.location.replace('/admin#/profile');
+    }
+  }, [status, isStaff]);
+
   if (status === 'loading') {
       return <p>Загружается...</p>;
   }
-  
+
   if(!session || !session?.user) {
     router.push('/');
     return null;
   }
+  // Пока срабатывает редирект сотрудника — не мигаем клиентским кабинетом.
+  if (isStaff) {
+    return <p>Загружается...</p>;
+  }
   const user = session.user
-  
+
   return (
     <main className="flex-1 w-full max-w-7xl mx-auto px-[20px] py-[48px]">
         <div className="mb-[32px]">

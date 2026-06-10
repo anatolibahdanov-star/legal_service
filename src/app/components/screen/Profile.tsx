@@ -72,6 +72,7 @@ interface FormDataI {
   name: string|null;
   username: string|null;
   email: string|null;
+  phone: string|null;
 }
 
 interface ProfileAccountPropsI {
@@ -85,15 +86,11 @@ const ProfileAccount = ({data, is_user, setData, user}: ProfileAccountPropsI) =>
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [passwordData, setPasswordData] = useState({old_password: "", new_password: "", repeat_new_password: "",});
   const [showPasswords, setShowPasswords] = useState({current: false, new: false, confirm: false,});
-  const [formData, setFormData] = useState<FormDataI>({name: null, username: null, email: null,});
+  const [formData, setFormData] = useState<FormDataI>({name: null, username: null, email: null, phone: null,});
 
   const name = formData?.name ?? data?.name ?? user?.name ?? ''
   const username = formData?.username ?? data?.username ?? user?.username ?? ''
-  // При phone-OTP регистрации бэк генерирует placeholder вида
-  // <phone>@phone.local. В LK его показывать не нужно — поле должно быть
-  // пустым, пока пользователь сам не введёт реальный email. Если в formData
-  // уже что-то есть (включая пустую строку после ручной очистки) — берём её
-  // как есть; иначе фильтруем placeholder из data/session.
+  const phone = formData?.phone ?? data?.phone ?? ''
   const rawEmail = formData?.email ?? data?.email ?? user?.email ?? ''
   const email = formData?.email !== null && formData?.email !== undefined
     ? formData.email
@@ -120,14 +117,12 @@ const ProfileAccount = ({data, is_user, setData, user}: ProfileAccountPropsI) =>
 
   const handleSave = async () => {
     const path = "/" + entity + "/" + user.id
-    // Если в поле пусто (юзер ещё не ввёл свой email после phone-OTP
-    // регистрации), отправляем исходный placeholder из БД, чтобы не
-    // затереть колонку email пустой строкой.
     const emailToSave = email || rawEmail
     const adminUpdatedData = {
         name: name,
         email: emailToSave,
         username: username,
+        phone: phone,
         status: data?.status,
         is_super: data?.is_super,
     }
@@ -135,7 +130,7 @@ const ProfileAccount = ({data, is_user, setData, user}: ProfileAccountPropsI) =>
     if(adminData.status) {
         console.log("Profile account after save adminData.data", adminData.data)
         setData(adminData.data)
-        setFormData({name: adminData.data.name, username: adminData.data.username, email: adminData.data.email,})
+        setFormData({name: adminData.data.name, username: adminData.data.username, email: adminData.data.email, phone: adminData.data.phone ?? '',})
         Swal.fire({
           title: "Данные о пользователе обновлены.",
           icon: "success",
@@ -152,7 +147,6 @@ const ProfileAccount = ({data, is_user, setData, user}: ProfileAccountPropsI) =>
   };
 
   const handleChangePassword = async () => {
-    // "Текущий пароль" скрыт из UI; в guard его не требуем (на сервер он и так не уходит).
     if (!passwordData.new_password || !passwordData.repeat_new_password) {
       alert("Не все поля формы смены пароля заполнены.");
       return;
@@ -164,9 +158,9 @@ const ProfileAccount = ({data, is_user, setData, user}: ProfileAccountPropsI) =>
     const path = "/" + entity + "/" + user.id
     const adminUpdatedData = {
         name: name,
-        // То же, что в handleSave — не затираем placeholder пустой строкой.
         email: email || rawEmail,
         username: username,
+        phone: phone,
         new_password: passwordData.new_password,
         status: data?.status,
         is_super: data?.is_super,
@@ -292,7 +286,7 @@ const ProfileAccount = ({data, is_user, setData, user}: ProfileAccountPropsI) =>
           <div>
             <label className="block text-xs text-[#757575] mb-1.5">Ваше имя</label>
             <input type="text" name="name" value={name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="Иван Иванов"
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="Введите ваше имя"
               className="w-full px-3 py-2 border border-[#e0e0e0] rounded text-sm focus:outline-none focus:ring-1 focus:ring-[#2196f3] focus:border-[#2196f3]"
             />
           </div>
@@ -314,6 +308,16 @@ const ProfileAccount = ({data, is_user, setData, user}: ProfileAccountPropsI) =>
               className="w-full px-3 py-2 border border-[#e0e0e0] rounded text-sm focus:outline-none focus:ring-1 focus:ring-[#2196f3] focus:border-[#2196f3]"
             />
           </div>
+
+          {/* Phone — для пользователей, зарегистрированных по телефону.
+              Редактируется напрямую: ввёл → Сохранить → сохранилось, без СМС. */}
+          {is_user && (<div>
+            <label className="block text-xs text-[#757575] mb-1.5">Телефон</label>
+            <input type="tel" name="phone" value={phone}
+              onChange={(e) => setFormData({ ...formData, phone: e.target.value })} placeholder="+7 900 000-00-00"
+              className="w-full px-3 py-2 border border-[#e0e0e0] rounded text-sm focus:outline-none focus:ring-1 focus:ring-[#2196f3] focus:border-[#2196f3]"
+            />
+          </div>)}
         </div>
       </div>
 
@@ -346,7 +350,6 @@ const ProfileJobList = ({is_user, user}: ProfileJobListPropsI) => {
   const [openRatingSection, setOpenRatingSection] = useState(false);
   const [copiedLink, setCopiedLink] = useState("");
   const [showLinkCopied, setShowLinkCopied] = useState(false);
-  /** id вопроса, для которого открыто окно оплаты; null — окно закрыто. */
   const [payingQuestionId, setPayingQuestionId] = useState<string | number | null>(null);
   /** Question the PDF actions modal is open for; null when closed. */
   const [pdfCase, setPdfCase] = useState<DBQuestion | null>(null);
@@ -449,9 +452,6 @@ const ProfileJobList = ({is_user, user}: ProfileJobListPropsI) => {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setOpenRatingSection(false);
-    // Toggle через функциональный сеттер — иначе если isRefresh уже true,
-    // React пропустит обновление и useEffect рефетча списка не сработает
-    // (рейтинг не появится в списке после закрытия модалки).
     setIsRefresh(prev => !prev)
     setTimeout(() => setSelectedCase(null), 300);
   };
@@ -622,8 +622,6 @@ const ProfileJobList = ({is_user, user}: ProfileJobListPropsI) => {
           isOpen={payingQuestionId !== null}
           questionId={payingQuestionId}
           onClose={() => setPayingQuestionId(null)}
-          // Тоггл вместо `setIsRefresh(true)` — гарантирует, что useEffect
-          // перезапустится и после второй/третьей оплаты подряд.
           onPaid={() => setIsRefresh((prev) => !prev)}
         />
       )}
@@ -768,11 +766,9 @@ export function ProfileScreen({is_user = false}: ProfileScreenPropsI) {
     }
     const user = session.user
     const [activeTab, setActiveTab] = useState<"account" | "cases" | "balance">(() => {
-        // Инициализируем синхронно из URL, иначе таб «прыгает» — сначала
-        // рендерится дефолтный, потом через эффект подменяется на нужный.
-        if (typeof window === "undefined") return "account";
+        if (typeof window === "undefined") return "cases";
         const t = new URLSearchParams(window.location.search).get("tab");
-        return t === "balance" || t === "cases" || t === "account" ? t : "account";
+        return t === "balance" || t === "cases" || t === "account" ? t : "cases";
     });
     const [data, setData] = useState<DBUser | null>(null);
     
@@ -808,8 +804,7 @@ export function ProfileScreen({is_user = false}: ProfileScreenPropsI) {
             emitBalanceRefresh()
         }
     }
-  // После того как мы прочитали ?tab= для инициализации activeTab, чистим URL,
-  // чтобы дальнейший reload не цеплялся за устаревший таб.
+    
   useEffect(() => {
     const t = new URLSearchParams(window.location.search).get("tab");
     if (t === "balance" || t === "cases" || t === "account") {
@@ -826,15 +821,15 @@ export function ProfileScreen({is_user = false}: ProfileScreenPropsI) {
         <div className="mb-6">
           <div className="border-b border-[#e0e0e0]">
             <div className="flex gap-8">
-              <button onClick={() => setActiveTab("account")}
-                className={`pb-3 px-1 text-sm relative ${activeTab === "account" ? "text-[#2196f3]" : "text-[#757575] hover:text-[#333]"}`}
-              >Аккаунт {activeTab === "account" && (<div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#2196f3]"></div>)}</button>
-              {is_user && (<button onClick={() => setActiveTab("balance")}
-                className={`pb-3 px-1 text-sm relative ${activeTab === "balance" ? "text-[#2196f3]" : "text-[#757575] hover:text-[#333]"}`}
-              >Баланс {activeTab === "balance" && (<div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#2196f3]"></div>)}</button>)}
               <button onClick={() => setActiveTab("cases")}
                 className={`pb-3 px-1 text-sm relative ${activeTab === "cases" ? "text-[#2196f3]" : "text-[#757575] hover:text-[#333]"}`}
               >{requestTabName} {activeTab === "cases" && (<div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#2196f3]"></div>)}</button>
+              {is_user && (<button onClick={() => setActiveTab("balance")}
+                className={`pb-3 px-1 text-sm relative ${activeTab === "balance" ? "text-[#2196f3]" : "text-[#757575] hover:text-[#333]"}`}
+              >Баланс {activeTab === "balance" && (<div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#2196f3]"></div>)}</button>)}
+              <button onClick={() => setActiveTab("account")}
+                className={`pb-3 px-1 text-sm relative ${activeTab === "account" ? "text-[#2196f3]" : "text-[#757575] hover:text-[#333]"}`}
+              >Аккаунт {activeTab === "account" && (<div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#2196f3]"></div>)}</button>
             </div>
           </div>
         </div>

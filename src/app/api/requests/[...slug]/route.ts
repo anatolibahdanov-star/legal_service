@@ -204,11 +204,7 @@ export async function PUT(request: Request) {
             if(llm) {
                 logger.info("(LLM)" + msg + "reply length/duration/noLegalQuestion ", llm.reply.length, duration, llm.noLegalQuestion)
                 logger.info("(LLM)" + msg + "reply ", llm.reply)
-                if(llm.noLegalQuestion) {
-                    updatedQuestion.reply = llm.reply
-                } else {
-                    updatedQuestion.final_reply = llm.reply
-                }
+                updatedQuestion.final_reply = llm.reply
             }
         } else {
             logger.info(msg + "no llm request!!!")

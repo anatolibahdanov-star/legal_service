@@ -3,7 +3,6 @@ import logger from '@/src/libs/logger';
 import {
   normalizePhoneE164,
   phoneToEmail,
-  phoneToDefaultName,
   generatePassword,
 } from '@/src/libs/phoneIdentity';
 import { verifyOtp } from '@/src/libs/otpStore';
@@ -169,10 +168,10 @@ export async function POST(request: NextRequest) {
       { status: 200 },
     );
   }
-
+  
+  const name = '';
   const email = phoneToEmail(normalized.e164);
   const password = generatePassword();
-  const name = phoneToDefaultName(normalized.e164);
 
   const user = await register(name, email, password, normalized.e164);
   if (user === undefined) {

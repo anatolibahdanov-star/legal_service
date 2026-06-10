@@ -108,7 +108,7 @@ export async function sendIIBot(question: string): Promise<string | null | undef
 export async function sendGrokBot(question: string): Promise<GrokReplyResult | null | undefined> {
     const msg = "SEND GROK: "
     let systemPrompt = '\nResponse translate to Russian language.\nLimit response with 1500 symbols.'
-    const filePath: string = path.join(process.cwd(), 'src/libs/Promt 8.1_2604.md');
+    const filePath: string = path.join(process.cwd(), 'src/libs/Promt_8.1_2604_v2.md');
     try {
         systemPrompt = fs.readFileSync(filePath, 'utf-8');
     } catch (error) {
