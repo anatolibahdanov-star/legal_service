@@ -72,6 +72,7 @@ interface FormDataI {
   name: string|null;
   username: string|null;
   email: string|null;
+  phone: string|null;
 }
 
 interface ProfileAccountPropsI {
@@ -85,10 +86,14 @@ const ProfileAccount = ({data, is_user, setData, user}: ProfileAccountPropsI) =>
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [passwordData, setPasswordData] = useState({old_password: "", new_password: "", repeat_new_password: "",});
   const [showPasswords, setShowPasswords] = useState({current: false, new: false, confirm: false,});
-  const [formData, setFormData] = useState<FormDataI>({name: null, username: null, email: null,});
+  const [formData, setFormData] = useState<FormDataI>({name: null, username: null, email: null, phone: null,});
 
   const name = formData?.name ?? data?.name ?? user?.name ?? ''
   const username = formData?.username ?? data?.username ?? user?.username ?? ''
+  // Телефон из phone-регистрации. Редактируется без СМС/подтверждений —
+  // ввёл и сохранил. Пустая строка в formData (после ручной очистки) берётся
+  // как есть; иначе показываем телефон из data/session.
+  const phone = formData?.phone ?? data?.phone ?? ''
   // При phone-OTP регистрации бэк генерирует placeholder вида
   // <phone>@phone.local. В LK его показывать не нужно — поле должно быть
   // пустым, пока пользователь сам не введёт реальный email. Если в formData
@@ -128,6 +133,7 @@ const ProfileAccount = ({data, is_user, setData, user}: ProfileAccountPropsI) =>
         name: name,
         email: emailToSave,
         username: username,
+        phone: phone,
         status: data?.status,
         is_super: data?.is_super,
     }
@@ -135,7 +141,7 @@ const ProfileAccount = ({data, is_user, setData, user}: ProfileAccountPropsI) =>
     if(adminData.status) {
         console.log("Profile account after save adminData.data", adminData.data)
         setData(adminData.data)
-        setFormData({name: adminData.data.name, username: adminData.data.username, email: adminData.data.email,})
+        setFormData({name: adminData.data.name, username: adminData.data.username, email: adminData.data.email, phone: adminData.data.phone ?? '',})
         Swal.fire({
           title: "Данные о пользователе обновлены.",
           icon: "success",
@@ -167,6 +173,8 @@ const ProfileAccount = ({data, is_user, setData, user}: ProfileAccountPropsI) =>
         // То же, что в handleSave — не затираем placeholder пустой строкой.
         email: email || rawEmail,
         username: username,
+        // Телефон передаём и при смене пароля, иначе saveUser затрёт его в NULL.
+        phone: phone,
         new_password: passwordData.new_password,
         status: data?.status,
         is_super: data?.is_super,
@@ -292,7 +300,7 @@ const ProfileAccount = ({data, is_user, setData, user}: ProfileAccountPropsI) =>
           <div>
             <label className="block text-xs text-[#757575] mb-1.5">Ваше имя</label>
             <input type="text" name="name" value={name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="Иван Иванов"
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="Введите ваше имя"
               className="w-full px-3 py-2 border border-[#e0e0e0] rounded text-sm focus:outline-none focus:ring-1 focus:ring-[#2196f3] focus:border-[#2196f3]"
             />
           </div>
@@ -314,6 +322,16 @@ const ProfileAccount = ({data, is_user, setData, user}: ProfileAccountPropsI) =>
               className="w-full px-3 py-2 border border-[#e0e0e0] rounded text-sm focus:outline-none focus:ring-1 focus:ring-[#2196f3] focus:border-[#2196f3]"
             />
           </div>
+
+          {/* Phone — для пользователей, зарегистрированных по телефону.
+              Редактируется напрямую: ввёл → Сохранить → сохранилось, без СМС. */}
+          {is_user && (<div>
+            <label className="block text-xs text-[#757575] mb-1.5">Телефон</label>
+            <input type="tel" name="phone" value={phone}
+              onChange={(e) => setFormData({ ...formData, phone: e.target.value })} placeholder="+7 900 000-00-00"
+              className="w-full px-3 py-2 border border-[#e0e0e0] rounded text-sm focus:outline-none focus:ring-1 focus:ring-[#2196f3] focus:border-[#2196f3]"
+            />
+          </div>)}
         </div>
       </div>
 
@@ -770,9 +788,10 @@ export function ProfileScreen({is_user = false}: ProfileScreenPropsI) {
     const [activeTab, setActiveTab] = useState<"account" | "cases" | "balance">(() => {
         // Инициализируем синхронно из URL, иначе таб «прыгает» — сначала
         // рендерится дефолтный, потом через эффект подменяется на нужный.
-        if (typeof window === "undefined") return "account";
+        // Дефолт — «Ваши заявки» (первый таб по новому порядку).
+        if (typeof window === "undefined") return "cases";
         const t = new URLSearchParams(window.location.search).get("tab");
-        return t === "balance" || t === "cases" || t === "account" ? t : "account";
+        return t === "balance" || t === "cases" || t === "account" ? t : "cases";
     });
     const [data, setData] = useState<DBUser | null>(null);
     
@@ -826,15 +845,15 @@ export function ProfileScreen({is_user = false}: ProfileScreenPropsI) {
         <div className="mb-6">
           <div className="border-b border-[#e0e0e0]">
             <div className="flex gap-8">
-              <button onClick={() => setActiveTab("account")}
-                className={`pb-3 px-1 text-sm relative ${activeTab === "account" ? "text-[#2196f3]" : "text-[#757575] hover:text-[#333]"}`}
-              >Аккаунт {activeTab === "account" && (<div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#2196f3]"></div>)}</button>
-              {is_user && (<button onClick={() => setActiveTab("balance")}
-                className={`pb-3 px-1 text-sm relative ${activeTab === "balance" ? "text-[#2196f3]" : "text-[#757575] hover:text-[#333]"}`}
-              >Баланс {activeTab === "balance" && (<div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#2196f3]"></div>)}</button>)}
               <button onClick={() => setActiveTab("cases")}
                 className={`pb-3 px-1 text-sm relative ${activeTab === "cases" ? "text-[#2196f3]" : "text-[#757575] hover:text-[#333]"}`}
               >{requestTabName} {activeTab === "cases" && (<div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#2196f3]"></div>)}</button>
+              {is_user && (<button onClick={() => setActiveTab("balance")}
+                className={`pb-3 px-1 text-sm relative ${activeTab === "balance" ? "text-[#2196f3]" : "text-[#757575] hover:text-[#333]"}`}
+              >Баланс {activeTab === "balance" && (<div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#2196f3]"></div>)}</button>)}
+              <button onClick={() => setActiveTab("account")}
+                className={`pb-3 px-1 text-sm relative ${activeTab === "account" ? "text-[#2196f3]" : "text-[#757575] hover:text-[#333]"}`}
+              >Аккаунт {activeTab === "account" && (<div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#2196f3]"></div>)}</button>
             </div>
           </div>
         </div>

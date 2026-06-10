@@ -2,7 +2,7 @@
 
 import { DBQuestion } from '@/src/interfaces/db';
 import { Shield, Lock, Scale, CheckCircle } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { format } from 'date-fns';
 import { JobDataI } from '@/src/interfaces/form';
 import { StatusPagePropsI } from '@/src/interfaces/component';
@@ -10,32 +10,51 @@ import { CustomGetRequest } from "@/src/libs/request"
 import { ChatMessage } from "@/src/app/components/data/ChatMessage";
 import { statusesDesign, StatusColorI, QuestionStatusesE } from '@/src/interfaces/data';
 
-let isStatus = false
-
 export function StatusPage({ slug }: StatusPagePropsI) {
   const [data, setData] = useState<DBQuestion|null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isMessages, setIsMessages] = useState(false);
   const [messages, setMessages] = useState<JobDataI | null>(null);
   const [caseFinalStatus, setCaseFinalStatus] = useState(false);
+  // Достигнут ли финальный статус (ответ/спам). Раньше это был модульный
+  // флаг `let isStatus`, который протекал между разными вопросами и блокировал
+  // загрузку второго дела. Теперь — ref, сбрасывается на каждом монтировании.
+  const isFinalRef = useRef(false);
 
   useEffect(() => {
-    const intervalId = setInterval(async () => {
-      setIsLoading(true);
-      if(!isStatus) {
-        setCaseFinalStatus(false)
+    isFinalRef.current = false;
+    let cancelled = false;
+
+    // Грузим вопрос и его статус. Вынесено в функцию, чтобы дёрнуть её
+    // сразу при монтировании и не ждать первого тика интервала (5 c) —
+    // иначе вопрос и ответ юриста появлялись на странице с задержкой.
+    const load = async () => {
+      if (isFinalRef.current) return;
+      try {
         const response = await fetch('/api/requests/' + slug + '/');
         const newData: DBQuestion = await response.json();
-        if([QuestionStatusesE.Spam, QuestionStatusesE.Approved].includes(newData.status)) {
-          isStatus = true
-          setIsLoading(false);
-          setCaseFinalStatus(true)
+        if (cancelled) return;
+        // job_status — реальный клиентский статус. Колонка `status` (legacy)
+        // обновляется только в админских под-вопросах и протухает на корне
+        // дела, из-за чего показывала «В ожидании» даже после ответа юриста.
+        if ([QuestionStatusesE.Spam, QuestionStatusesE.Approved].includes(newData.job_status)) {
+          isFinalRef.current = true;
+          setCaseFinalStatus(true);
+        } else {
+          setCaseFinalStatus(false);
         }
         setData(newData); // Updating state causes the component to re-render
+      } catch {
+        // Сетевой сбой — оставляем прежние данные, следующий тик повторит.
+      } finally {
+        if (!cancelled) setIsLoading(false);
       }
-    }, 5000); // Fetch every 5 seconds
+    };
 
-    return () => clearInterval(intervalId); // Cleanup
+    load(); // немедленная загрузка
+    const intervalId = setInterval(load, 5000); // затем опрос каждые 5 секунд
+
+    return () => { cancelled = true; clearInterval(intervalId); }; // Cleanup
   }, [slug]);
 
   useEffect(() => {
@@ -79,7 +98,12 @@ export function StatusPage({ slug }: StatusPagePropsI) {
       ('Ответ адвоката ' + data.lawyer + ' готов.') : 
       'Над вашей заявкой работает адвокат ' + data.lawyer + '.') : 
     'Ваша заявка еще не взята в разработку.'
-  const statusColor: StatusColorI = data && data.status && [0,1,2,3,4].includes(data.status) ? statusesDesign[data.status] : statusesDesign[1]
+  // Используем job_status (клиентский статус), а не legacy `status`.
+  // Проверяем наличие ключа в statusesDesign, а не «truthy», иначе статус 0
+  // (Disabled) проваливался в дефолт «В ожидании» вместо «Ошибка».
+  const statusColor: StatusColorI = data && data.job_status != null && statusesDesign[data.job_status]
+    ? statusesDesign[data.job_status]
+    : statusesDesign[QuestionStatusesE.New]
 
 
   const educationalLinks = [

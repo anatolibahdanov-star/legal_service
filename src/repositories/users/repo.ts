@@ -240,7 +240,18 @@ export async function addUser(user: RegUser): Promise<DBUser | null> {
 export async function saveUser(id: string, user: DBUser): Promise<DBUser | null> {
     const msg = msgGlobal + "saveUser - ";
     let query = `UPDATE user SET name=?, email=?, status=? `
-    const params = [user.name, user.email, user.status]
+    const params: Array<string | number | null | undefined> = [user.name, user.email, user.status]
+    // Телефон обновляем ТОЛЬКО если поле реально пришло в payload — защита от
+    // затирания номера в NULL у того, кто прислал частичный апдейт. ЛК всегда
+    // шлёт phone; админская форма (react-admin) отправляет полную запись, так
+    // что round-trip-ит то же значение — оба пути безопасны.
+    // phone — UNIQUE NULL: пустую строку храним как NULL, чтобы несколько
+    // пользователей без телефона не нарушили уникальный индекс.
+    if (user.phone !== undefined) {
+        const phoneVal = user.phone && String(user.phone).trim() ? String(user.phone).trim() : null
+        query += ', phone=?'
+        params.push(phoneVal)
+    }
     if(user.new_password) {
         query += ', password=?'
         params.push(md5(user.new_password))

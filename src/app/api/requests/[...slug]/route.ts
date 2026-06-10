@@ -204,11 +204,13 @@ export async function PUT(request: Request) {
             if(llm) {
                 logger.info("(LLM)" + msg + "reply length/duration/noLegalQuestion ", llm.reply.length, duration, llm.noLegalQuestion)
                 logger.info("(LLM)" + msg + "reply ", llm.reply)
-                if(llm.noLegalQuestion) {
-                    updatedQuestion.reply = llm.reply
-                } else {
-                    updatedQuestion.final_reply = llm.reply
-                }
+                // Ответ Grok всегда кладём в final_reply — нижнее поле «Final
+                // reply», где юрист и ожидает увидеть ответ. Вердикт «вопрос не
+                // юридический» ([NO_LEGAL_QUESTION]) показываем там же.
+                // Раньше при noLegalQuestion текст писался в reply (верхнее поле
+                // с промптом) и затирал введённый юристом текст, поэтому ответ
+                // Grok не появлялся в ожидаемом месте (см. баг-репорт).
+                updatedQuestion.final_reply = llm.reply
             }
         } else {
             logger.info(msg + "no llm request!!!")
