@@ -90,15 +90,7 @@ const ProfileAccount = ({data, is_user, setData, user}: ProfileAccountPropsI) =>
 
   const name = formData?.name ?? data?.name ?? user?.name ?? ''
   const username = formData?.username ?? data?.username ?? user?.username ?? ''
-  // Телефон из phone-регистрации. Редактируется без СМС/подтверждений —
-  // ввёл и сохранил. Пустая строка в formData (после ручной очистки) берётся
-  // как есть; иначе показываем телефон из data/session.
   const phone = formData?.phone ?? data?.phone ?? ''
-  // При phone-OTP регистрации бэк генерирует placeholder вида
-  // <phone>@phone.local. В LK его показывать не нужно — поле должно быть
-  // пустым, пока пользователь сам не введёт реальный email. Если в formData
-  // уже что-то есть (включая пустую строку после ручной очистки) — берём её
-  // как есть; иначе фильтруем placeholder из data/session.
   const rawEmail = formData?.email ?? data?.email ?? user?.email ?? ''
   const email = formData?.email !== null && formData?.email !== undefined
     ? formData.email
@@ -125,9 +117,6 @@ const ProfileAccount = ({data, is_user, setData, user}: ProfileAccountPropsI) =>
 
   const handleSave = async () => {
     const path = "/" + entity + "/" + user.id
-    // Если в поле пусто (юзер ещё не ввёл свой email после phone-OTP
-    // регистрации), отправляем исходный placeholder из БД, чтобы не
-    // затереть колонку email пустой строкой.
     const emailToSave = email || rawEmail
     const adminUpdatedData = {
         name: name,
@@ -158,7 +147,6 @@ const ProfileAccount = ({data, is_user, setData, user}: ProfileAccountPropsI) =>
   };
 
   const handleChangePassword = async () => {
-    // "Текущий пароль" скрыт из UI; в guard его не требуем (на сервер он и так не уходит).
     if (!passwordData.new_password || !passwordData.repeat_new_password) {
       alert("Не все поля формы смены пароля заполнены.");
       return;
@@ -170,10 +158,8 @@ const ProfileAccount = ({data, is_user, setData, user}: ProfileAccountPropsI) =>
     const path = "/" + entity + "/" + user.id
     const adminUpdatedData = {
         name: name,
-        // То же, что в handleSave — не затираем placeholder пустой строкой.
         email: email || rawEmail,
         username: username,
-        // Телефон передаём и при смене пароля, иначе saveUser затрёт его в NULL.
         phone: phone,
         new_password: passwordData.new_password,
         status: data?.status,
@@ -364,7 +350,6 @@ const ProfileJobList = ({is_user, user}: ProfileJobListPropsI) => {
   const [openRatingSection, setOpenRatingSection] = useState(false);
   const [copiedLink, setCopiedLink] = useState("");
   const [showLinkCopied, setShowLinkCopied] = useState(false);
-  /** id вопроса, для которого открыто окно оплаты; null — окно закрыто. */
   const [payingQuestionId, setPayingQuestionId] = useState<string | number | null>(null);
   /** Question the PDF actions modal is open for; null when closed. */
   const [pdfCase, setPdfCase] = useState<DBQuestion | null>(null);
@@ -467,9 +452,6 @@ const ProfileJobList = ({is_user, user}: ProfileJobListPropsI) => {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setOpenRatingSection(false);
-    // Toggle через функциональный сеттер — иначе если isRefresh уже true,
-    // React пропустит обновление и useEffect рефетча списка не сработает
-    // (рейтинг не появится в списке после закрытия модалки).
     setIsRefresh(prev => !prev)
     setTimeout(() => setSelectedCase(null), 300);
   };
@@ -640,8 +622,6 @@ const ProfileJobList = ({is_user, user}: ProfileJobListPropsI) => {
           isOpen={payingQuestionId !== null}
           questionId={payingQuestionId}
           onClose={() => setPayingQuestionId(null)}
-          // Тоггл вместо `setIsRefresh(true)` — гарантирует, что useEffect
-          // перезапустится и после второй/третьей оплаты подряд.
           onPaid={() => setIsRefresh((prev) => !prev)}
         />
       )}
@@ -786,9 +766,6 @@ export function ProfileScreen({is_user = false}: ProfileScreenPropsI) {
     }
     const user = session.user
     const [activeTab, setActiveTab] = useState<"account" | "cases" | "balance">(() => {
-        // Инициализируем синхронно из URL, иначе таб «прыгает» — сначала
-        // рендерится дефолтный, потом через эффект подменяется на нужный.
-        // Дефолт — «Ваши заявки» (первый таб по новому порядку).
         if (typeof window === "undefined") return "cases";
         const t = new URLSearchParams(window.location.search).get("tab");
         return t === "balance" || t === "cases" || t === "account" ? t : "cases";
@@ -827,8 +804,7 @@ export function ProfileScreen({is_user = false}: ProfileScreenPropsI) {
             emitBalanceRefresh()
         }
     }
-  // После того как мы прочитали ?tab= для инициализации activeTab, чистим URL,
-  // чтобы дальнейший reload не цеплялся за устаревший таб.
+    
   useEffect(() => {
     const t = new URLSearchParams(window.location.search).get("tab");
     if (t === "balance" || t === "cases" || t === "account") {

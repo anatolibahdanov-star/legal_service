@@ -11,9 +11,6 @@ export default function ProfilePage() {
   const router = useRouter();
   const { data: session, status } = useSession()
 
-  // Юрист/админ авторизован как сотрудник — его профиль живёт в админке
-  // (react-admin hash-route /admin#/profile), а не в пользовательском
-  // кабинете. Переадресуем, чтобы он не видел клиентский ЛК.
   const isStaff = !!session?.user && session.user.role !== 'user';
   useEffect(() => {
     if (status === 'loading') return;

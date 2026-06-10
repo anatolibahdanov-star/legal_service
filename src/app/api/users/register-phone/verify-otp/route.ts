@@ -168,14 +168,7 @@ export async function POST(request: NextRequest) {
       { status: 200 },
     );
   }
-
-  // При phone-регистрации НЕ запрашиваем и НЕ автогенерируем имя и e-mail —
-  // пользователь сам введёт их позже в личном кабинете.
-  // - name: колонка NOT NULL, но без UNIQUE — пишем пустую строку, в ЛК поле
-  //   остаётся пустым и редактируемым.
-  // - email: колонка NOT NULL UNIQUE, поэтому пустую строку хранить нельзя —
-  //   пишем скрытый уникальный placeholder (<phone>@phone.local), который в
-  //   ЛК не показывается (см. isPhoneEmail в ProfileAccount), поле тоже пустое.
+  
   const name = '';
   const email = phoneToEmail(normalized.e164);
   const password = generatePassword();

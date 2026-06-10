@@ -16,27 +16,18 @@ export function StatusPage({ slug }: StatusPagePropsI) {
   const [isMessages, setIsMessages] = useState(false);
   const [messages, setMessages] = useState<JobDataI | null>(null);
   const [caseFinalStatus, setCaseFinalStatus] = useState(false);
-  // Достигнут ли финальный статус (ответ/спам). Раньше это был модульный
-  // флаг `let isStatus`, который протекал между разными вопросами и блокировал
-  // загрузку второго дела. Теперь — ref, сбрасывается на каждом монтировании.
   const isFinalRef = useRef(false);
 
   useEffect(() => {
     isFinalRef.current = false;
     let cancelled = false;
 
-    // Грузим вопрос и его статус. Вынесено в функцию, чтобы дёрнуть её
-    // сразу при монтировании и не ждать первого тика интервала (5 c) —
-    // иначе вопрос и ответ юриста появлялись на странице с задержкой.
     const load = async () => {
       if (isFinalRef.current) return;
       try {
         const response = await fetch('/api/requests/' + slug + '/');
         const newData: DBQuestion = await response.json();
         if (cancelled) return;
-        // job_status — реальный клиентский статус. Колонка `status` (legacy)
-        // обновляется только в админских под-вопросах и протухает на корне
-        // дела, из-за чего показывала «В ожидании» даже после ответа юриста.
         if ([QuestionStatusesE.Spam, QuestionStatusesE.Approved].includes(newData.job_status)) {
           isFinalRef.current = true;
           setCaseFinalStatus(true);
@@ -45,14 +36,13 @@ export function StatusPage({ slug }: StatusPagePropsI) {
         }
         setData(newData); // Updating state causes the component to re-render
       } catch {
-        // Сетевой сбой — оставляем прежние данные, следующий тик повторит.
       } finally {
         if (!cancelled) setIsLoading(false);
       }
     };
 
-    load(); // немедленная загрузка
-    const intervalId = setInterval(load, 5000); // затем опрос каждые 5 секунд
+    load();
+    const intervalId = setInterval(load, 5000);
 
     return () => { cancelled = true; clearInterval(intervalId); }; // Cleanup
   }, [slug]);
@@ -98,9 +88,6 @@ export function StatusPage({ slug }: StatusPagePropsI) {
       ('Ответ адвоката ' + data.lawyer + ' готов.') : 
       'Над вашей заявкой работает адвокат ' + data.lawyer + '.') : 
     'Ваша заявка еще не взята в разработку.'
-  // Используем job_status (клиентский статус), а не legacy `status`.
-  // Проверяем наличие ключа в statusesDesign, а не «truthy», иначе статус 0
-  // (Disabled) проваливался в дефолт «В ожидании» вместо «Ошибка».
   const statusColor: StatusColorI = data && data.job_status != null && statusesDesign[data.job_status]
     ? statusesDesign[data.job_status]
     : statusesDesign[QuestionStatusesE.New]
