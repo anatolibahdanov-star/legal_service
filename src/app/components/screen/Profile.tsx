@@ -8,7 +8,7 @@ import Link from 'next/link';
 import Swal from 'sweetalert2'
 import { toast } from 'sonner'
 
-import { Upload, Eye, EyeOff, Star, Edit, Trash2, StarOff, Share2, Check, CreditCard, Link as LucideLink } from "lucide-react";
+import { Upload, Eye, EyeOff, Star, Edit, Trash2, StarOff, Share2, Check, CreditCard, Link as LucideLink, AlertCircle } from "lucide-react";
 
 import { CustomGetRequest, CustomRequest } from "@/src/libs/request";
 import { emitBalanceRefresh } from "@/src/libs/balanceEvents";
@@ -19,6 +19,7 @@ import { QuestionStatusesE, dFormat } from "@/src/interfaces/data";
 import { format } from 'date-fns';
 import RequestFormWindow from "@/src/app/components/popups/RequestFormWindow";
 import PayQuestionWindow from "@/src/app/components/popups/PayQuestionWindow";
+import { ChangePhoneWindow } from "@/src/app/components/popups/ChangePhoneWindow";
 import {ProfileBalance} from "@/src/app/components/screen/profile/ProfileBalance"
 import { PaginationApp } from '@/src/app/components/data/pagination';
 import { Tooltip } from "@/src/app/components/Tooltip";
@@ -87,6 +88,7 @@ const ProfileAccount = ({data, is_user, setData, user}: ProfileAccountPropsI) =>
   const [passwordData, setPasswordData] = useState({old_password: "", new_password: "", repeat_new_password: "",});
   const [showPasswords, setShowPasswords] = useState({current: false, new: false, confirm: false,});
   const [formData, setFormData] = useState<FormDataI>({name: null, username: null, email: null, phone: null,});
+  const [changePhoneOpen, setChangePhoneOpen] = useState(false);
 
   const name = formData?.name ?? data?.name ?? user?.name ?? ''
   const username = formData?.username ?? data?.username ?? user?.username ?? ''
@@ -178,6 +180,13 @@ const ProfileAccount = ({data, is_user, setData, user}: ProfileAccountPropsI) =>
   };
 
   const handleCancel = () => { console.log("Cancelled");};
+
+  const handlePhoneChanged = (newPhone: string) => {
+    if (data) setData({ ...data, phone: newPhone });
+    setFormData((prev) => ({ ...prev, phone: newPhone }));
+    setChangePhoneOpen(false);
+    toast.success("Номер телефона успешно изменён.");
+  };
 
   const entityName = is_user ? 'Вы' : "Юрист"
 
@@ -307,16 +316,31 @@ const ProfileAccount = ({data, is_user, setData, user}: ProfileAccountPropsI) =>
               onChange={(e) => setFormData({ ...formData, email: e.target.value })} placeholder="info@example.com"
               className="w-full px-3 py-2 border border-[#e0e0e0] rounded text-sm focus:outline-none focus:ring-1 focus:ring-[#2196f3] focus:border-[#2196f3]"
             />
+            {is_user && data?.email && !isPhoneEmail(data.email) && (
+              data.email_verified === 1 ? (
+                <span className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-[#10b981]/30 bg-[#10b981]/10 px-2.5 py-1 text-xs font-medium text-[#059669]">
+                  <Check className="w-3.5 h-3.5 shrink-0" />
+                  Почта подтверждена
+                </span>
+              ) : (
+                <span className="mt-2 inline-flex items-start gap-1.5 rounded-lg border border-[#f59e0b]/30 bg-[#f59e0b]/10 px-2.5 py-1.5 text-xs font-medium text-[#b45309]">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-px" />
+                  <span>Ожидает подтверждения. Письмо со ссылкой отправлено на {data.email}</span>
+                </span>
+              )
+            )}
           </div>
 
-          {/* Phone — для пользователей, зарегистрированных по телефону.
-              Редактируется напрямую: ввёл → Сохранить → сохранилось, без СМС. */}
           {is_user && (<div>
             <label className="block text-xs text-[#757575] mb-1.5">Телефон</label>
-            <input type="tel" name="phone" value={phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })} placeholder="+7 900 000-00-00"
-              className="w-full px-3 py-2 border border-[#e0e0e0] rounded text-sm focus:outline-none focus:ring-1 focus:ring-[#2196f3] focus:border-[#2196f3]"
-            />
+            <div className="flex items-center gap-2">
+              <input type="tel" name="phone" value={phone} readOnly placeholder="+7 900 000-00-00"
+                className="flex-1 min-w-0 px-3 py-2 border border-[#e0e0e0] rounded text-sm bg-[#f5f5f5] text-[#333] focus:outline-none cursor-default"
+              />
+              <button type="button" onClick={() => setChangePhoneOpen(true)}
+                className="whitespace-nowrap px-3 py-2 border border-[#2196f3] text-[#2196f3] rounded text-sm hover:bg-[#2196f3] hover:text-white transition-colors"
+              >Сменить номер</button>
+            </div>
           </div>)}
         </div>
       </div>
@@ -330,6 +354,15 @@ const ProfileAccount = ({data, is_user, setData, user}: ProfileAccountPropsI) =>
           className="px-6 py-2 bg-[#2196f3] text-white rounded hover:bg-[#1976d2] transition-colors text-sm"
         >Сохранить</button>
       </div>
+
+      {is_user && (
+        <ChangePhoneWindow
+          isOpen={changePhoneOpen}
+          currentPhone={phone}
+          onClose={() => setChangePhoneOpen(false)}
+          onChanged={handlePhoneChanged}
+        />
+      )}
     </>
   )
 }
@@ -786,6 +819,9 @@ export function ProfileScreen({is_user = false}: ProfileScreenPropsI) {
       };
 
       fetchData();
+      const onFocus = () => { fetchData(); };
+      window.addEventListener("focus", onFocus);
+      return () => window.removeEventListener("focus", onFocus);
     }, [user, entity]);
   
     const setUserBalance = (additionalBalance: number) => {

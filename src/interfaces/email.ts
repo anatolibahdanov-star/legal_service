@@ -12,6 +12,19 @@ export interface EmailDataForgotI {
   url_about: string;
 }
 
+export interface EmailDataVerifyI {
+  recipient: string;
+  username: string;
+  password: string;
+  url: string;
+}
+
+export interface EmailDataVerifyNewI {
+  recipient: string;
+  username: string;
+  url: string;
+}
+
 export interface EmailDataNewRequestI {
   email: string;
   username: string;

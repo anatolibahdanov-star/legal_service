@@ -5,6 +5,8 @@ import {CountResult, DBUser} from "@/src/interfaces/db"
 import {DBFilterUsers} from "@/src/interfaces/filters"
 import {RegUser} from "@/src/interfaces/api"
 import {md5, passGenerator} from "@/src/helpers/tools"
+import {isPhoneEmail, phoneToEmail} from "@/src/libs/phoneIdentity"
+import {randomBytes} from "node:crypto"
 
 const msgGlobal = "REPO USER "
 
@@ -200,7 +202,7 @@ export async function createUserFromWizard(
     }
 
     const randomPassword = `wizard_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 12)}`;
-    const query = `INSERT INTO user(name, email, phone, password, is_register) VALUES(?, ?, ?, ?, 1)`;
+    const query = `INSERT INTO user(name, email, phone, password, is_register, email_verified) VALUES(?, ?, ?, ?, 1, 0)`;
     const params = [name, email, phone, md5(randomPassword)];
     const insertFunc = insert({ query, values: params });
     const executedQueries = await executeTransactionWrapper<ResultSetHeader>([insertFunc], msg);
@@ -241,11 +243,6 @@ export async function saveUser(id: string, user: DBUser): Promise<DBUser | null>
     const msg = msgGlobal + "saveUser - ";
     let query = `UPDATE user SET name=?, email=?, status=? `
     const params: Array<string | number | null | undefined> = [user.name, user.email, user.status]
-    if (user.phone !== undefined) {
-        const phoneVal = user.phone && String(user.phone).trim() ? String(user.phone).trim() : null
-        query += ', phone=?'
-        params.push(phoneVal)
-    }
     if(user.new_password) {
         query += ', password=?'
         params.push(md5(user.new_password))
@@ -267,6 +264,33 @@ export async function saveUser(id: string, user: DBUser): Promise<DBUser | null>
     }
 
     return user
+}
+
+export async function updateUserPhone(id: string, phone: string): Promise<boolean> {
+    const msg = msgGlobal + "updateUserPhone - ";
+    const current = await getUsersByIds([id]);
+    let query = `UPDATE user SET phone=?`;
+    const params: Array<string | number> = [phone];
+    if (current && isPhoneEmail(current.email)) {
+        query += `, email=?`;
+        params.push(phoneToEmail(phone));
+    }
+    query += ` WHERE id=?`;
+    params.push(id);
+    const updateFunc = update({ query, values: params });
+    const executedQueries = await executeTransactionWrapper<ResultSetHeader>([updateFunc], msg);
+    if (!executedQueries) {
+        logger.error(msg + "SQL no results from execution", query)
+        return false
+    }
+    const [result] = executedQueries;
+    const updated = result[0]?.affectedRows ?? 0
+    if (updated > 0) {
+        logger.info(msg + 'phone updated', { user_id: id })
+    } else {
+        logger.warn(msg + "no rows updated", { user_id: id })
+    }
+    return updated > 0
 }
 
 export async function deleteUser(id: string): Promise<DBUser | null> {
@@ -421,8 +445,14 @@ export async function updateUserProfileFields(
         return undefined;
     }
 
-    const userUpdateSQL = 'UPDATE user SET name=?, email=? WHERE id=?';
-    const params = [name, email, id];
+    const emailUnchanged = !!existing && existing.id.toString() === id.toString();
+    let userUpdateSQL = 'UPDATE user SET name=?, email=?';
+    const params: Array<string> = [name, email];
+    if (!emailUnchanged) {
+        userUpdateSQL += ', email_verified=0';
+    }
+    userUpdateSQL += ' WHERE id=?';
+    params.push(id);
     const updateFunc = update({ query: userUpdateSQL, values: params });
     const executed = await executeTransactionWrapper<ResultSetHeader>([updateFunc], msg);
     if (!executed) {
@@ -538,5 +568,83 @@ async function issueTempPassword(user: DBUser, msg: string): Promise<DBUser | nu
         logger.warn(msg + "No updates", result[0])
     }
     user.password = newPass
+    return user
+}
+
+export async function issueEmailVerification(
+    userId: string | number,
+): Promise<{ password: string; token: string } | null> {
+    const msg = msgGlobal + "issueEmailVerification - "
+    const tempPassword = passGenerator(12)
+    const token = randomBytes(32).toString('hex')
+    const query = 'UPDATE user SET email_verified=0, email_verify_token=?, temp_password=? WHERE id=?'
+    const params = [token, md5(tempPassword), userId]
+    const updateFunc = update({ query, values: params })
+    const executed = await executeTransactionWrapper<ResultSetHeader>([updateFunc], msg)
+    if (!executed) {
+        logger.error(msg + "SQL not results from execution", query)
+        return null
+    }
+    const [result] = executed
+    if (!result[0]?.affectedRows) {
+        logger.warn(msg + "No updates", { user_id: userId })
+        return null
+    }
+    logger.info(msg + 'verification issued', { user_id: userId })
+    return { password: tempPassword, token }
+}
+
+export async function issueEmailVerificationToken(
+    userId: string | number,
+): Promise<string | null> {
+    const msg = msgGlobal + "issueEmailVerificationToken - "
+    const token = randomBytes(32).toString('hex')
+    const query = 'UPDATE user SET email_verified=0, email_verify_token=? WHERE id=?'
+    const params = [token, userId]
+    const updateFunc = update({ query, values: params })
+    const executed = await executeTransactionWrapper<ResultSetHeader>([updateFunc], msg)
+    if (!executed) {
+        logger.error(msg + "SQL not results from execution", query)
+        return null
+    }
+    const [result] = executed
+    if (!result[0]?.affectedRows) {
+        logger.warn(msg + "No updates", { user_id: userId })
+        return null
+    }
+    logger.info(msg + 'verification token issued', { user_id: userId })
+    return token
+}
+
+export async function verifyEmailByToken(
+    token: string,
+): Promise<DBUser | null | undefined> {
+    const msg = msgGlobal + "verifyEmailByToken - "
+    if (!token) {
+        logger.warn(msg + 'empty token')
+        return undefined
+    }
+    const findQuery = 'SELECT * FROM user WHERE email_verify_token=?'
+    const findFunc = find({ query: findQuery, values: [token] })
+    const found = await queryTransactionWrapper<DBUser>([findFunc], msg)
+    if (!found) {
+        logger.error(msg + "SQL not results from execution", findQuery)
+        return null
+    }
+    const [[rows]] = found
+    if (rows.length === 0) {
+        logger.warn(msg + 'token not found')
+        return undefined
+    }
+    const user = rows[0]
+    const updateQuery = 'UPDATE user SET email_verified=1 WHERE id=?'
+    const updateFunc = update({ query: updateQuery, values: [user.id] })
+    const executed = await executeTransactionWrapper<ResultSetHeader>([updateFunc], msg)
+    if (!executed) {
+        logger.error(msg + "SQL not results from execution", updateQuery)
+        return null
+    }
+    logger.info(msg + 'email verified', { user_id: user.id })
+    user.email_verified = 1
     return user
 }

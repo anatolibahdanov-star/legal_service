@@ -52,6 +52,8 @@ export interface DBUser extends RowDataPacket, User {
   new_password?: string;
   password: string;
   temp_password?: string | null;
+  email_verified?: number;
+  email_verify_token?: string | null;
   username: string;
   admin_id?: number;
   balance: number;
