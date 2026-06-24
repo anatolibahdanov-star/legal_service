@@ -22,6 +22,7 @@ export interface DBFilterUsers {
     id?:number;
     name?: string;
     email?: string;
+    q?: string;
     is_register?: number;
     status?: number;
     published_at_gte?: DateTime;

@@ -282,6 +282,21 @@ export async function DELETE(request: Request) {
 
     let user: DBUser | null = null
     try {
+        const existing = await getUsersByIds([requestUrlId])
+        if (existing === null) {
+            console.error(msg + "User not found", requestUrlId)
+            return NextResponse.json(
+                { success: false, message: msg + 'User not found.' },
+                { status: 404 }
+            );
+        }
+        if (Number(existing.balance_kop ?? existing.balance ?? 0) > 0) {
+            logger.warn(msg + "blocked deletion of user with positive balance", { user_id: requestUrlId })
+            return NextResponse.json(
+                { success: false, message: 'Невозможно удалить пользователя с положительным балансом.' },
+                { status: 409 }
+            );
+        }
         user = await deleteUser(requestUrlId)
         console.log(msg + 'deleted', user)
         if (user === null) {

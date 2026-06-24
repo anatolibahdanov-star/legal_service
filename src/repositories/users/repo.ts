@@ -3,12 +3,15 @@ import { ResultSetHeader } from 'mysql2/promise';
 import logger from "@/src/libs/logger"
 import {CountResult, DBUser} from "@/src/interfaces/db"
 import {DBFilterUsers} from "@/src/interfaces/filters"
+import {OrderStatusE} from "@/src/interfaces/payment"
 import {RegUser} from "@/src/interfaces/api"
 import {md5, passGenerator} from "@/src/helpers/tools"
 import {isPhoneEmail, phoneToEmail} from "@/src/libs/phoneIdentity"
 import {randomBytes} from "node:crypto"
 
 const msgGlobal = "REPO USER "
+
+const paidQuestionsSubquery = `(SELECT COUNT(*) FROM porder po WHERE po.user_id = u.id AND po.status = ${OrderStatusE.Paid} AND po.question_id IS NOT NULL)`
 
 export async function getUsers(
     page: string = '1', _limit: string = '10', _sorter: string[] = ['id', 'DESC'], filter: DBFilterUsers | null = null
@@ -18,7 +21,7 @@ export async function getUsers(
     const where = getAdminUserFilter(filter);
     const limit = parseInt(_limit) ?? 10
     const offset = ((parseInt(page) ?? 1) - 1) * limit
-    const query =  `SELECT *, ROUND(balance / 100, 0) balance FROM user `+ where +` ORDER BY ` + orderBy + ` LIMIT ? OFFSET ?`;
+    const query =  `SELECT u.*, u.balance AS balance_kop, ROUND(u.balance / 100, 0) balance, ${paidQuestionsSubquery} paid_questions FROM user u `+ where +` ORDER BY ` + orderBy + ` LIMIT ? OFFSET ?`;
     const params = [limit, offset]
     const findFunc = find({ query, values: params });
     const executedQueries = await queryTransactionWrapper<DBUser>([findFunc], msg);
@@ -52,7 +55,7 @@ export async function getTotalUsers(filter: DBFilterUsers | null = null): Promis
 
 export async function getUsersByIds(ids: string[]): Promise<DBUser | null> {
     const msg = msgGlobal + "getUsersByIds - ";
-    const query =  `SELECT *, ROUND(balance / 100, 0) balance FROM user WHERE id IN (?)`;
+    const query =  `SELECT u.*, u.balance AS balance_kop, ROUND(u.balance / 100, 0) balance, ${paidQuestionsSubquery} paid_questions FROM user u WHERE u.id IN (?)`;
     const params = [ids]
     const findFunc = find({ query, values: params });
     const executedQueries = await queryTransactionWrapper<DBUser>([findFunc], msg);
@@ -101,13 +104,28 @@ export async function getUserByPhone(phone: string): Promise<DBUser | null> {
     return rows[0]
 }
 
+const userSortColumns: Record<string, string> = {
+    id: 'u.id',
+    name: 'u.name',
+    email: 'u.email',
+    created_at: 'u.created_at',
+    status: 'u.status',
+    is_register: 'u.is_register',
+    balance: 'u.balance',
+    paid_questions: 'paid_questions',
+}
+
 export function getAdminUserOrder(orderBy:string[]): string {
     if(orderBy && orderBy.length>0) {
-        const field = orderBy[0] ?? "id"
+        const field = userSortColumns[orderBy[0]] ?? userSortColumns.id
         const sorter = ["ASC", "DESC"].includes(orderBy[1])? orderBy[1] : "ASC"
         return field + ' ' + sorter
     }
-    return "id DESC"
+    return "u.id DESC"
+}
+
+function escapeLike(value: string): string {
+    return value.replace(/[\\"]/g, '\\$&')
 }
 
 export function getAdminUserFilter(filter: DBFilterUsers | null = null): string {
@@ -127,13 +145,21 @@ export function getAdminUserFilter(filter: DBFilterUsers | null = null): string 
     }
     if (filter.name) {
         const resultAnd = isFilter ? 'AND ' : ''
-        result += (resultAnd + 'name LIKE "%' + filter.name + '%" ')
+        result += (resultAnd + 'name LIKE "%' + escapeLike(filter.name) + '%" ')
         isFilter = true
     }
     if (filter.email) {
         const resultAnd = isFilter ? 'AND ' : ''
-        result += (resultAnd + 'email LIKE "%' + filter.email + '%" ')
+        result += (resultAnd + 'email LIKE "%' + escapeLike(filter.email) + '%" ')
         isFilter = true
+    }
+    if (filter.q) {
+        const q = escapeLike(filter.q.trim())
+        if (q.length > 0) {
+            const resultAnd = isFilter ? 'AND ' : ''
+            result += (resultAnd + '(name LIKE "%' + q + '%" OR email LIKE "%' + q + '%" OR CAST(id AS CHAR) LIKE "%' + q + '%") ')
+            isFilter = true
+        }
     }
     if (filter.status || filter.status === 0) {
         const resultAnd = isFilter ? 'AND ' : ''

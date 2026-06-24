@@ -1,38 +1,9 @@
-
-import { DateInput, Filter, Datagrid, EditButton, DeleteButton, Edit, Show, SimpleShowLayout, TextField, List, DateField, SimpleForm, TextInput, SelectInput, PasswordInput, BooleanInput, required, SelectField } from 'react-admin';
-import { JSX } from 'react/jsx-runtime';
+import { Edit, Show, SimpleShowLayout, TextField, SimpleForm, TextInput, SelectInput, required, SelectField, DateField } from 'react-admin';
 import { UserStatusesE, UserRegisteredStatusesE } from '@/src/interfaces/data';
 import { getAdminChoices } from '@/src/helpers/tools';
+import { UsersList } from '@/src/app/components/admin/users/UsersList';
 
-const nextMonth = new Date()
-nextMonth.setMonth(nextMonth.getMonth() + 1);
-const defaultLoading = <p>Загружаем пользователей...</p>
-
-const UserFilters = (props: JSX.IntrinsicAttributes) => (
-    <Filter {...props}>
-        <TextInput label="ФИО" source="name" />
-        <TextInput label="E-mail" source="email" />
-        <SelectInput label="Статус" source="status" choices={getAdminChoices(UserStatusesE, "Статус пользователя: ", true)} />
-        <SelectInput label="Зарег-н?" source="is_register" choices={getAdminChoices(UserRegisteredStatusesE, "Статус регистрации пользователя: ", true)} />
-        <DateInput label="С" source="published_at_gte" defaultValue={(new Date()).toISOString().split('T')[0]} />
-        <DateInput label="До" source="published_at_lte" defaultValue={nextMonth.toISOString().split('T')[0]} />
-    </Filter>
-);
-
-export const UserList = () => (
-    <List sort={{ field: 'id', order: 'DESC' }} filters={<UserFilters />} loading={defaultLoading}>
-        <Datagrid>
-            <TextField source="id" />
-            <TextField label="ФИО" source="name" />
-            <TextField label="E-mail" source="email" />
-            <SelectField label="Зарег-н?" source='is_register' choices={getAdminChoices(UserRegisteredStatusesE, "Статус регистрации пользователя: ")} optionValue={'is_register'} />
-            <SelectField label="Статус" source='status' choices={getAdminChoices(UserStatusesE, "Статус пользователя: ")} optionValue={'status'} />
-            <DateField label="Дата" source='created_at' locales="ru-RU" showTime/>
-            <EditButton />
-            <DeleteButton />
-        </Datagrid>
-    </List>
-);
+export const UserList = UsersList;
 
 export const UserEdit = () => (
     <Edit>

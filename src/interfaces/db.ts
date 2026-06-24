@@ -57,11 +57,13 @@ export interface DBUser extends RowDataPacket, User {
   username: string;
   admin_id?: number;
   balance: number;
+  balance_kop?: number;
   rating?:number;
   is_super?: boolean;
   is_super_bool?: string;
   is_register?: boolean;
   is_first_question_free?: number;
+  paid_questions?: number;
   status?: number;
   created_at: DateTime;
 }

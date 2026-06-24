@@ -21,6 +21,7 @@ import RequestFormWindow from "@/src/app/components/popups/RequestFormWindow";
 import PayQuestionWindow from "@/src/app/components/popups/PayQuestionWindow";
 import { ChangePhoneWindow } from "@/src/app/components/popups/ChangePhoneWindow";
 import {ProfileBalance} from "@/src/app/components/screen/profile/ProfileBalance"
+import {ProfilePaymentHistory} from "@/src/app/components/screen/profile/ProfilePaymentHistory"
 import { PaginationApp } from '@/src/app/components/data/pagination';
 import { Tooltip } from "@/src/app/components/Tooltip";
 import { CaseModal } from "@/src/app/components/popups/CaseModal";
@@ -798,10 +799,10 @@ export function ProfileScreen({is_user = false}: ProfileScreenPropsI) {
         redirect('/')
     }
     const user = session.user
-    const [activeTab, setActiveTab] = useState<"account" | "cases" | "balance">(() => {
+    const [activeTab, setActiveTab] = useState<"account" | "cases" | "balance" | "payments">(() => {
         if (typeof window === "undefined") return "cases";
         const t = new URLSearchParams(window.location.search).get("tab");
-        return t === "balance" || t === "cases" || t === "account" ? t : "cases";
+        return t === "balance" || t === "cases" || t === "account" || t === "payments" ? t : "cases";
     });
     const [data, setData] = useState<DBUser | null>(null);
     
@@ -843,7 +844,7 @@ export function ProfileScreen({is_user = false}: ProfileScreenPropsI) {
     
   useEffect(() => {
     const t = new URLSearchParams(window.location.search).get("tab");
-    if (t === "balance" || t === "cases" || t === "account") {
+    if (t === "balance" || t === "cases" || t === "account" || t === "payments") {
       history.replaceState(null, document.title, window.location.origin + window.location.pathname);
     }
   }, []);
@@ -866,6 +867,9 @@ export function ProfileScreen({is_user = false}: ProfileScreenPropsI) {
               <button onClick={() => setActiveTab("account")}
                 className={`pb-3 px-1 text-sm relative ${activeTab === "account" ? "text-[#2196f3]" : "text-[#757575] hover:text-[#333]"}`}
               >Аккаунт {activeTab === "account" && (<div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#2196f3]"></div>)}</button>
+              {is_user && (<button onClick={() => setActiveTab("payments")}
+                className={`pb-3 px-1 text-sm relative ${activeTab === "payments" ? "text-[#2196f3]" : "text-[#757575] hover:text-[#333]"}`}
+              >История платежей {activeTab === "payments" && (<div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#2196f3]"></div>)}</button>)}
             </div>
           </div>
         </div>
@@ -875,6 +879,8 @@ export function ProfileScreen({is_user = false}: ProfileScreenPropsI) {
           <ProfileAccount data={data} is_user={is_user} setData={setData} user={user} />
         ) : activeTab === "balance" && is_user ? (
           <ProfileBalance data={data} setUserBalance={setUserBalance} />
+        ) : activeTab === "payments" && is_user ? (
+          <ProfilePaymentHistory />
         ) : (
           <ProfileJobList is_user={is_user} user={user} />
         )}

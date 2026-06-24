@@ -1,12 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/src/app/api/auth/[...nextauth]/route';
 import {getUsers, getTotalUsers} from "@/src/repositories/users/repo"
 import {DBUser} from "@/src/interfaces/db"
 import logger from "@/src/libs/logger"
 
 export const dynamic = 'force-dynamic'; // defaults to auto
 
+function sanitizeUser(user: DBUser): Record<string, unknown> {
+    const safe: Record<string, unknown> = { ...user };
+    delete safe.password;
+    delete safe.temp_password;
+    delete safe.email_verify_token;
+    return safe;
+}
+
 export async function GET(request: NextRequest) {
     const msg = "API USERS GET - "
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+        return NextResponse.json({ success: false, message: 'Требуется авторизация.' }, { status: 401 });
+    }
+    if (session.user.role === 'user') {
+        return NextResponse.json({ success: false, message: 'Доступ запрещён.' }, { status: 403 });
+    }
     // logger.info(msg + "request", request)
     const searchParams = request.nextUrl.searchParams;
     const _filter = searchParams.get('filter') ?? "";
@@ -42,7 +59,8 @@ export async function GET(request: NextRequest) {
             { status: 401 }
         );
     }
-    const response = NextResponse.json(users, { status: 200 });
+    const safeUsers = (users ?? []).map(sanitizeUser);
+    const response = NextResponse.json(safeUsers, { status: 200 });
     const header_str = _range[0] + '-' + _range[1] + '/' + total
     response.headers.set("Content-Range", "users " + header_str)
     response.headers.set("X-Total-Count", total.toString())

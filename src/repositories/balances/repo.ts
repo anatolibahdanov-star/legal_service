@@ -1,9 +1,87 @@
 import logger from "@/src/libs/logger"
-import {insert, executeTransactionWrapper, update} from '@/src/libs/db';
-import { ResultSetHeader } from 'mysql2/promise';
+import pool, {find, insert, executeTransactionWrapper, queryTransactionWrapper} from '@/src/libs/db';
+import { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 import { BalanceTransactionI, BalanceStatusE, BalanceTypeE } from "@/src/interfaces/payment";
 
 const msgGlobal = "REPO BALANCE "
+
+export interface DBManualBalanceRow extends RowDataPacket {
+    id: number;
+    balance_type: BalanceTypeE;
+    amount: number;
+    comment: string | null;
+    created_at: string;
+    admin_id: number | null;
+    admin_name: string | null;
+    admin_username: string | null;
+}
+
+/**
+ * Manual balance adjustments made by an admin (e.g. support compensation).
+ * Recorded as a `balance` ledger row with order_id NULL plus an atomic bump
+ * of user.balance. `amountKop` is signed (positive = top-up, negative = debit)
+ * and must already be in kopecks — same convention as the rest of the table.
+ */
+export async function adminAdjustBalance(
+    userId: number | string,
+    amountKop: number,
+    adminId: number | null,
+    comment: string,
+): Promise<{ ok: boolean; transactionId?: number }> {
+    const msg = msgGlobal + 'adminAdjustBalance - ';
+    if (!Number.isFinite(amountKop) || amountKop === 0) {
+        logger.error(msg + 'invalid amount', { user_id: userId, amountKop });
+        return { ok: false };
+    }
+    const balanceType = amountKop > 0 ? BalanceTypeE.Increase : BalanceTypeE.Decrease;
+    const insertSQL = `
+        INSERT INTO balance(user_id, admin_id, order_id, balance_type, amount, status, data, comment, created_at, updated_at)
+        VALUES(?, ?, NULL, ?, ?, ?, NULL, ?, NOW(), NOW())
+    `;
+    const insertParams = [userId, adminId, balanceType, amountKop, BalanceStatusE.Success, comment];
+    const updateSQL = `UPDATE user SET balance = balance + ? WHERE id = ?`;
+
+    const conn = await pool.getConnection();
+    try {
+        await conn.beginTransaction();
+        const [insRes] = await conn.query<ResultSetHeader>(insertSQL, insertParams);
+        await conn.query<ResultSetHeader>(updateSQL, [amountKop, userId]);
+        await conn.commit();
+        const transactionId = insRes.insertId;
+        logger.info(msg + 'adjusted', { user_id: userId, amountKop, admin_id: adminId, ledger_id: transactionId });
+        return { ok: true, transactionId };
+    } catch (error) {
+        await conn.rollback();
+        logger.error(msg + 'transaction failed', { user_id: userId, amountKop, error });
+        return { ok: false };
+    } finally {
+        conn.release();
+    }
+}
+
+/**
+ * Ledger rows that are NOT tied to a porder (order_id IS NULL) — i.e. manual
+ * admin adjustments and refunds. Joined with the administrator who made the
+ * change so the admin panel can render "Кто изменил".
+ */
+export async function getUserManualOperations(userId: number | string, cap: number = 2000): Promise<DBManualBalanceRow[]> {
+    const msg = msgGlobal + 'getUserManualOperations - ';
+    const query = `SELECT b.id, b.balance_type, b.amount, b.comment, b.created_at, b.admin_id,
+        a.name admin_name, a.username admin_username
+        FROM balance b
+        LEFT JOIN administrator a ON b.admin_id = a.id
+        WHERE b.user_id = ? AND b.order_id IS NULL
+        ORDER BY b.created_at DESC, b.id DESC
+        LIMIT ?`;
+    const findFunc = find({ query, values: [userId, cap] });
+    const executedQueries = await queryTransactionWrapper<DBManualBalanceRow>([findFunc], msg);
+    if (!executedQueries) {
+        logger.error(msg + 'SQL not results from execution', query);
+        return [];
+    }
+    const [[rows]] = executedQueries;
+    return rows ?? [];
+}
 
 export interface ChargeResult {
   /** True when the debit succeeded — user had enough funds and update went through. */
@@ -38,24 +116,8 @@ export async function chargeUserBalance(
     }
     const amountKop = Math.round(amount * 100);
 
-    // Step 1 — atomic deduct guarded by balance >= amount.
     const deductSQL = `UPDATE user SET balance = balance - ? WHERE id = ? AND balance >= ?`;
     const deductParams = [amountKop, userId, amountKop];
-    const deductFunc = update({ query: deductSQL, values: deductParams });
-    const deductExec = await executeTransactionWrapper<ResultSetHeader>([deductFunc], msg);
-    if (!deductExec) {
-        logger.error(msg + 'SQL failed on deduct', { user_id: userId, amount });
-        return { ok: false, reason: 'db_error' };
-    }
-    const affected = deductExec[0]?.[0]?.affectedRows ?? 0;
-    if (affected === 0) {
-        logger.warn(msg + 'insufficient balance', { user_id: userId, amount });
-        return { ok: false, reason: 'insufficient' };
-    }
-
-    // Step 2 — record the debit in the balance ledger (Decrease, negative amount
-    // to match addBalanceTransaction's "balance = balance + amount" semantics
-    // for any reporting that re-aggregates from this table).
     const insertSQL = `
         INSERT INTO balance(user_id, order_id, balance_type, amount, status, data, created_at, updated_at)
         VALUES(?, ?, ?, ?, ?, ?, NOW(), NOW())
@@ -68,23 +130,29 @@ export async function chargeUserBalance(
         BalanceStatusE.Success,
         null,
     ];
-    const insertFunc = insert({ query: insertSQL, values: insertParams });
-    const insertExec = await executeTransactionWrapper<ResultSetHeader>([insertFunc], msg);
-    if (!insertExec) {
-        logger.error(msg + 'SQL failed on ledger insert', { user_id: userId, amount });
-        // Money has already been deducted; can't roll back cheaply here.
-        // Surface as success since the user-visible state (balance decreased)
-        // is correct; admins can reconcile from logs.
-        return { ok: true };
+
+    const conn = await pool.getConnection();
+    try {
+        await conn.beginTransaction();
+        const [deductRes] = await conn.query<ResultSetHeader>(deductSQL, deductParams);
+        const affected = deductRes.affectedRows ?? 0;
+        if (affected === 0) {
+            await conn.rollback();
+            logger.warn(msg + 'insufficient balance', { user_id: userId, amount });
+            return { ok: false, reason: 'insufficient' };
+        }
+        const [insRes] = await conn.query<ResultSetHeader>(insertSQL, insertParams);
+        await conn.commit();
+        const transactionId = insRes.insertId;
+        logger.info(msg + 'debited', { user_id: userId, amount, order_id: orderId, ledger_id: transactionId });
+        return { ok: true, transactionId };
+    } catch (error) {
+        await conn.rollback();
+        logger.error(msg + 'transaction failed', { user_id: userId, amount, error });
+        return { ok: false, reason: 'db_error' };
+    } finally {
+        conn.release();
     }
-    const transactionId = insertExec[0]?.[0]?.insertId;
-    logger.info(msg + 'debited', {
-        user_id: userId,
-        amount,
-        order_id: orderId,
-        ledger_id: transactionId,
-    });
-    return { ok: true, transactionId };
 }
 
 export async function addBalance(trans: BalanceTransactionI): Promise<boolean | null> {
@@ -119,18 +187,21 @@ export async function addBalanceTransaction(trans: BalanceTransactionI): Promise
         VALUES(?, ?, ?, ?, ?, ?, NOW(), NOW())
     `;
     const insertData = [trans.user_id, trans.order_id, trans.balance_type, trans.amount, trans.status, trans.data]
-    const insertFunc = insert({ query: insertSQL, values: insertData});
     const updateSQL = `UPDATE user SET balance=balance + ? WHERE id=?`;
     const updateData = [trans.amount, trans.user_id]
-    const updatedFunc = update({ query: updateSQL, values: updateData});
 
-    const executedQueries = await executeTransactionWrapper<ResultSetHeader>([insertFunc, updatedFunc], msg);
-    if (!executedQueries) {
-        logger.error(msg + "SQL not results from execution", insertSQL, updateSQL)
+    const conn = await pool.getConnection();
+    try {
+        await conn.beginTransaction();
+        await conn.query<ResultSetHeader>(insertSQL, insertData);
+        await conn.query<ResultSetHeader>(updateSQL, updateData);
+        await conn.commit();
+        return true
+    } catch (error) {
+        await conn.rollback();
+        logger.error(msg + "transaction failed", error)
         return null
+    } finally {
+        conn.release();
     }
-    const [results] = executedQueries;
-    logger.info(msg + "transaction results", results)
-
-    return true
 }

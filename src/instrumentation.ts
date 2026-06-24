@@ -3,6 +3,7 @@ import cron from 'node-cron';
 import { lostResponse } from './cron/lostResponse';
 import { adminRating } from './cron/adminRating';
 import { cleanupAuthAttemptsDb, cleanupOtpStoreMemory } from './cron/cleanupAuthAttempts';
+// import { paymentRetry } from './cron/paymentRetry';
 
 export async function register() {
     console.log("process.env.NEXT_RUNTIME ", process.env.NEXT_RUNTIME)
@@ -19,6 +20,11 @@ export async function register() {
       console.log(`[${new Date().toISOString()}] Cron job running: Update Lawyers rating...`);
       await adminRating()
     });
+
+    // cron.schedule('*/3 * * * *', async () => {
+    //   console.log(`[${new Date().toISOString()}] Cron job running: Retry failed payments...`);
+    //   await paymentRetry()
+    // });
 
     // OTP store in-memory prune — once per hour to keep the Map from growing between restarts
     cron.schedule('0 * * * *', () => {
