@@ -39,6 +39,7 @@ export async function GET(request: NextRequest) {
     }
     const response = NextResponse.json(template, { status: 200 });
     response.headers.set("X-Total-Count", "1")
+    response.headers.set("Cache-Control", "no-store")
     return response
 }
 

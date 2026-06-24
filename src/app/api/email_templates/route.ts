@@ -65,5 +65,6 @@ export async function GET(request: NextRequest) {
     const header_str = (_range[0] ?? 0) + '-' + (_range[1] ?? 9) + '/' + total
     response.headers.set("Content-Range", "email_templates " + header_str)
     response.headers.set("X-Total-Count", total.toString())
+    response.headers.set("Cache-Control", "no-store")
     return response
 }

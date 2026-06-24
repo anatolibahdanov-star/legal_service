@@ -583,13 +583,22 @@ ${emailData.bodyText}${cta}
 `
 }
 
+// Turns plain http(s) URLs (already HTML-escaped) into clickable links so an
+// inline {question_url}/{documents_url}/{payment_url} placeholder renders as a
+// real hyperlink, not raw text.
+const linkifyUrls = (escaped: string): string =>
+  escaped.replace(
+    /(https?:\/\/[^\s<]+)/g,
+    '<a href="$1" target="_blank" rel="noopener noreferrer" style="color:#5A8FB5; text-decoration:underline; word-break:break-all;">$1</a>'
+  )
+
 const buildBrandedBodyHtml = (bodyText: string): string => {
   const lines = bodyText.split('\n')
   const out: string[] = []
   for (const raw of lines) {
     const line = raw.trim()
     if (line === '') continue
-    const safe = escapeHtml(line)
+    const safe = linkifyUrls(escapeHtml(line))
     if (line.startsWith('•')) {
       out.push(`<p style="margin:4px 0 4px 8px; font-size:15px; line-height:22px; color:#0F1B2D;">${safe}</p>`)
     } else {
