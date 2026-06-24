@@ -4,6 +4,7 @@ import { lostResponse } from './cron/lostResponse';
 import { adminRating } from './cron/adminRating';
 import { cleanupAuthAttemptsDb, cleanupOtpStoreMemory } from './cron/cleanupAuthAttempts';
 // import { paymentRetry } from './cron/paymentRetry';
+// import { unpaidReminder } from './cron/unpaidReminder';
 
 export async function register() {
     console.log("process.env.NEXT_RUNTIME ", process.env.NEXT_RUNTIME)
@@ -24,6 +25,13 @@ export async function register() {
     // cron.schedule('*/3 * * * *', async () => {
     //   console.log(`[${new Date().toISOString()}] Cron job running: Retry failed payments...`);
     //   await paymentRetry()
+    // });
+
+    // Unpaid-question payment reminder — once every 3 days (09:00).
+    // Disabled for now; uncomment (and the import above) when ready to enable.
+    // cron.schedule('0 9 */3 * *', async () => {
+    //   console.log(`[${new Date().toISOString()}] Cron job running: Unpaid question payment reminder...`);
+    //   await unpaidReminder()
     // });
 
     // OTP store in-memory prune — once per hour to keep the Map from growing between restarts

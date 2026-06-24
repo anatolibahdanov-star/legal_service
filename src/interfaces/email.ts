@@ -25,6 +25,20 @@ export interface EmailDataVerifyNewI {
   url: string;
 }
 
+export interface EmailDataBrandedI {
+  recipient: string;
+  subject: string;
+  /** Plain-text body with placeholders already substituted (no CTA/footer). */
+  bodyText: string;
+  buttonLabel: string;
+  buttonUrl: string;
+}
+
+export interface EmailDataBalanceI extends EmailDataBrandedI {
+  /** true = successful top-up, false = failed top-up (informational). */
+  success: boolean;
+}
+
 export interface EmailDataNewRequestI {
   email: string;
   username: string;

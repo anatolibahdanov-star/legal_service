@@ -1,8 +1,9 @@
 import { User } from "next-auth";
 import logger from "@/src/libs/logger";
-import { OrderStatusE } from "@/src/interfaces/payment";
+import { OrderStatusE, OrderTypeE } from "@/src/interfaces/payment";
 import { checkOrderStatus } from "./order";
 import { detectPaymentMethod } from "./paymentHistory";
+import { notifyBalanceTopupFailure } from "./balanceNotify";
 import { DBRetryRow, recordRetryOutcome } from "@/src/repositories/payments/repo";
 
 export const RETRY_INTERVALS_MINUTES = [5, 30];
@@ -88,6 +89,20 @@ export const processRetryablePayment = async (row: DBRetryRow, lockToken: string
         polled,
         owned,
     });
+
+    // Retries exhausted while still stuck — notify the user the top-up failed.
+    // Guarded by `owned` so concurrent workers can't double-send.
+    if (owned && finalStatus === OrderStatusE.FinalFailed && row.ptype === OrderTypeE.Balance) {
+        await notifyBalanceTopupFailure({
+            orderId: row.id,
+            userId: row.user_id,
+            amountKop: row.amount,
+            alphaId: row.alpha_id,
+            data: resultData,
+            eventAt: row.created_at,
+            reason: "Истекло время ожидания подтверждения платежа",
+        });
+    }
 
     return success && owned;
 };

@@ -3,7 +3,7 @@ import nodemailer from 'nodemailer';
 import logger from "@/src/libs/logger"
 import { format } from 'date-fns';
 import { dFormat } from '@/src/interfaces/data';
-import {EmailDataI, EmailDataForgotI, EmailDataNewRequestI, EmailLawRatingDataI, EmailContactDataI, EmailPdfAttachmentI, EmailDataVerifyI, EmailDataVerifyNewI} from "@/src/interfaces/email"
+import {EmailDataI, EmailDataForgotI, EmailDataNewRequestI, EmailLawRatingDataI, EmailContactDataI, EmailPdfAttachmentI, EmailDataVerifyI, EmailDataVerifyNewI, EmailDataBalanceI, EmailDataBrandedI} from "@/src/interfaces/email"
 import { getAdministrators } from '../repositories/administrators/repo';
 import { DBFilterAdministrators } from '../interfaces/filters';
 import { getAdminAdminUrl, getAdminContactUrl, getAdminQuestionUrl, getAdminUserUrl } from '../helpers/tools';
@@ -563,4 +563,122 @@ export async function SendSendGridPdfAttachment(
     })
     return false
   }
+}
+
+const BRAND_EMAIL_LOGO = () => {
+  const base = (process.env.NEXT_PUBLIC_URL ?? process.env.NEXTAUTH_URL ?? 'https://enki.legal').replace(/\/+$/, '')
+  return base + '/site/logo_web.png'
+}
+
+const buildBrandedEmailText = (emailData: EmailDataBrandedI): string => {
+  const cta = emailData.buttonLabel && emailData.buttonUrl
+    ? `\n\n${emailData.buttonLabel}: ${emailData.buttonUrl}`
+    : ''
+  return `${emailData.subject}
+
+${emailData.bodyText}${cta}
+
+С уважением,
+Команда enki.legal
+`
+}
+
+const buildBrandedBodyHtml = (bodyText: string): string => {
+  const lines = bodyText.split('\n')
+  const out: string[] = []
+  for (const raw of lines) {
+    const line = raw.trim()
+    if (line === '') continue
+    const safe = escapeHtml(line)
+    if (line.startsWith('•')) {
+      out.push(`<p style="margin:4px 0 4px 8px; font-size:15px; line-height:22px; color:#0F1B2D;">${safe}</p>`)
+    } else {
+      out.push(`<p style="margin:0 0 14px; font-size:15px; line-height:22px; color:#3a4452;">${safe}</p>`)
+    }
+  }
+  return out.join('\n')
+}
+
+const buildBrandedEmailHtml = (emailData: EmailDataBrandedI): string => {
+  const safeSubject = escapeHtml(emailData.subject)
+  const bodyHtml = buildBrandedBodyHtml(emailData.bodyText)
+  const button = emailData.buttonLabel && emailData.buttonUrl
+    ? `<table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:8px auto 28px;">
+                  <tr>
+                    <td style="background:#5A8FB5; border-radius:12px;">
+                      <a href="${escapeHtml(emailData.buttonUrl)}" target="_blank" rel="noopener noreferrer" style="display:inline-block; padding:14px 32px; font-size:15px; font-weight:600; color:#FFFFFF; text-decoration:none;">${escapeHtml(emailData.buttonLabel)}</a>
+                    </td>
+                  </tr>
+                </table>`
+    : ''
+  return `<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>${safeSubject}</title>
+  </head>
+  <body style="margin:0; padding:0; background:#F5F7FA; font-family: Arial, Helvetica, sans-serif; color:#0F1B2D;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F5F7FA; padding:32px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px; background:#FFFFFF; border-radius:16px; padding:40px;">
+            <tr>
+              <td>
+                <img src="${BRAND_EMAIL_LOGO()}" alt="enki.legal" width="120" style="display:block; height:auto; margin:0 0 28px;" />
+                <h1 style="margin:0 0 24px; font-size:22px; line-height:28px; color:#0F1B2D;">${safeSubject}</h1>
+                ${bodyHtml}
+                ${button}
+                <hr style="border:none; border-top:1px solid #E6EBF0; margin:24px 0;" />
+                <p style="margin:0; font-size:13px; line-height:20px; color:#6B7280;">С уважением,<br />Команда enki.legal</p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`
+}
+
+/**
+ * Sends a transactional notification wrapped in the shared branded HTML shell
+ * (enki.legal logo header + body paragraphs + CTA button + footer).
+ *
+ * The copy (subject / body / button label) is resolved upstream from the
+ * editable `email_template` rows. Returns `true` on success, `false` on any
+ * SendGrid failure, `null` on missing required fields.
+ */
+export async function SendSendGridBrandedEmail(emailData: EmailDataBrandedI): Promise<boolean | null> {
+  const msg = "SENDGRID SEND SendSendGridBrandedEmail - "
+  if (!emailData.recipient || !emailData.subject || !emailData.bodyText) {
+    logger.error(msg + "Missing required fields", { recipient: emailData.recipient })
+    return null
+  }
+  const verifiedEmail = process.env.SENDGRID_API_EMAIL ?? 'anatoli.bahdanov@gmail.com'
+
+  const email = {
+    to: emailData.recipient,
+    from: verifiedEmail,
+    subject: emailData.subject,
+    text: buildBrandedEmailText(emailData),
+    html: buildBrandedEmailHtml(emailData),
+  }
+
+  try {
+    await sgMail.send(email)
+    logger.info(msg + "Email sent successfully", { recipient: emailData.recipient })
+    return true
+  } catch (error) {
+    logger.error(msg + "Error in sending email", (error as Error).message, { recipient: emailData.recipient })
+    return false
+  }
+}
+
+/**
+ * Balance top-up notification (success or failure). Thin wrapper over the
+ * shared branded sender — kept as a named entry point for balanceNotify.
+ */
+export async function SendSendGridBalanceEmail(emailData: EmailDataBalanceI): Promise<boolean | null> {
+  return SendSendGridBrandedEmail(emailData)
 }

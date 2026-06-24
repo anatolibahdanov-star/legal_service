@@ -18,6 +18,7 @@ export const AdminMenu = (props: MenuProps) => {
             <Menu.ResourceItem name="statistics" />
             <Menu.ResourceItem name="users" />
             <Menu.ResourceItem name="contacts" />
+            <Menu.ResourceItem name="email_templates" />
 
             {/* Spacer to push remaining items down */}
             <Box sx={{ flexGrow: 1 }} />

@@ -9,10 +9,12 @@ import {
     saveQuestionRating,
 } from "@/src/repositories/requests/repo"
 import {DBQuestion} from "@/src/interfaces/db"
-import {EmailDataI, EmailLawRatingDataI} from "@/src/interfaces/email"
+import {EmailLawRatingDataI} from "@/src/interfaces/email"
+import {QuestionStatusesE, EmailStatusesE} from "@/src/interfaces/data"
 import {sendGrokBot, sendConsultantPlusBot} from "@/src/libs/llm";
 import { toClientReply } from "@/src/libs/grokReply";
-import {sendEmailLowRating, SendSendGridEmail} from "@/src/libs/sendgrid"
+import {sendEmailLowRating} from "@/src/libs/sendgrid"
+import { notifyQuestionAnswer } from "@/src/services/questionAnswerNotify"
 import { invalidatePdfCache, deleteDraftPdf, regenerateCanonicalPdf } from "@/src/services/pdf"
 import logger from "@/src/libs/logger"
 import { UserRatingRequest } from '@/src/interfaces/api';
@@ -178,6 +180,11 @@ export async function PUT(request: Request) {
     const updatedQuestion: DBQuestion = await request.json();
     logger.info(msg + "request in updatedQuestion", updatedQuestion)
 
+    // child_id is the answered thread message: the root id for a first answer,
+    // a follow-up id for a clarifying answer. Computed here so both the Grok
+    // prompt builder and the email notification can reuse it.
+    const isClarifying = !!updatedQuestion.child_id && String(updatedQuestion.child_id) !== requestUrlId
+
     const session = await getServerSession(authOptions);
     logger.info(msg + "session in updatedQuestion", session)
     /* if(updatedQuestion.chat === 1) {
@@ -192,7 +199,6 @@ export async function PUT(request: Request) {
         );*/
     
     if(updatedQuestion?.isGenerate === true) {
-        const isClarifying = !!updatedQuestion.child_id && String(updatedQuestion.child_id) !== requestUrlId
         const grokInput = isClarifying
             ? await buildClarifyingGrokPrompt(Number(requestUrlId), updatedQuestion)
             : updatedQuestion.reply
@@ -241,20 +247,24 @@ export async function PUT(request: Request) {
         })()
     }
 
-    if(question?.status === 4 && question.email_status === 0) {
-        const domainUrl = process.env.NEXTAUTH_URL
-        const sendData: EmailDataI = {
+    if(question?.status === QuestionStatusesE.Approved && question.email_status === EmailStatusesE.None) {
+        const domainUrl = process.env.NEXTAUTH_URL ?? process.env.NEXT_PUBLIC_URL ?? 'https://enki.legal'
+        const questionUrl = domainUrl + '/consultation/' + question.uuid + '/'
+        const isSendEmail = await notifyQuestionAnswer({
             recipient: question.email,
-            url: domainUrl + '/consultation/' + question.uuid + '/',
-            username: question.username
-        }
-        const isSendEmail = await SendSendGridEmail(sendData)
-        let email_status = 1
+            userName: question.username,
+            questionId: question.id,
+            questionUrl,
+            isClarifying,
+        })
+        let email_status = EmailStatusesE.Sent
         if(!isSendEmail) {
-            logger.error("(ERROR)" + msg + "email on question ready was not sent", sendData)
-            email_status = 2
+            logger.error("(ERROR)" + msg + "email on question answer was not sent", { question_id: question.id })
+            email_status = EmailStatusesE.Error
         }
-        await updateEmailStatus(question.id, email_status)
+        // Guard on Approved so a clarifying question that raced in (re-arming
+        // email_status=None) is not clobbered by this send-result write.
+        await updateEmailStatus(question.id, email_status, QuestionStatusesE.Approved)
         question.email_status = email_status
     }
     const response = NextResponse.json(question, { status: 200 });

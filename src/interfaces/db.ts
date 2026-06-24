@@ -92,6 +92,18 @@ export interface DBOrder extends RowDataPacket {
   updated_at: DateTime;
 }
 
+export interface DBEmailTemplate extends RowDataPacket {
+  id: number;
+  code: string;
+  name: string;
+  subject: string;
+  body: string;
+  button_label: string | null;
+  is_active: number;
+  created_at: DateTime;
+  updated_at: DateTime;
+}
+
 export interface DBContact extends RowDataPacket {
   id: string;
   user_id: number|null;

@@ -11,9 +11,11 @@ import { AdminLayout } from '@/src/app/components/admin/AdminLayout';
 import {ProfileList} from "@/src/repositories/profile/admin-resources"
 import { OrderList } from "@/src/repositories/orders/admin-resources";
 import {ContactList, ContactShow} from "@/src/repositories/contacts/admin-resources"
+import {EmailTemplateList, EmailTemplateEdit} from "@/src/repositories/emailTemplates/admin-resources"
 import AccountBoxIcon from '@mui/icons-material/AccountBox';
 import PaymentsIcon from '@mui/icons-material/Payments';
 import ContactMailIcon from '@mui/icons-material/ContactMail';
+import MarkEmailReadIcon from '@mui/icons-material/MarkEmailRead';
 
 
 const api_url = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost/api';
@@ -47,6 +49,9 @@ const AdminApp = () => (
       ) : null,
       permissions === 'admin' ? (
           <Resource name="contacts" icon={ContactMailIcon} options={{ label: 'Саппорт' }} list={ContactList} show={ContactShow} />
+      ) : null,
+      permissions === 'admin' ? (
+          <Resource name="email_templates" icon={MarkEmailReadIcon} options={{ label: 'Шаблоны писем' }} list={EmailTemplateList} edit={EmailTemplateEdit} />
       ) : null,
     ]}
   </Admin>

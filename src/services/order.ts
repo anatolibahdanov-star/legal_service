@@ -9,6 +9,7 @@ import { QuestionStatusesE } from '@/src/interfaces/data';
 import { UserBalanceRequest, PaymentInfoRequest, PaymentStatusUpdateI } from "@/src/interfaces/api";
 import { createAlfaOrder, getAlfaOrderQR, getAlfaOrderStatus } from '@/src/libs/alfa.pay';
 import { balanceIncrement } from "./balance";
+import { notifyBalanceTopupSuccess, notifyBalanceTopupFailure } from "./balanceNotify";
 import { addTransaction } from "../repositories/transactions/repo";
 
 const msgGlobal = "SERVICE ORDER "
@@ -280,7 +281,30 @@ export const checkOrderStatus = async (slug:string, user: User): Promise<checkOr
                     data: updateOrder.transaction_info,
                 }
                 await balanceIncrement(balance)
+
+                // Notify the user their balance was topped up. balanceIncrement
+                // already committed, so user.balance is fresh for the email.
+                await notifyBalanceTopupSuccess({
+                    orderId: updatedOrderStatus.id,
+                    userId: updatedOrderStatus.user_id,
+                    amountKop: updatedOrderStatus.amount,
+                    alphaId: updatedOrderStatus.alpha_id,
+                    data: updateOrder.transaction_info,
+                    eventAt: updatedOrderStatus.updated_at ?? updatedOrderStatus.created_at,
+                })
             }
+        } else if (order_status === OrderStatusE.Error && updatedOrderStatus.ptype === OrderTypeE.Balance) {
+            // Terminal Alfa failure (decline/cancel/return) on a balance top-up.
+            // This branch runs once: the next poll short-circuits on alpha_status.
+            await notifyBalanceTopupFailure({
+                orderId: updatedOrderStatus.id,
+                userId: updatedOrderStatus.user_id,
+                amountKop: updatedOrderStatus.amount,
+                alphaId: updatedOrderStatus.alpha_id,
+                data: updateOrder.transaction_info,
+                eventAt: updatedOrderStatus.updated_at ?? updatedOrderStatus.created_at,
+                reason: transaction_info.message ?? null,
+            })
         }
 
         order = updatedOrderStatus
