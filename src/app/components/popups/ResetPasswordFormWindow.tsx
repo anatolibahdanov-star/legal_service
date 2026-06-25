@@ -30,7 +30,7 @@ export function ResetPasswordFormWindow({ isOpen, onClose, onSwitchToLogin }: Fo
 
   return (
     <div
-      className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50"
+      className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-[200]"
       onClick={onClose}
     >
       <div
