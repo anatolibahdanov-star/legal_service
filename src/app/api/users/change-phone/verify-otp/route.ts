@@ -9,7 +9,6 @@ import {
   getPhoneStatus,
   recordFailedAttempt,
   resetAttempts,
-  LOCKOUT_TRIGGER_ATTEMPTS,
 } from '@/src/repositories/otp_attempts/repo';
 
 export const dynamic = 'force-dynamic';
@@ -129,7 +128,7 @@ export async function POST(request: NextRequest) {
           success: false,
           code: result.reason,
           message,
-          attemptsLeft: Math.max(0, LOCKOUT_TRIGGER_ATTEMPTS - fail.attempts),
+          attemptsLeft: fail.attemptsLeft,
         },
         { status: result.reason === 'expired' ? 410 : 400 },
       );

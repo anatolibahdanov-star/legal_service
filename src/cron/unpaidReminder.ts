@@ -1,6 +1,7 @@
 import logger from "@/src/libs/logger"
 import { getUsersWithUnpaidReminder, markUserUnpaidReminded } from "@/src/repositories/requests/repo"
 import { notifyUnpaidReminder } from "@/src/services/unpaidReminderNotify"
+import { getSettingBool, getSettingInt } from "@/src/services/settings"
 
 const msgGlobal = "CRON unpaidReminder - "
 
@@ -31,7 +32,12 @@ export const unpaidReminder = async (): Promise<boolean> => {
     isRunning = true
 
     try {
-        const rows = await getUsersWithUnpaidReminder()
+        if (!getSettingBool('unpaid_reminder_enabled', false)) {
+            logger.info(msg + "reminders disabled in settings, skipping")
+            return true
+        }
+        const minAgeDays = Math.max(0, getSettingInt('unpaid_reminder_days', 3))
+        const rows = await getUsersWithUnpaidReminder(minAgeDays)
         if (rows === null) {
             logger.error(msg + "can't load users with unpaid questions")
             return false

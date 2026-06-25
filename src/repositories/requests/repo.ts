@@ -855,14 +855,16 @@ export interface UnpaidReminderRow extends RowDataPacket {
  * question_id is the earliest such question (the one waiting longest).
  * Drives the once-every-3-days "top up your balance" reminder cron.
  */
-export async function getUsersWithUnpaidReminder(): Promise<UnpaidReminderRow[] | null> {
+export async function getUsersWithUnpaidReminder(minAgeDays: number = 0): Promise<UnpaidReminderRow[] | null> {
     const msg = msgGlobal + "getUsersWithUnpaidReminder - ";
+    const ageClause = minAgeDays > 0 ? ' AND q.created_at <= (NOW() - INTERVAL ? DAY)' : '';
     const query = `SELECT q.user_id, u.name AS username, u.email AS email, MIN(q.id) AS question_id
         FROM question q JOIN user u ON q.user_id = u.id
-        WHERE q.status = ? AND q.reminder_sent = 0 AND q.parent_id IS NULL
+        WHERE q.status = ? AND q.reminder_sent = 0 AND q.parent_id IS NULL${ageClause}
         GROUP BY q.user_id, u.name, u.email
         ORDER BY q.user_id ASC`;
-    const findFunc = find({ query, values: [QuestionStatusesE.Unpaid] });
+    const values: Array<string | number> = minAgeDays > 0 ? [QuestionStatusesE.Unpaid, minAgeDays] : [QuestionStatusesE.Unpaid];
+    const findFunc = find({ query, values });
     const executed = await queryTransactionWrapper<UnpaidReminderRow>([findFunc], msg);
     if (!executed) {
         logger.error(msg + "SQL not results from execution", query)

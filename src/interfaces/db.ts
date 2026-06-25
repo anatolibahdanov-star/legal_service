@@ -104,6 +104,43 @@ export interface DBEmailTemplate extends RowDataPacket {
   updated_at: DateTime;
 }
 
+export interface DBSetting extends RowDataPacket {
+  id: number;
+  code: string;
+  name: string;
+  description: string | null;
+  value: string;
+  value_type: 'int' | 'decimal' | 'bool' | 'string' | 'text';
+  grp: string;
+  weight: number;
+  is_active: number;
+  created_at: DateTime;
+  updated_at: DateTime;
+}
+
+export interface DBSettingAudit extends RowDataPacket {
+  id: number;
+  setting_code: string;
+  old_value: string | null;
+  new_value: string | null;
+  admin_id: number | null;
+  admin_name?: string | null;
+  admin_username?: string | null;
+  created_at: DateTime;
+}
+
+export interface DBPromptVersion extends RowDataPacket {
+  id: number;
+  code: string;
+  name: string;
+  body: string;
+  is_active: number;
+  admin_id: number | null;
+  admin_name?: string | null;
+  admin_username?: string | null;
+  created_at: DateTime;
+}
+
 export interface DBContact extends RowDataPacket {
   id: string;
   user_id: number|null;

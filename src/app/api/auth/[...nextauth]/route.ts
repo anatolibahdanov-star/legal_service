@@ -13,7 +13,7 @@ import {
   getLoginStatus,
   recordFailedLogin,
   resetLoginAttempts,
-  LOCKOUT_TRIGGER_ATTEMPTS as LOGIN_LOCKOUT_TRIGGER,
+  loginMaxAttempts,
 } from "@/src/repositories/login_attempts/repo"
 
 const GENERIC_LOGIN_ERROR = "Неверный email или пароль."
@@ -28,7 +28,7 @@ interface LoginErrorPayload {
   lockedUntil?: string;
 }
 const encodeLoginError = (payload: LoginErrorPayload): string => JSON.stringify(payload);
-const remainingAttempts = (used: number): number => Math.max(0, LOGIN_LOCKOUT_TRIGGER - used);
+const remainingAttempts = (used: number): number => Math.max(0, loginMaxAttempts() - used);
 
 const isBlocked = (entity: DBUser): boolean =>
   entity.status !== undefined && entity.status !== null && entity.status !== UserStatusesE.Activated

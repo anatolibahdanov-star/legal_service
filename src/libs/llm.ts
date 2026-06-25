@@ -4,6 +4,10 @@ import { generateText } from 'ai';
 import { format } from 'date-fns';
 import * as fs from 'fs';
 import path from 'path';
+import { getActivePromptBody } from '@/src/repositories/settings/repo';
+import { getSettingString } from '@/src/services/settings';
+
+export const GROK_PROMPT_CODE = 'grok_answer';
 
 const NO_LEGAL_QUESTION_MARKER = '[NO_LEGAL_QUESTION]';
 
@@ -108,16 +112,24 @@ export async function sendIIBot(question: string): Promise<string | null | undef
 export async function sendGrokBot(question: string): Promise<GrokReplyResult | null | undefined> {
     const msg = "SEND GROK: "
     let systemPrompt = '\nResponse translate to Russian language.\nLimit response with 1500 symbols.'
-    const filePath: string = path.join(process.cwd(), 'src/libs/Promt_8.1_2604_v2.md');
-    try {
-        systemPrompt = fs.readFileSync(filePath, 'utf-8');
-    } catch (error) {
-      console.error("(ERROR)" + msg + "Error reading PROMPT file:", error, filePath);
+
+    const activePrompt = await getActivePromptBody(GROK_PROMPT_CODE);
+    if (activePrompt) {
+        systemPrompt = activePrompt;
+    } else {
+        const filePath: string = path.join(process.cwd(), 'src/libs/Promt_8.1_2604_v2.md');
+        try {
+            systemPrompt = fs.readFileSync(filePath, 'utf-8');
+        } catch (error) {
+            console.error("(ERROR)" + msg + "Error reading PROMPT file:", error, filePath);
+        }
     }
+
+    const model = getSettingString('ai_model', 'grok-4');
 
     try {
         const { text } = await generateText({
-            model: xai('grok-4'),
+            model: xai(model),
             system: systemPrompt,
             prompt: question,
         });

@@ -1,11 +1,15 @@
 import { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 import { findOne, insert, executeTransactionWrapper } from '@/src/libs/db';
 import logger from '@/src/libs/logger';
+import { getSettingInt } from '@/src/services/settings';
 
 const msgGlobal = 'REPO LOGIN_ATTEMPTS ';
 
-export const LOCKOUT_TRIGGER_ATTEMPTS = 5;
-export const LOCKOUT_DURATION_MS = 15 * 60 * 1000;
+const DEFAULT_LOGIN_LOCKOUT_TRIGGER = 5;
+const DEFAULT_LOGIN_LOCKOUT_MINUTES = 15;
+
+export const loginMaxAttempts = (): number => Math.max(1, getSettingInt('login_max_attempts', DEFAULT_LOGIN_LOCKOUT_TRIGGER));
+const loginLockMs = (): number => Math.max(1, getSettingInt('login_lock_minutes', DEFAULT_LOGIN_LOCKOUT_MINUTES)) * 60 * 1000;
 
 export interface DBLoginAttempts extends RowDataPacket {
   email: string;
@@ -71,9 +75,9 @@ export async function recordFailedLogin(email: string): Promise<RecordLoginFailR
 
   let action: LoginFailAction = 'continue';
   let lockedUntil: Date | null = lockExpired ? null : prevLockedUntil;
-  if (nextAttempts > LOCKOUT_TRIGGER_ATTEMPTS) {
+  if (nextAttempts > loginMaxAttempts()) {
     action = 'lock_15min';
-    lockedUntil = new Date(now.getTime() + LOCKOUT_DURATION_MS);
+    lockedUntil = new Date(now.getTime() + loginLockMs());
   }
 
   const upsertQuery = `

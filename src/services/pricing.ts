@@ -1,4 +1,5 @@
 import logger from '@/src/libs/logger';
+import { getSettingNumber } from '@/src/services/settings';
 
 const DEFAULT_PRICE_RUB = 4.5;
 const DEFAULT_PRICE_RUB_LK = 3;
@@ -8,7 +9,6 @@ export type QuestionSource = 'lk' | 'main';
 function readPositiveEnv(name: string, fallback: number): number {
   const raw = process.env[name];
   if (!raw) {
-    logger.warn(`${name} env not set — falling back to default`, { default: fallback });
     return fallback;
   }
   const n = Number(raw);
@@ -19,23 +19,19 @@ function readPositiveEnv(name: string, fallback: number): number {
   return n;
 }
 
-/**
- * Per-question price for the main-page wizard flow (guest landing).
- * Backed by QUESTION_PRICE_RUB; default 4.5₽.
- * Возвращается в рублях (может быть дробной — например 4.5). Для Альфы
- * умножается на 100 в initNewOrder (OneTime). chargeUserBalance принимает
- * рубли и сам конвертит в копейки.
- */
-export function getQuestionPrice(): number {
-  return readPositiveEnv('QUESTION_PRICE_RUB', DEFAULT_PRICE_RUB);
+export function getFixedFee(): number {
+  return Math.max(0, getSettingNumber('fixed_fee_rub', 0));
 }
 
-/**
- * Per-question price when пользователь задаёт вопрос изнутри ЛК.
- * Backed by QUESTION_PRICE_RUB_LK; default 3₽.
- */
+// Returns rubles, with the fixed service fee already added on (effective charge).
+export function getQuestionPrice(): number {
+  const base = getSettingNumber('question_price_main', readPositiveEnv('QUESTION_PRICE_RUB', DEFAULT_PRICE_RUB));
+  return base + getFixedFee();
+}
+
 export function getQuestionPriceLK(): number {
-  return readPositiveEnv('QUESTION_PRICE_RUB_LK', DEFAULT_PRICE_RUB_LK);
+  const base = getSettingNumber('question_price_lk', readPositiveEnv('QUESTION_PRICE_RUB_LK', DEFAULT_PRICE_RUB_LK));
+  return base + getFixedFee();
 }
 
 /** Dispatches to the right price helper based on where the wizard runs. */

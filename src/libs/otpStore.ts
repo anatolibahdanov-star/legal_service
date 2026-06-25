@@ -1,7 +1,11 @@
 import logger from '@/src/libs/logger';
+import { getSettingInt } from '@/src/services/settings';
 
-const OTP_TTL_MS = 24 * 60 * 60 * 1000;
+const DEFAULT_OTP_TTL_MINUTES = 24 * 60;
 const TOKEN_TTL_MS = 20 * 60 * 1000;
+
+const otpTtlMs = (): number =>
+  Math.max(1, getSettingInt('otp_ttl_minutes', DEFAULT_OTP_TTL_MINUTES)) * 60 * 1000;
 
 interface OtpEntry {
   code: string;
@@ -40,19 +44,20 @@ export interface CreateOtpResult {
 // previous one, so the previously sent unused code becomes invalid immediately.
 export const createOtp = (phone: string): CreateOtpResult => {
   const now = Date.now();
+  const ttlMs = otpTtlMs();
   const replaced = otpStore.has(phone);
   const code = generateCode();
   otpStore.set(phone, {
     code,
-    expiresAt: now + OTP_TTL_MS,
+    expiresAt: now + ttlMs,
     createdAt: now,
   });
   logger.info('OTP store - created', {
     phone_tail: phone.slice(-4),
-    expires_in_sec: OTP_TTL_MS / 1000,
+    expires_in_sec: ttlMs / 1000,
     replaced_previous: replaced,
   });
-  return { ok: true, code, expiresInSec: OTP_TTL_MS / 1000 };
+  return { ok: true, code, expiresInSec: ttlMs / 1000 };
 };
 
 export type VerifyOtpResult =
