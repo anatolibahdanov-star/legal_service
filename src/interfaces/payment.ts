@@ -13,6 +13,7 @@ export enum OrderStatusE {
   Error = 3,
   Paid = 4,
   Unpaid = 5,
+  FinalFailed = 6,
 }
 
 export enum BalanceTypeE {
@@ -87,4 +88,65 @@ export interface newOrderResponse extends ServiceResponse {
 
 export interface checkOrderResponse extends ServiceResponse {
   order: DBOrder|null;
+}
+
+export enum PaymentOperationE {
+  Payment = "payment",
+  Topup = "topup",
+  Charge = "charge",
+}
+
+export enum PaymentMethodE {
+  Card = "card",
+  Sbp = "sbp",
+  AlfaPay = "alfapay",
+  YandexPay = "yandexpay",
+  Balance = "balance",
+}
+
+export enum PaymentDisplayStatusE {
+  Success = "success",
+  Processing = "processing",
+  Error = "error",
+  Cancelled = "cancelled",
+}
+
+export interface PaymentHistoryItemI {
+  id: string;
+  displayId: string;
+  createdAt: string;
+  amount: number;
+  operation: PaymentOperationE;
+  method: PaymentMethodE;
+  status: PaymentDisplayStatusE;
+  questionId: number | null;
+  questionUuid: string | null;
+}
+
+export interface PaymentHistoryResponseI {
+  items: PaymentHistoryItemI[];
+  count: number;
+  totalSpent: number;
+}
+
+export enum AdminOperationTypeE {
+  Payment = "payment",
+  Charge = "charge",
+  Refund = "refund",
+  Manual = "manual",
+}
+
+export interface AdminBalanceOperationI {
+  id: string;
+  createdAt: string;
+  type: AdminOperationTypeE;
+  amount: number;
+  comment: string | null;
+  actor: string;
+  questionId: number | null;
+  questionUuid: string | null;
+}
+
+export interface AdminOperationsResponseI {
+  items: AdminBalanceOperationI[];
 }

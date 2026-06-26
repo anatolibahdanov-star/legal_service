@@ -7,7 +7,7 @@ import {CountResult, DBQuestion, DBUser} from "@/src/interfaces/db"
 import {DBFilterQuestions} from "@/src/interfaces/filters"
 import {UserRatingRequest, UserRequest} from "@/src/interfaces/api"
 import {getCategoryByName} from "@/src/repositories/categories/repo"
-import { ReplyStatusesE, FinalReplyStatusesE, QuestionStatusesE, QuestionInfoStatusesE } from '@/src/interfaces/data';
+import { ReplyStatusesE, FinalReplyStatusesE, QuestionStatusesE, QuestionInfoStatusesE, EmailStatusesE } from '@/src/interfaces/data';
 import { generateShortId } from '@/src/services/pdf/shortId';
 
 const msgGlobal = "REPO QUESTION "
@@ -542,8 +542,12 @@ export async function addClientQuestion(data: UserRequest): Promise<DBQuestion |
     }
 
     if(parent) {
-        const questionUpdateSQL = `UPDATE question SET job_status=?, updated_at=NOW() WHERE id=?`
-        const questionUpdateData = [QuestionStatusesE.InProgress, parent]
+        // Re-arm the answer-notification latch on the root question. email_status
+        // is a per-root flag set to Sent after the first answer email; clearing it
+        // here lets the next published answer (to this clarifying question) notify
+        // the user again. Without this, clarifying answers would never email.
+        const questionUpdateSQL = `UPDATE question SET job_status=?, email_status=?, updated_at=NOW() WHERE id=?`
+        const questionUpdateData = [QuestionStatusesE.InProgress, EmailStatusesE.None, parent]
 
         const updateFunc = update({ query: questionUpdateSQL, values: questionUpdateData});
         const executedQueries = await executeTransactionWrapper<ResultSetHeader>([updateFunc], msg);
@@ -624,10 +628,18 @@ export async function addLLMReply(id: string, llm: string, duration: number): Pr
     return getQuestionsByIds([id])
 }
 
-export async function updateEmailStatus(id: string, email_status: number): Promise<DBQuestion[] | null> {
+export async function updateEmailStatus(id: string, email_status: number, requireJobStatus?: number): Promise<DBQuestion[] | null> {
     const msg = msgGlobal + "updateEmailStatus - ";
-    const query = `UPDATE question SET email_status=?, updated_at=NOW() WHERE id=?`;
-    const params = [email_status, id]
+    let query = `UPDATE question SET email_status=?, updated_at=NOW() WHERE id=?`;
+    const params: Array<string | number> = [email_status, id]
+    if (requireJobStatus !== undefined) {
+        // Persist the send result only while the answer is still the published
+        // one. If a new clarifying question raced in (flipping job_status back to
+        // InProgress and re-arming email_status=None), this skips the write so we
+        // don't clobber that re-arm — the next answer will still notify.
+        query += ` AND job_status=?`
+        params.push(requireJobStatus)
+    }
     const updateFunc = update({ query, values: params});
     const executedQueries = await executeTransactionWrapper<ResultSetHeader>([updateFunc], msg);
     if (!executedQueries) {
@@ -829,6 +841,60 @@ export async function deleteQuestion(id: string): Promise<DBQuestion[] | null> {
         logger.warn(msg + "No updates", result[0])
     }
     return [question]
+}
+
+export interface UnpaidReminderRow extends RowDataPacket {
+    user_id: number;
+    username: string;
+    email: string;
+    question_id: number;
+}
+
+/**
+ * One row per user who has at least one Unpaid, not-yet-reminded root question.
+ * question_id is the earliest such question (the one waiting longest).
+ * Drives the once-every-3-days "top up your balance" reminder cron.
+ */
+export async function getUsersWithUnpaidReminder(minAgeDays: number = 0): Promise<UnpaidReminderRow[] | null> {
+    const msg = msgGlobal + "getUsersWithUnpaidReminder - ";
+    const ageClause = minAgeDays > 0 ? ' AND q.created_at <= (NOW() - INTERVAL ? DAY)' : '';
+    const query = `SELECT q.user_id, u.name AS username, u.email AS email, MIN(q.id) AS question_id
+        FROM question q JOIN user u ON q.user_id = u.id
+        WHERE q.status = ? AND q.reminder_sent = 0 AND q.parent_id IS NULL${ageClause}
+        GROUP BY q.user_id, u.name, u.email
+        ORDER BY q.user_id ASC`;
+    const values: Array<string | number> = minAgeDays > 0 ? [QuestionStatusesE.Unpaid, minAgeDays] : [QuestionStatusesE.Unpaid];
+    const findFunc = find({ query, values });
+    const executed = await queryTransactionWrapper<UnpaidReminderRow>([findFunc], msg);
+    if (!executed) {
+        logger.error(msg + "SQL not results from execution", query)
+        return null
+    }
+    const [[rows]] = executed;
+    return rows.length === 0 ? [] : rows;
+}
+
+/**
+ * Marks all of a user's currently-Unpaid questions as reminded, so the user is
+ * notified only once per backlog. A NEW question (reminder_sent defaults to 0)
+ * re-arms the reminder on a later cron run.
+ */
+export async function markUserUnpaidReminded(userId: number | string): Promise<boolean> {
+    const msg = msgGlobal + "markUserUnpaidReminded - ";
+    const query = `UPDATE question SET reminder_sent = 1, updated_at = NOW() WHERE user_id = ? AND status = ? AND reminder_sent = 0`;
+    const updateFunc = update({ query, values: [userId, QuestionStatusesE.Unpaid] });
+    const executed = await executeTransactionWrapper<ResultSetHeader>([updateFunc], msg);
+    if (!executed) {
+        logger.error(msg + "SQL not results from execution", query)
+        return false
+    }
+    const [result] = executed;
+    if (result[0]?.affectedRows > 0) {
+        logger.info(msg + 'marked', { user_id: userId, rows: result[0].affectedRows })
+    } else {
+        logger.warn(msg + "no rows marked", { user_id: userId })
+    }
+    return true
 }
 
 export async function updateInfoStatus(id: string, info_status: QuestionInfoStatusesE): Promise<DBQuestion[] | null> {

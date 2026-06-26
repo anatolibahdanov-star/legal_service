@@ -1,17 +1,51 @@
 import { NextRequest, NextResponse } from 'next/server';
-import {login, profile, register, reset, getUsersByIds, saveUser, deleteUser} from "@/src/repositories/users/repo"
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/src/app/api/auth/[...nextauth]/route';
+import {login, profile, register, reset, getUsersByIds, saveUser, deleteUser, issueEmailVerificationToken} from "@/src/repositories/users/repo"
 import {DBUser} from "@/src/interfaces/db"
 import logger from "@/src/libs/logger"
-import { SendSendGridEmailForgot } from '@/src/libs/sendgrid';
+import { SendSendGridEmailForgot, SendSendGridEmailVerifyNewEmail } from '@/src/libs/sendgrid';
 import { EmailDataForgotI } from '@/src/interfaces/email';
 import { verifyCaptcha } from "@/src/libs/captcha"
 import { maskEmail } from "@/src/helpers/maskEmail"
+import { isPhoneEmail } from "@/src/libs/phoneIdentity"
 
 export const dynamic = 'force-dynamic';
+
+function sanitizeUser(user: DBUser | null | undefined): Record<string, unknown> | null {
+  if (!user) return null;
+  const safe: Record<string, unknown> = { ...user };
+  delete safe.password;
+  delete safe.temp_password;
+  delete safe.email_verify_token;
+  return safe;
+}
+
+type AccessResult =
+  | { ok: true; isSelf: boolean; isStaff: boolean }
+  | { ok: false; status: number; message: string };
+
+async function authorizeUserAccess(targetId: string): Promise<AccessResult> {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return { ok: false, status: 401, message: 'Требуется авторизация.' };
+  }
+  const isSelf = session.user.id.toString() === targetId;
+  const isStaff = session.user.role !== 'user';
+  if (!isSelf && !isStaff) {
+    return { ok: false, status: 403, message: 'Доступ запрещён.' };
+  }
+  return { ok: true, isSelf, isStaff };
+}
 export async function GET(request: NextRequest) {
   const msg = "API USER GET: "
   // console.log(msg + "request", request)
-  const requestUrlId = parseInt(request.url.split('/api/users/')[1]);
+  const rawId = request.url.split('/api/users/')[1];
+  const auth = await authorizeUserAccess(rawId);
+  if (!auth.ok) {
+    return NextResponse.json({ success: false, message: auth.message }, { status: auth.status });
+  }
+  const requestUrlId = parseInt(rawId);
   console.log(msg + 'requestUrlId', requestUrlId, typeof requestUrlId)
 
   let user: DBUser | null = null
@@ -33,7 +67,7 @@ export async function GET(request: NextRequest) {
       );
   }
   console.log(msg + 'user out', user)
-  const response = NextResponse.json(user, { status: 200 });
+  const response = NextResponse.json(sanitizeUser(user), { status: 200 });
   response.headers.set("X-Total-Count", "1")
   return response
 }
@@ -169,19 +203,29 @@ export async function POST(request: Request) {
   }
 
   logger.info(msg + 'response out', user)
-  const response = NextResponse.json(user, { status: 200 });
+  const response = NextResponse.json(sanitizeUser(user), { status: 200 });
   response.headers.set("X-Total-Count", "1")
-  return response 
+  return response
 }
 
 export async function PUT(request: Request) {
     const msg = "API USER PUT: "
     // console.log(msg + "request", request)
     const requestUrlId = request.url.split('/api/users/')[1];
-    const updatedUser: DBUser = await request.json(); 
+    const auth = await authorizeUserAccess(requestUrlId);
+    if (!auth.ok) {
+        return NextResponse.json({ success: false, message: auth.message }, { status: auth.status });
+    }
+    const updatedUser: DBUser = await request.json();
+    if (typeof updatedUser.email === 'string') {
+        updatedUser.email = updatedUser.email.trim();
+    }
 
     let user: DBUser | null = null
     try {
+        const before = await getUsersByIds([requestUrlId])
+        const oldEmail = before?.email ?? null
+
         user = await saveUser(requestUrlId, updatedUser)
         console.log(msg + 'user', user)
         if (user === null) {
@@ -191,6 +235,28 @@ export async function PUT(request: Request) {
                 { status: 404 }
             );
         }
+
+        const newEmail = updatedUser.email ?? ''
+        const emailChanged = auth.isSelf && !!newEmail && !!oldEmail
+            && newEmail.toLowerCase() !== oldEmail.toLowerCase()
+            && !isPhoneEmail(newEmail)
+        if (emailChanged) {
+            const token = await issueEmailVerificationToken(requestUrlId)
+            if (!token) {
+                logger.error("(ERROR)" + msg + "could not issue verification token", { user_id: requestUrlId })
+            } else {
+                const base = (process.env.NEXTAUTH_URL ?? 'https://enki.legal').replace(/\/$/, '')
+                const verifyUrl = `${base}/api/users/verify-email?token=${encodeURIComponent(token)}`
+                const sent = await SendSendGridEmailVerifyNewEmail({
+                    recipient: newEmail,
+                    username: user.name ?? '',
+                    url: verifyUrl,
+                })
+                if (!sent) {
+                    logger.error("(ERROR)" + msg + "new-email verification letter not sent", { user_id: requestUrlId })
+                }
+            }
+        }
     } catch(err) {
         console.error("(ERROR)" + msg, (err as Error).message)
         return NextResponse.json(
@@ -199,7 +265,8 @@ export async function PUT(request: Request) {
         );
     }
     console.log(msg + 'updated', user)
-    const response = NextResponse.json(user, { status: 200 });
+    const fresh = await getUsersByIds([requestUrlId])
+    const response = NextResponse.json(sanitizeUser(fresh ?? user), { status: 200 });
     response.headers.set("X-Total-Count", "1")
     return response
 }
@@ -208,9 +275,28 @@ export async function DELETE(request: Request) {
     const msg = "API USER DELETE: "
     // console.log(msg + "request", request)
     const requestUrlId = request.url.split('/api/users/')[1];
+    const auth = await authorizeUserAccess(requestUrlId);
+    if (!auth.ok) {
+        return NextResponse.json({ success: false, message: auth.message }, { status: auth.status });
+    }
 
     let user: DBUser | null = null
     try {
+        const existing = await getUsersByIds([requestUrlId])
+        if (existing === null) {
+            console.error(msg + "User not found", requestUrlId)
+            return NextResponse.json(
+                { success: false, message: msg + 'User not found.' },
+                { status: 404 }
+            );
+        }
+        if (Number(existing.balance_kop ?? existing.balance ?? 0) > 0) {
+            logger.warn(msg + "blocked deletion of user with positive balance", { user_id: requestUrlId })
+            return NextResponse.json(
+                { success: false, message: 'Невозможно удалить пользователя с положительным балансом.' },
+                { status: 409 }
+            );
+        }
         user = await deleteUser(requestUrlId)
         console.log(msg + 'deleted', user)
         if (user === null) {
@@ -228,7 +314,7 @@ export async function DELETE(request: Request) {
         );
     }
     console.log(msg + 'deleted', user)
-    const response = NextResponse.json(user, { status: 200 });
+    const response = NextResponse.json(sanitizeUser(user), { status: 200 });
     response.headers.set("X-Total-Count", "1")
     return response
 }

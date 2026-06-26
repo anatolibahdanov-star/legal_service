@@ -3,7 +3,7 @@ import nodemailer from 'nodemailer';
 import logger from "@/src/libs/logger"
 import { format } from 'date-fns';
 import { dFormat } from '@/src/interfaces/data';
-import {EmailDataI, EmailDataForgotI, EmailDataNewRequestI, EmailLawRatingDataI, EmailContactDataI, EmailPdfAttachmentI} from "@/src/interfaces/email"
+import {EmailDataI, EmailDataForgotI, EmailDataNewRequestI, EmailLawRatingDataI, EmailContactDataI, EmailPdfAttachmentI, EmailDataVerifyI, EmailDataVerifyNewI, EmailDataBalanceI, EmailDataBrandedI} from "@/src/interfaces/email"
 import { getAdministrators } from '../repositories/administrators/repo';
 import { DBFilterAdministrators } from '../interfaces/filters';
 import { getAdminAdminUrl, getAdminContactUrl, getAdminQuestionUrl, getAdminUserUrl } from '../helpers/tools';
@@ -157,6 +157,201 @@ export async function SendSendGridEmailForgot(emailData: EmailDataForgotI): Prom
     subject: FORGOT_EMAIL_SUBJECT,
     text: buildForgotEmailText(emailData.recipient, emailData.password, loginUrl),
     html: buildForgotEmailHtml(emailData.recipient, emailData.password, loginUrl),
+  };
+
+  try {
+    await sgMail.send(email);
+    logger.info(msg + "Email sent successfully", { recipient: emailData.recipient })
+    return true
+  } catch (error) {
+    logger.error(msg + "Error in sending email", (error as Error).message, { recipient: emailData.recipient })
+    return false
+  }
+}
+
+const VERIFY_EMAIL_SUBJECT = 'Подтверждение email — Enki.legal';
+
+const buildVerifyEmailText = (name: string, recipient: string, password: string, verifyUrl: string): string => {
+  const greeting = name && name.trim() ? `Добрый день, ${name.trim()}!` : 'Добрый день!';
+  return `${greeting}
+
+Спасибо, что решили воспользоваться платформой Enki.legal.
+
+Мы создали для вас аккаунт, чтобы вы могли получать профессиональные консультации от наших юристов, управлять своими вопросами и задавать дополнительные.
+
+Ваши данные для входа:
+Email: ${recipient}
+
+Временный пароль: ${password}
+
+Что нужно сделать дальше:
+1. Перейдите по ссылке ниже и подтвердите свой email
+2. Войдите в личный кабинет, используя email и временный пароль
+
+Подтвердить email: ${verifyUrl}
+
+После подтверждения email рекомендуем сменить временный пароль в настройках.
+
+С уважением,
+Команда Enki.legal
+`;
+};
+
+const buildVerifyEmailHtml = (name: string, recipient: string, password: string, verifyUrl: string): string => {
+  const greeting = name && name.trim() ? `Добрый день, ${escapeHtml(name.trim())}!` : 'Добрый день!';
+  const safeEmail = escapeHtml(recipient);
+  const safePassword = escapeHtml(password);
+  const safeUrl = escapeHtml(verifyUrl);
+  return `<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>${VERIFY_EMAIL_SUBJECT}</title>
+  </head>
+  <body style="margin:0; padding:0; background:#F5F7FA; font-family: Arial, Helvetica, sans-serif; color:#0F1B2D;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F5F7FA; padding:32px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px; background:#FFFFFF; border-radius:16px; padding:40px;">
+            <tr>
+              <td>
+                <h1 style="margin:0 0 24px; font-size:22px; line-height:28px; color:#0F1B2D;">${greeting}</h1>
+                <p style="margin:0 0 12px; font-size:15px; line-height:22px; color:#3a4452;">Спасибо, что решили воспользоваться платформой Enki.legal.</p>
+                <p style="margin:0 0 24px; font-size:15px; line-height:22px; color:#3a4452;">Мы создали для вас аккаунт, чтобы вы могли получать профессиональные консультации от наших юристов, управлять своими вопросами и задавать дополнительные.</p>
+
+                <div style="background:#EFE7D8; border-radius:12px; padding:20px; margin:0 0 24px;">
+                  <p style="margin:0 0 12px; font-size:14px; color:#0F1B2D; font-weight:600;">Ваши данные для входа:</p>
+                  <p style="margin:0 0 8px; font-size:15px; color:#0F1B2D;">Email: <strong>${safeEmail}</strong></p>
+                  <p style="margin:0; font-size:15px; color:#0F1B2D;">Временный пароль: <strong style="font-family: 'Courier New', monospace; letter-spacing:0.5px;">${safePassword}</strong></p>
+                </div>
+
+                <p style="margin:0 0 12px; font-size:15px; line-height:22px; color:#0F1B2D; font-weight:600;">Что нужно сделать дальше:</p>
+                <ol style="margin:0 0 24px; padding-left:20px; font-size:15px; line-height:22px; color:#3a4452;">
+                  <li style="margin-bottom:6px;">Перейдите по ссылке ниже и подтвердите свой email</li>
+                  <li>Войдите в личный кабинет, используя email и временный пароль</li>
+                </ol>
+
+                <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:0 auto 28px;">
+                  <tr>
+                    <td style="background:#5A8FB5; border-radius:12px;">
+                      <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" style="display:inline-block; padding:14px 32px; font-size:15px; font-weight:600; color:#FFFFFF; text-decoration:none;">Подтвердить email</a>
+                    </td>
+                  </tr>
+                </table>
+
+                <p style="margin:0 0 8px; font-size:13px; line-height:20px; color:#6B7280;">После подтверждения email рекомендуем сменить временный пароль в настройках.</p>
+
+                <hr style="border:none; border-top:1px solid #E6EBF0; margin:24px 0;" />
+                <p style="margin:0; font-size:13px; line-height:20px; color:#6B7280;">С уважением,<br />Команда Enki.legal</p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
+};
+
+export async function SendSendGridEmailVerification(emailData: EmailDataVerifyI): Promise<boolean | null> {
+  const msg = "SENDGRID SEND SendSendGridEmailVerification - "
+  if (!emailData.recipient || !emailData.password || !emailData.url) {
+    logger.error(msg + "Missing required fields", { recipient: emailData.recipient })
+    return null;
+  }
+  const verifiedEmail = process.env.SENDGRID_API_EMAIL ?? 'anatoli.bahdanov@gmail.com'
+
+  const email = {
+    to: emailData.recipient,
+    from: verifiedEmail,
+    subject: VERIFY_EMAIL_SUBJECT,
+    text: buildVerifyEmailText(emailData.username, emailData.recipient, emailData.password, emailData.url),
+    html: buildVerifyEmailHtml(emailData.username, emailData.recipient, emailData.password, emailData.url),
+  };
+
+  try {
+    await sgMail.send(email);
+    logger.info(msg + "Email sent successfully", { recipient: emailData.recipient })
+    return true
+  } catch (error) {
+    logger.error(msg + "Error in sending email", (error as Error).message, { recipient: emailData.recipient })
+    return false
+  }
+}
+
+const VERIFY_NEW_EMAIL_SUBJECT = 'Подтвердите новый email на Enki.legal';
+
+const buildVerifyNewEmailText = (name: string, verifyUrl: string): string => {
+  const greeting = name && name.trim() ? `Добрый день, ${name.trim()}!` : 'Добрый день!';
+  return `${greeting}
+
+Вы изменили email в личном кабинете Enki.legal.
+
+Чтобы продолжить получать ответы на email от профессиональных юристов, подтвердите новый email.
+
+Подтвердить новый email: ${verifyUrl}
+
+С уважением,
+Команда Enki.legal
+`;
+};
+
+const buildVerifyNewEmailHtml = (name: string, verifyUrl: string): string => {
+  const greeting = name && name.trim() ? `Добрый день, ${escapeHtml(name.trim())}!` : 'Добрый день!';
+  const safeUrl = escapeHtml(verifyUrl);
+  return `<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>${VERIFY_NEW_EMAIL_SUBJECT}</title>
+  </head>
+  <body style="margin:0; padding:0; background:#F5F7FA; font-family: Arial, Helvetica, sans-serif; color:#0F1B2D;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F5F7FA; padding:32px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px; background:#FFFFFF; border-radius:16px; padding:40px;">
+            <tr>
+              <td>
+                <h1 style="margin:0 0 24px; font-size:22px; line-height:28px; color:#0F1B2D;">${greeting}</h1>
+                <p style="margin:0 0 12px; font-size:15px; line-height:22px; color:#3a4452;">Вы изменили email в личном кабинете Enki.legal.</p>
+                <p style="margin:0 0 24px; font-size:15px; line-height:22px; color:#3a4452;">Чтобы продолжить получать ответы на email от профессиональных юристов, подтвердите новый email.</p>
+
+                <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:0 auto 28px;">
+                  <tr>
+                    <td style="background:#5A8FB5; border-radius:12px;">
+                      <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" style="display:inline-block; padding:14px 32px; font-size:15px; font-weight:600; color:#FFFFFF; text-decoration:none;">Подтвердить новый email</a>
+                    </td>
+                  </tr>
+                </table>
+
+                <hr style="border:none; border-top:1px solid #E6EBF0; margin:24px 0;" />
+                <p style="margin:0; font-size:13px; line-height:20px; color:#6B7280;">С уважением,<br />Команда Enki.legal</p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
+};
+
+export async function SendSendGridEmailVerifyNewEmail(emailData: EmailDataVerifyNewI): Promise<boolean | null> {
+  const msg = "SENDGRID SEND SendSendGridEmailVerifyNewEmail - "
+  if (!emailData.recipient || !emailData.url) {
+    logger.error(msg + "Missing required fields", { recipient: emailData.recipient })
+    return null;
+  }
+  const verifiedEmail = process.env.SENDGRID_API_EMAIL ?? 'anatoli.bahdanov@gmail.com'
+
+  const email = {
+    to: emailData.recipient,
+    from: verifiedEmail,
+    subject: VERIFY_NEW_EMAIL_SUBJECT,
+    text: buildVerifyNewEmailText(emailData.username, emailData.url),
+    html: buildVerifyNewEmailHtml(emailData.username, emailData.url),
   };
 
   try {
@@ -368,4 +563,131 @@ export async function SendSendGridPdfAttachment(
     })
     return false
   }
+}
+
+const BRAND_EMAIL_LOGO = () => {
+  const base = (process.env.NEXT_PUBLIC_URL ?? process.env.NEXTAUTH_URL ?? 'https://enki.legal').replace(/\/+$/, '')
+  return base + '/site/logo_web.png'
+}
+
+const buildBrandedEmailText = (emailData: EmailDataBrandedI): string => {
+  const cta = emailData.buttonLabel && emailData.buttonUrl
+    ? `\n\n${emailData.buttonLabel}: ${emailData.buttonUrl}`
+    : ''
+  return `${emailData.subject}
+
+${emailData.bodyText}${cta}
+
+С уважением,
+Команда enki.legal
+`
+}
+
+// Turns plain http(s) URLs (already HTML-escaped) into clickable links so an
+// inline {question_url}/{documents_url}/{payment_url} placeholder renders as a
+// real hyperlink, not raw text.
+const linkifyUrls = (escaped: string): string =>
+  escaped.replace(
+    /(https?:\/\/[^\s<]+)/g,
+    '<a href="$1" target="_blank" rel="noopener noreferrer" style="color:#5A8FB5; text-decoration:underline; word-break:break-all;">$1</a>'
+  )
+
+const buildBrandedBodyHtml = (bodyText: string): string => {
+  const lines = bodyText.split('\n')
+  const out: string[] = []
+  for (const raw of lines) {
+    const line = raw.trim()
+    if (line === '') continue
+    const safe = linkifyUrls(escapeHtml(line))
+    if (line.startsWith('•')) {
+      out.push(`<p style="margin:4px 0 4px 8px; font-size:15px; line-height:22px; color:#0F1B2D;">${safe}</p>`)
+    } else {
+      out.push(`<p style="margin:0 0 14px; font-size:15px; line-height:22px; color:#3a4452;">${safe}</p>`)
+    }
+  }
+  return out.join('\n')
+}
+
+const buildBrandedEmailHtml = (emailData: EmailDataBrandedI): string => {
+  const safeSubject = escapeHtml(emailData.subject)
+  const bodyHtml = buildBrandedBodyHtml(emailData.bodyText)
+  const button = emailData.buttonLabel && emailData.buttonUrl
+    ? `<table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:8px auto 28px;">
+                  <tr>
+                    <td style="background:#5A8FB5; border-radius:12px;">
+                      <a href="${escapeHtml(emailData.buttonUrl)}" target="_blank" rel="noopener noreferrer" style="display:inline-block; padding:14px 32px; font-size:15px; font-weight:600; color:#FFFFFF; text-decoration:none;">${escapeHtml(emailData.buttonLabel)}</a>
+                    </td>
+                  </tr>
+                </table>`
+    : ''
+  return `<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>${safeSubject}</title>
+  </head>
+  <body style="margin:0; padding:0; background:#F5F7FA; font-family: Arial, Helvetica, sans-serif; color:#0F1B2D;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F5F7FA; padding:32px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px; background:#FFFFFF; border-radius:16px; padding:40px;">
+            <tr>
+              <td>
+                <img src="${BRAND_EMAIL_LOGO()}" alt="enki.legal" width="120" style="display:block; height:auto; margin:0 0 28px;" />
+                <h1 style="margin:0 0 24px; font-size:22px; line-height:28px; color:#0F1B2D;">${safeSubject}</h1>
+                ${bodyHtml}
+                ${button}
+                <hr style="border:none; border-top:1px solid #E6EBF0; margin:24px 0;" />
+                <p style="margin:0; font-size:13px; line-height:20px; color:#6B7280;">С уважением,<br />Команда enki.legal</p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`
+}
+
+/**
+ * Sends a transactional notification wrapped in the shared branded HTML shell
+ * (enki.legal logo header + body paragraphs + CTA button + footer).
+ *
+ * The copy (subject / body / button label) is resolved upstream from the
+ * editable `email_template` rows. Returns `true` on success, `false` on any
+ * SendGrid failure, `null` on missing required fields.
+ */
+export async function SendSendGridBrandedEmail(emailData: EmailDataBrandedI): Promise<boolean | null> {
+  const msg = "SENDGRID SEND SendSendGridBrandedEmail - "
+  if (!emailData.recipient || !emailData.subject || !emailData.bodyText) {
+    logger.error(msg + "Missing required fields", { recipient: emailData.recipient })
+    return null
+  }
+  const verifiedEmail = process.env.SENDGRID_API_EMAIL ?? 'anatoli.bahdanov@gmail.com'
+
+  const email = {
+    to: emailData.recipient,
+    from: verifiedEmail,
+    subject: emailData.subject,
+    text: buildBrandedEmailText(emailData),
+    html: buildBrandedEmailHtml(emailData),
+  }
+
+  try {
+    await sgMail.send(email)
+    logger.info(msg + "Email sent successfully", { recipient: emailData.recipient })
+    return true
+  } catch (error) {
+    logger.error(msg + "Error in sending email", (error as Error).message, { recipient: emailData.recipient })
+    return false
+  }
+}
+
+/**
+ * Balance top-up notification (success or failure). Thin wrapper over the
+ * shared branded sender — kept as a named entry point for balanceNotify.
+ */
+export async function SendSendGridBalanceEmail(emailData: EmailDataBalanceI): Promise<boolean | null> {
+  return SendSendGridBrandedEmail(emailData)
 }

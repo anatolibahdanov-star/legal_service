@@ -10,6 +10,7 @@ import { UserBalanceRequest } from '@/src/interfaces/api';
 import { OrderTypeE } from '@/src/interfaces/payment';
 import { QuestionStatusesE } from '@/src/interfaces/data';
 import { initNewOrder } from '@/src/services/order';
+import { getSettingNumber } from '@/src/services/settings';
 
 export const dynamic = 'force-dynamic'; // defaults to auto
 
@@ -102,6 +103,23 @@ export async function POST(request: Request) {
             return NextResponse.json(
                 { success: false, message: 'Question is already paid.' },
                 { status: 409 }
+            );
+        }
+    }
+
+    if (balanceRequest.type !== OrderTypeE.OneTime) {
+        const amountKop = Number(balanceRequest.amount)
+        const minKop = Math.round(Math.max(0, getSettingNumber('min_topup_rub', 100)) * 100)
+        if (!Number.isFinite(amountKop) || amountKop <= 0) {
+            return NextResponse.json(
+                { success: false, message: 'Некорректная сумма пополнения.' },
+                { status: 400 }
+            );
+        }
+        if (amountKop < minKop) {
+            return NextResponse.json(
+                { success: false, message: `Минимальная сумма пополнения — ${minKop / 100} ₽.` },
+                { status: 400 }
             );
         }
     }

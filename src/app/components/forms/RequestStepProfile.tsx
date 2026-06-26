@@ -42,6 +42,7 @@ export default function RequestStepProfile({
   const [submitting, setSubmitting] = useState(false);
   const [commonError, setCommonError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [verificationSent, setVerificationSent] = useState(false);
 
   const nameTrim = name.trim();
   const emailTrim = email.trim();
@@ -72,6 +73,7 @@ export default function RequestStepProfile({
       setCommonError(res.message ?? "Не удалось сохранить данные. Попробуйте позже.");
       return;
     }
+    setVerificationSent(res.verificationEmailSent === true);
     setSuccess(true);
     setTimeout(() => {
       onContinue();
@@ -88,7 +90,11 @@ export default function RequestStepProfile({
       {success && (
         <div className="mb-4 px-4 py-3 rounded-xl bg-emerald-500/15 border border-emerald-400/40 flex items-start gap-2">
           <CheckCircle2 className="w-5 h-5 text-emerald-300 shrink-0 mt-px" />
-          <p className="text-sm text-emerald-100">Мы отправили письмо для подтверждения email</p>
+          <p className="text-sm text-emerald-100">
+            {verificationSent
+              ? "Мы отправили письмо для подтверждения email"
+              : "Данные сохранены"}
+          </p>
         </div>
       )}
 

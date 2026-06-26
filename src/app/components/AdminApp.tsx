@@ -11,9 +11,15 @@ import { AdminLayout } from '@/src/app/components/admin/AdminLayout';
 import {ProfileList} from "@/src/repositories/profile/admin-resources"
 import { OrderList } from "@/src/repositories/orders/admin-resources";
 import {ContactList, ContactShow} from "@/src/repositories/contacts/admin-resources"
+import {EmailTemplateList, EmailTemplateEdit} from "@/src/repositories/emailTemplates/admin-resources"
+import {SettingsList, SettingsEdit, SettingsCreate, PromptVersionList, PromptVersionCreate, PromptVersionEdit, SettingAuditList} from "@/src/repositories/settings/admin-resources"
 import AccountBoxIcon from '@mui/icons-material/AccountBox';
 import PaymentsIcon from '@mui/icons-material/Payments';
 import ContactMailIcon from '@mui/icons-material/ContactMail';
+import MarkEmailReadIcon from '@mui/icons-material/MarkEmailRead';
+import SettingsIcon from '@mui/icons-material/Settings';
+import SmartToyIcon from '@mui/icons-material/SmartToy';
+import HistoryIcon from '@mui/icons-material/History';
 
 
 const api_url = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost/api';
@@ -47,6 +53,18 @@ const AdminApp = () => (
       ) : null,
       permissions === 'admin' ? (
           <Resource name="contacts" icon={ContactMailIcon} options={{ label: 'Саппорт' }} list={ContactList} show={ContactShow} />
+      ) : null,
+      permissions === 'admin' ? (
+          <Resource name="email_templates" icon={MarkEmailReadIcon} options={{ label: 'Шаблоны писем' }} list={EmailTemplateList} edit={EmailTemplateEdit} />
+      ) : null,
+      permissions === 'admin' ? (
+          <Resource name="settings" icon={SettingsIcon} options={{ label: 'Настройки системы' }} list={SettingsList} edit={SettingsEdit} create={SettingsCreate} />
+      ) : null,
+      permissions === 'admin' ? (
+          <Resource name="prompt_versions" icon={SmartToyIcon} options={{ label: 'Промпты ИИ' }} list={PromptVersionList} edit={PromptVersionEdit} create={PromptVersionCreate} />
+      ) : null,
+      permissions === 'admin' ? (
+          <Resource name="setting_audit" icon={HistoryIcon} options={{ label: 'История настроек' }} list={SettingAuditList} />
       ) : null,
     ]}
   </Admin>

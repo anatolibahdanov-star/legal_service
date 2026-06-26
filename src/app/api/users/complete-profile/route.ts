@@ -7,7 +7,9 @@ import {
   createUserFromWizard,
   getUserByPhone,
   getUsersByIds,
+  issueEmailVerification,
 } from '@/src/repositories/users/repo';
+import { SendSendGridEmailVerification } from '@/src/libs/sendgrid';
 import { normalizePhoneE164 } from '@/src/libs/phoneIdentity';
 import { peekVerifyToken } from '@/src/libs/otpStore';
 import { isFirstQuestionFree } from '@/src/services/firstQuestion';
@@ -111,14 +113,18 @@ export async function POST(request: NextRequest) {
   const finalName = name.length >= NAME_MIN_LENGTH ? name : '';
   let userId: string | null = null;
   let resultUser: { id: string; name: string; email: string } | null = null;
+  let previousEmail: string | null = null;
 
   // Resolve target user.
   if (session?.user?.id) {
     userId = session.user.id.toString();
+    const current = await getUsersByIds([userId]);
+    previousEmail = current?.email ?? null;
   } else if (phoneE164) {
     const existing = await getUserByPhone(phoneE164);
     if (existing) {
       userId = existing.id.toString();
+      previousEmail = existing.email ?? null;
     }
   }
 
@@ -163,11 +169,29 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // TODO: real email verification (stub for now — see task 3 scope).
-  logger.info(msg + 'STUB email verification — would send', {
-    user_id: resultUser.id,
-    email: resultUser.email,
-  });
+  const emailChanged =
+    !previousEmail || previousEmail.trim().toLowerCase() !== email;
+  let verificationEmailSent = false;
+  if (emailChanged) {
+    const issued = await issueEmailVerification(resultUser.id);
+    if (!issued) {
+      logger.error(msg + 'could not issue email verification', { user_id: resultUser.id });
+    } else {
+      const base = (process.env.NEXTAUTH_URL ?? 'https://enki.legal').replace(/\/$/, '');
+      const verifyUrl = `${base}/api/users/verify-email?token=${encodeURIComponent(issued.token)}`;
+      const sent = await SendSendGridEmailVerification({
+        recipient: resultUser.email,
+        username: resultUser.name,
+        password: issued.password,
+        url: verifyUrl,
+      });
+      if (sent === true) {
+        verificationEmailSent = true;
+      } else {
+        logger.error(msg + 'verification email not sent', { user_id: resultUser.id });
+      }
+    }
+  }
 
   const firstFree = await isFirstQuestionFree(resultUser.id);
   const userRecord = await getUsersByIds([resultUser.id.toString()]);
@@ -176,7 +200,7 @@ export async function POST(request: NextRequest) {
     {
       success: true,
       user: resultUser,
-      verificationEmailSent: true,
+      verificationEmailSent,
       isFirstQuestionFree: firstFree,
       questionPrice: getQuestionPrice(),
       userBalance: userRecord?.balance ?? 0,

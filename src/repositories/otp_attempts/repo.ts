@@ -1,14 +1,21 @@
 import { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 import { findOne, insert, executeTransactionWrapper } from '@/src/libs/db';
 import logger from '@/src/libs/logger';
+import { getSettingInt } from '@/src/services/settings';
 
 const msgGlobal = 'REPO OTP_ATTEMPTS ';
 
-// Per ENKI-21: attempts 1, 2, 4 → error; attempt 3 → 5-min cooldown; attempt 5 → 24h lock.
-export const COOLDOWN_TRIGGER_ATTEMPTS = 3;
-export const LOCKOUT_TRIGGER_ATTEMPTS = 5;
-export const COOLDOWN_DURATION_MS = 5 * 60 * 1000;
-export const LOCKOUT_DURATION_MS = 24 * 60 * 60 * 1000;
+// Defaults per ENKI-21: attempt 3 → cooldown; attempt 5 → lock.
+// Now configurable via system settings (otp_*); these are the fallbacks.
+const DEFAULT_COOLDOWN_TRIGGER = 3;
+const DEFAULT_LOCKOUT_TRIGGER = 5;
+const DEFAULT_COOLDOWN_MINUTES = 5;
+const DEFAULT_LOCKOUT_MINUTES = 24 * 60;
+
+export const otpMaxAttempts = (): number => Math.max(1, getSettingInt('otp_max_attempts', DEFAULT_LOCKOUT_TRIGGER));
+export const otpCooldownTrigger = (): number => Math.max(1, getSettingInt('otp_cooldown_attempts', DEFAULT_COOLDOWN_TRIGGER));
+const otpLockMs = (): number => Math.max(1, getSettingInt('otp_lock_minutes', DEFAULT_LOCKOUT_MINUTES)) * 60 * 1000;
+const otpCooldownMs = (): number => Math.max(1, getSettingInt('otp_cooldown_minutes', DEFAULT_COOLDOWN_MINUTES)) * 60 * 1000;
 
 export interface DBOtpAttempts extends RowDataPacket {
   phone: string;
@@ -27,6 +34,8 @@ export interface RecordFailResult {
   action: FailAction;
   cooldownUntil: Date | null;
   lockedUntil: Date | null;
+  /** Remaining wrong attempts before the lock kicks in (>= 0). */
+  attemptsLeft: number;
 }
 
 export async function getOtpAttempts(phone: string): Promise<DBOtpAttempts | null> {
@@ -82,17 +91,20 @@ export async function recordFailedAttempt(phone: string): Promise<RecordFailResu
   const baseAttempts = lockExpired ? 0 : existing?.attempts ?? 0;
   const nextAttempts = baseAttempts + 1;
 
+  const lockoutTrigger = otpMaxAttempts();
+  const cooldownTrigger = otpCooldownTrigger();
+
   let action: FailAction = 'continue';
   let cooldownUntil: Date | null = lockExpired ? null : existing?.cooldown_until ?? null;
   let lockedUntil: Date | null = lockExpired ? null : prevLockedUntil;
 
-  if (nextAttempts >= LOCKOUT_TRIGGER_ATTEMPTS) {
+  if (nextAttempts >= lockoutTrigger) {
     action = 'lock_24h';
-    lockedUntil = new Date(now.getTime() + LOCKOUT_DURATION_MS);
+    lockedUntil = new Date(now.getTime() + otpLockMs());
     cooldownUntil = null;
-  } else if (nextAttempts === COOLDOWN_TRIGGER_ATTEMPTS) {
+  } else if (nextAttempts === cooldownTrigger) {
     action = 'cooldown_5min';
-    cooldownUntil = new Date(now.getTime() + COOLDOWN_DURATION_MS);
+    cooldownUntil = new Date(now.getTime() + otpCooldownMs());
   }
 
   const upsertQuery = `
@@ -116,7 +128,13 @@ export async function recordFailedAttempt(phone: string): Promise<RecordFailResu
     attempts: nextAttempts,
     action,
   });
-  return { attempts: nextAttempts, action, cooldownUntil, lockedUntil };
+  return {
+    attempts: nextAttempts,
+    action,
+    cooldownUntil,
+    lockedUntil,
+    attemptsLeft: Math.max(0, lockoutTrigger - nextAttempts),
+  };
 }
 
 export async function resetAttempts(phone: string): Promise<void> {

@@ -52,14 +52,18 @@ export interface DBUser extends RowDataPacket, User {
   new_password?: string;
   password: string;
   temp_password?: string | null;
+  email_verified?: number;
+  email_verify_token?: string | null;
   username: string;
   admin_id?: number;
   balance: number;
+  balance_kop?: number;
   rating?:number;
   is_super?: boolean;
   is_super_bool?: string;
   is_register?: boolean;
   is_first_question_free?: number;
+  paid_questions?: number;
   status?: number;
   created_at: DateTime;
 }
@@ -86,6 +90,55 @@ export interface DBOrder extends RowDataPacket {
   reason: string;
   created_at: DateTime;
   updated_at: DateTime;
+}
+
+export interface DBEmailTemplate extends RowDataPacket {
+  id: number;
+  code: string;
+  name: string;
+  subject: string;
+  body: string;
+  button_label: string | null;
+  is_active: number;
+  created_at: DateTime;
+  updated_at: DateTime;
+}
+
+export interface DBSetting extends RowDataPacket {
+  id: number;
+  code: string;
+  name: string;
+  description: string | null;
+  value: string;
+  value_type: 'int' | 'decimal' | 'bool' | 'string' | 'text';
+  grp: string;
+  weight: number;
+  is_active: number;
+  created_at: DateTime;
+  updated_at: DateTime;
+}
+
+export interface DBSettingAudit extends RowDataPacket {
+  id: number;
+  setting_code: string;
+  old_value: string | null;
+  new_value: string | null;
+  admin_id: number | null;
+  admin_name?: string | null;
+  admin_username?: string | null;
+  created_at: DateTime;
+}
+
+export interface DBPromptVersion extends RowDataPacket {
+  id: number;
+  code: string;
+  name: string;
+  body: string;
+  is_active: number;
+  admin_id: number | null;
+  admin_name?: string | null;
+  admin_username?: string | null;
+  created_at: DateTime;
 }
 
 export interface DBContact extends RowDataPacket {
