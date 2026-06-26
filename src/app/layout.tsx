@@ -2,9 +2,11 @@
 
 import "./globals.css";
 // import Header from "@/src/components/Header";
-import { Header } from "@/src/app/components/Header";
+// import { Header } from "@/src/app/components/Header";
+// import { Footer } from "@/src/app/components/Footer";
 // import Footer from "@/src/components/Footer";
-import { Footer } from "@/src/app/components/Footer";
+import { Header } from "@/src/app/components/v2/header/header";
+import { Footer } from "@/src/app/components/v2/footer/footer";
 import { CookieConsent } from "@/src/app/components/CookieConsent";
 import {NextAuthProvider} from "@/src/app/providers/NextAuthProvider"
 import {YandexCaptchaProvider} from "@/src/app/providers/YandexCaptchaProvider"

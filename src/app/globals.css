@@ -1,8 +1,18 @@
+@import url('https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 
-body {
+#main-landing-page {
+  font-family: 'Golos Text', sans-serif;
+}
+
+/* body {
   margin-bottom: 8px;
+} */
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 100px; /* Account for fixed header height + margin */
 }
 
 /* :root {
