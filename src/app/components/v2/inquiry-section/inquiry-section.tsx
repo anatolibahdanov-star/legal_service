@@ -8,7 +8,6 @@ import finalCubeImg from '@/public/design/v2-main-page/progress-step4.png'
 
 import {
   STEPS,
-  COMPLEXITY,
   CHANNEL_OPTIONS,
   TOTAL_VISIBLE_STEPS,
   type StepMeta,
@@ -23,13 +22,16 @@ import { FormDataObjectT } from "@/src/interfaces/form"
 import { YandexSmartCaptcha } from "@/src/app/components/forms/YandexSmartCaptcha"
 import { useInquirySection } from './inquiry-section.hook'
 import { useFileUpload } from './file-upload.hook'
+import { InquiryEmailModal, InquiryOtpModal } from './inquiry-verification-modals'
 
 // ─── shared sub-components ────────────────────────────────────────────────────
 
-const VioletBtn = ({ label, onClick }: { label: string; onClick: () => void }) => (
+const VioletBtn = ({ label, onClick, disabled }: { label: string; onClick: () => void; disabled?: boolean }) => (
   <button
+    type="button"
     onClick={onClick}
-    className="flex items-center justify-center text-white text-[18px] font-medium leading-[23px] tracking-tight transition-all duration-150 hover:opacity-85 hover:shadow-lg hover:scale-105 active:scale-95 active:opacity-70 active:shadow-md shrink-0 cursor-pointer"
+    disabled={disabled}
+    className="flex items-center justify-center text-white text-[18px] font-medium leading-[23px] tracking-tight transition-all duration-150 hover:opacity-85 hover:shadow-lg hover:scale-105 active:scale-95 active:opacity-70 active:shadow-md shrink-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-none"
     style={{
       width: 348, height: 56,
       background: 'radial-gradient(circle at 50% 0%, #34347C 0%, #2D2D6C 100%)',
@@ -74,7 +76,7 @@ function Step2Panel({
   return (
     <div className="flex flex-col gap-6">
       <h3 className="text-[20px] font-semibold leading-6 tracking-tight text-[#12161B]">
-        Кратко опишите суть проблемы <span className="text-red-500">*</span>
+        Кратко опишите суть проблемы
       </h3>
       <textarea
         value={value}
@@ -183,15 +185,84 @@ function Step2Panel({
   )
 }
 
-function Step4Panel({ value, onChange, errors }: { 
-  value: string; 
-  onChange: (v: string) => void;
+/*
+function StepCategoryPanel({ value, onChange, errors }: {
+  value: string
+  onChange: (v: string) => void
+  errors: { common: string }
+}) {
+  return (
+    <div className="flex flex-col gap-4" style={{ flex: 1 }}>
+      <h3 className="text-[20px] font-semibold leading-6 tracking-tight text-[#12161B]">
+        Выберите категорию вашего вопроса
+      </h3>
+      <div className="grid grid-cols-3 gap-3">
+        {CATEGORIES.map(cat => {
+          const isSelected = value === cat.id
+          return (
+            <button
+              key={cat.id}
+              type="button"
+              onClick={() => onChange(cat.id)}
+              className="box-border flex flex-col items-start gap-3 rounded-2xl text-left cursor-pointer transition-[background-color,border-color,box-shadow] duration-150 hover:brightness-[0.98]"
+              style={{
+                padding: '16px',
+                height: 108,
+                background: isSelected
+                  ? 'linear-gradient(135deg, rgba(153,153,202,0.15) 0%, rgba(165,165,221,0.15) 100%)'
+                  : '#FFFFFF',
+                border: `1.5px solid ${isSelected ? '#34347C' : 'rgba(18,22,27,0.08)'}`,
+                boxShadow: isSelected
+                  ? '0px 4px 20px 0px rgba(47,47,113,0.12)'
+                  : '0px 4px 20px 0px transparent',
+              }}
+            >
+              <div
+                className="flex items-center justify-center shrink-0 rounded-full"
+                style={{
+                  width: 40,
+                  height: 40,
+                  background: isSelected ? '#34347C' : 'rgba(153,153,202,0.15)',
+                }}
+              >
+                <Image
+                  src={cat.icon}
+                  alt=""
+                  width={20}
+                  height={20}
+                  className={`shrink-0 ${isSelected ? 'brightness-0 invert' : ''}`}
+                />
+              </div>
+              <span
+                className="text-[14px] font-medium leading-[18px] tracking-tight"
+                style={{ color: isSelected ? '#34347C' : '#12161B' }}
+              >
+                {cat.label}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+      {errors.common && (
+        <div className="text-[12px] mt-2 px-1">
+          <span className="text-red-400">{errors.common}</span>
+        </div>
+      )}
+    </div>
+  )
+}
+*/
+
+/*
+function StepComplexityPanel({ value, onChange, errors }: {
+  value: string
+  onChange: (v: string) => void
   errors: { common: string }
 }) {
   return (
     <div className="flex flex-col gap-4" style={{ flex: 1 }}>
       <div className="flex flex-col gap-2">
-        <h3 className="text-[20px] font-semibold leading-6 tracking-tight text-[#12161B]">Оцените сложность вашей ситуации <span className="text-red-500">*</span></h3>
+        <h3 className="text-[20px] font-semibold leading-6 tracking-tight text-[#12161B]">Оцените сложность вашей ситуации</h3>
         <p className="text-[14px] leading-5 text-[rgba(18,22,27,0.6)]">Это поможет подобрать юриста с нужным опытом</p>
       </div>
       <div className="flex gap-3 flex-1">
@@ -230,6 +301,7 @@ function Step4Panel({ value, onChange, errors }: {
     </div>
   )
 }
+*/
 
 // ─── channel icons ────────────────────────────────────────────────────────────
 
@@ -285,10 +357,14 @@ function Step5Panel({
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
         <h3 className="text-[20px] font-semibold leading-6 tracking-tight text-[#12161B]">
-          Как с вами связаться? <span className="text-red-500">*</span>
+          Введите контактные данные
         </h3>
-        <p className="text-[14px] leading-5 text-[rgba(18,22,27,0.5)]">
-          Мы не передаём данные третьим лицам
+        <p className="text-[14px] leading-5 text-[rgba(18,22,27,0.6)]">
+          {channel === 'telegram'
+            ? 'Введите Telegram, чтобы получить первую бесплатную консультацию'
+            : channel === 'email'
+              ? 'Введите email, чтобы получить первую бесплатную консультацию'
+              : 'Введите номер телефона, чтобы получить первую бесплатную консультацию'}
         </p>
       </div>
 
@@ -370,12 +446,12 @@ function Step5Panel({
           token={captchaToken}
           onChange={onCaptchaChange}
           disabled={submitting}
-          variant="light"
+          variant="dark"
           fullWidth
         />
         
-        <p className="text-[12px] leading-[17px] text-[rgba(18,22,27,0.4)]">
-          Нажимая «Собрать дело», вы соглашаетесь с{' '}
+        <p className="text-[12px] leading-[17px] text-[rgba(18,22,27,0.5)]">
+          Нажимая «Оставить заявку», вы соглашаетесь с{' '}
           <Link href="/privacy" className="underline hover:text-[#34347C] transition-colors">политикой конфиденциальности</Link>
         </p>
       </div>
@@ -391,19 +467,36 @@ function FinalScreen() {
       initial={{ opacity: 0, scale: 0.97 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.5, ease: [0.32, 0, 0.67, 0] }}
-      className="flex flex-col items-center justify-center w-full h-full gap-6 text-center px-12"
+      className="relative flex flex-col items-center justify-center w-full min-h-[662px] gap-12 text-center overflow-hidden"
       style={{
-        background: 'radial-gradient(ellipse at 50% 0%, rgba(32,82,70,0.12) 0%, rgba(255,255,255,0) 70%)',
+        padding: '48px 32px',
+        background: 'linear-gradient(225deg, #F0F9F3 0%, #F7F6F9 100%)',
         borderRadius: 24,
       }}
     >
-      <div className="flex flex-col items-center gap-3">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute rounded-full"
+        style={{
+          width: 411,
+          height: 411,
+          left: -79,
+          top: 225,
+          background: 'rgba(76, 172, 97, 0.2)',
+          filter: 'blur(64px)',
+        }}
+      />
+
+      <div className="relative flex flex-col items-center gap-[11px] max-w-md">
         <h2 className="text-[28px] font-semibold leading-8 tracking-tight text-[#12161B]">
-          Ваше дело собрано!
+          Мы работаем над вашим запросом
         </h2>
-        <p className="text-[16px] leading-[22px] tracking-tight text-[rgba(18,22,27,0.6)] max-w-md">
-          Мы подобрали для вас подходящего юриста и уже формируем предварительные рекомендации.
-          Ожидайте ответа в течение 15 минут.
+        <p className="text-[16px] leading-[22px] tracking-tight text-[rgba(18,22,27,0.6)]">
+          Мы уже занимаемся вашим делом. Получите ответ в{' '}
+          <Link href="/profile/" className="underline text-[#34347C] hover:opacity-80 transition-opacity">
+            личном кабинете
+          </Link>
+          {' '}или дождитесь уведомления о готовности
         </p>
       </div>
 
@@ -411,15 +504,14 @@ function FinalScreen() {
         initial={{ y: -40, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.6, delay: 0.2, type: 'spring', bounce: 0.4 }}
-        className="relative"
-        style={{ width: 240, height: 240 }}
+        className="relative z-[1]"
+        style={{ width: 264, height: 248 }}
       >
         <Image
           src={finalCubeImg}
-          alt="Дело собрано"
+          alt="Запрос принят"
           fill
-          className="object-contain drop-shadow-2xl"
-          style={{ filter: 'drop-shadow(0 0 32px rgba(32,82,70,0.4))' }}
+          className="object-contain"
         />
       </motion.div>
     </motion.div>
@@ -475,12 +567,18 @@ function StepIndicator({ current }: { current: number }) {
 
 function ProgressPanel({ step, direction }: { step: number; direction: number }) {
   const meta = STEPS[step - 1] as StepMeta
-  const displayProgress = step === 1 ? 0 : meta.progress
+  const displayProgress = step === 1 ? 20 : meta.progress
+  const isLastStep = step === TOTAL_VISIBLE_STEPS
+
   return (
     <div className="flex flex-col gap-8 flex-1 overflow-hidden" style={{ padding: '24px 64px' }}>
       <div className="flex flex-col gap-2 pb-2">
-        <h3 className="text-[28px] font-semibold leading-8 tracking-tight text-[#12161B]">Ваше дело собирается</h3>
-        <p className="text-[16px] leading-[22px] tracking-tight text-[rgba(18,22,27,0.6)]">Мы подготовим предварительные рекомендации</p>
+        <h3 className="text-[28px] font-semibold leading-8 tracking-tight text-[#12161B]">
+          {isLastStep ? 'Уже готовим ответ' : 'Ваше дело собирается'}
+        </h3>
+        <p className="text-[16px] leading-[22px] tracking-tight text-[rgba(18,22,27,0.6)]">
+          {isLastStep ? 'Мы уже получили ваш вопрос' : 'Мы подготовим предварительные рекомендации'}
+        </p>
       </div>
 
       <div className="relative flex-1 min-h-0 overflow-hidden rounded-2xl">
@@ -538,7 +636,6 @@ export function InquirySection() {
     isComplete,
     problemText,
     attachedFiles,
-    complexity,
     channel,
     contactValue,
     errors,
@@ -546,12 +643,17 @@ export function InquirySection() {
     submitting,
     questionTouched,
     isLastStep,
+    verificationModal,
+    pendingEmail,
     goNext,
     goBack,
     handleSubmit,
+    closeVerificationModal,
+    handleOtpVerify,
+    handleOtpResend,
+    confirmEmailModal,
     setProblemText,
     setAttachedFiles,
-    setComplexity,
     setChannel,
     setContactValue,
     setCaptchaToken,
@@ -582,7 +684,7 @@ export function InquirySection() {
               key="final"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="w-full h-full"
+              className="w-full min-h-[662px] flex"
             >
               <FinalScreen />
             </motion.div>
@@ -625,7 +727,26 @@ export function InquirySection() {
                             errors={{ question: typeof errors.question === 'string' ? errors.question : '' }}
                           />
                         )}
-                        {step === 2 && <Step4Panel value={complexity} onChange={setComplexity} errors={{ common: typeof errors.common === 'string' ? errors.common : '' }} />}
+                        {step === 2 && (
+                          <Step5Panel
+                            channel={channel}
+                            onChannelChange={setChannel}
+                            inputValue={contactValue}
+                            onInputChange={setContactValue}
+                            errors={errors}
+                            captchaToken={captchaToken}
+                            onCaptchaChange={setCaptchaToken}
+                            submitting={submitting}
+                          />
+                        )}
+                        {/*
+                        {step === 2 && (
+                          <StepCategoryPanel
+                            value={selectedCategory}
+                            onChange={setSelectedCategory}
+                            errors={{ common: typeof errors.common === 'string' ? errors.common : '' }}
+                          />
+                        )}
                         {step === 3 && (
                           <Step5Panel
                             channel={channel}
@@ -638,12 +759,19 @@ export function InquirySection() {
                             submitting={submitting}
                           />
                         )}
+                        */}
                       </motion.div>
                     </AnimatePresence>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between gap-4 mt-6" style={{ width: 656 }}>
+                <div className="flex flex-col gap-4 mt-6" style={{ width: 656 }}>
+                  {isLastStep && typeof errors.common === 'string' && errors.common && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-xl">
+                      <p className="text-[12px] text-red-600">{errors.common}</p>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between gap-4">
                   <button
                     onClick={goBack}
                     className="text-[18px] font-medium leading-[23px] tracking-tight text-[rgba(18,22,27,0.6)] transition-opacity hover:opacity-70 active:opacity-40 cursor-pointer"
@@ -652,9 +780,10 @@ export function InquirySection() {
                     Назад
                   </button>
                   {isLastStep
-                    ? <VioletBtn label={submitting ? "Отправляем..." : "Собрать дело"} onClick={handleSubmit} />
+                    ? <VioletBtn label={submitting ? "Подтверждаем..." : "Подтвердить"} onClick={handleSubmit} disabled={submitting} />
                     : <VioletBtn label="Далее" onClick={goNext} />
                   }
+                  </div>
                 </div>
               </div>
 
@@ -664,6 +793,20 @@ export function InquirySection() {
         </AnimatePresence>
         </div>
       </div>
+
+      <InquiryOtpModal
+        isOpen={verificationModal === 'otp'}
+        phone={contactValue}
+        onClose={closeVerificationModal}
+        onVerify={handleOtpVerify}
+        onResend={handleOtpResend}
+      />
+
+      <InquiryEmailModal
+        isOpen={verificationModal === 'email'}
+        email={pendingEmail}
+        onConfirm={confirmEmailModal}
+      />
     </section>
   )
 }

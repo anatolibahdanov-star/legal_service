@@ -1,10 +1,6 @@
-'use client'
-
 import { SERVICES } from './services.data'
-import { useServices } from './services.hook'
 
 export function Services() {
-  const { handleServiceClick, handleServiceHover, isServiceSelected, isServiceHovered } = useServices()
   return (
     <section
       id="services"
@@ -24,15 +20,10 @@ export function Services() {
       </div>
 
       <div className="flex items-stretch justify-between gap-6">
-        {SERVICES.map((service, index) => (
+        {SERVICES.map((service) => (
           <div
             key={service.num}
-            className={`flex flex-col gap-[54px] flex-1 transition-all duration-300 hover:-translate-y-2 hover:shadow-xl cursor-pointer active:scale-95 active:shadow-lg ${
-              isServiceHovered(index) ? 'scale-105' : ''
-            } ${isServiceSelected(index) ? 'ring-2 ring-[#34347C]' : ''}`}
-            onMouseEnter={() => handleServiceHover(index)}
-            onMouseLeave={() => handleServiceHover(null)}
-            onClick={() => handleServiceClick(index)}
+            className="flex flex-col gap-[54px] flex-1"
             style={{
               padding: 12,
               borderRadius: 21.32,
