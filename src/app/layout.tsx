@@ -8,6 +8,7 @@ import "./globals.css";
 import { Header } from "@/src/app/components/v2/header/header";
 import { Footer } from "@/src/app/components/v2/footer/footer";
 import { CookieConsent } from "@/src/app/components/CookieConsent";
+import { SmartCaptchaLegalBadge } from "@/src/app/components/SmartCaptchaLegalBadge";
 import {NextAuthProvider} from "@/src/app/providers/NextAuthProvider"
 import {YandexCaptchaProvider} from "@/src/app/providers/YandexCaptchaProvider"
 import { Toaster } from "@/src/app/components/ui/sonner";
@@ -29,6 +30,7 @@ export default function RootLayout({
               {children}
               <Footer />
               <CookieConsent />
+              <SmartCaptchaLegalBadge />
               <Toaster richColors position="top-right" />
             </YandexCaptchaProvider>
           </NextAuthProvider>

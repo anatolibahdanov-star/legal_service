@@ -59,11 +59,11 @@ export function CookieConsent() {
         role="dialog"
         aria-live="polite"
         aria-label="Уведомление об использовании cookies"
-        className="fixed inset-x-4 bottom-4 z-[900] mx-auto max-w-3xl rounded-2xl bg-[#3d4b5e] text-white shadow-2xl border border-white/10"
+        className="fixed inset-x-4 bottom-4 z-[900] mx-auto max-w-3xl rounded-2xl bg-[#12161B] text-white shadow-2xl border border-white/10"
       >
         <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center">
           <div className="flex items-start gap-3 flex-1">
-            <Cookie className="w-6 h-6 text-[#8faaba] shrink-0 mt-0.5" />
+            <Cookie className="w-6 h-6 text-[#34347C] shrink-0 mt-0.5" />
             <p className="text-sm leading-relaxed text-white/90">
               Мы используем файлы cookies и рекомендательные технологии для
               работы сайта, анализа поведения пользователей и улучшения сервиса.
@@ -81,7 +81,7 @@ export function CookieConsent() {
           <button
             type="button"
             onClick={accept}
-            className="shrink-0 self-stretch sm:self-auto rounded-xl bg-[#8faaba] px-6 py-3 text-sm font-semibold text-white hover:bg-[#7a98a7] transition-colors"
+            className="shrink-0 self-stretch sm:self-auto rounded-xl bg-[#34347C] px-6 py-3 text-sm font-semibold text-white hover:bg-[#2a2a66] transition-colors"
           >
             Принять
           </button>

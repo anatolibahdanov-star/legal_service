@@ -29,23 +29,6 @@ export const Footer = () => {
               <p className="text-[16px] leading-[22px] tracking-tight text-white">
                 {COMPANY_INFO.description}
               </p>
-              
-              <div className="flex flex-col gap-3">
-                <div className="flex flex-col gap-3">
-                  <span className="text-[16px] leading-[22px] text-white">Контакты</span>
-                  <div className="w-full border-t border-white" />
-                </div>
-                <div className="flex flex-col gap-1 text-[16px] leading-[22px] tracking-tight text-white">
-                  <a 
-                    href={`mailto:${COMPANY_INFO.email}`} 
-                    className="hover:text-white/70 active:text-white/50 transition-colors duration-150"
-                  >
-                    {COMPANY_INFO.email}
-                  </a>
-                  <a href="tel:+79991234567" className="hover:text-white/70 active:text-white/50 transition-colors duration-150">+7 (999) 123-45-67</a>
-                  <span>г. Москва, ул. Юридическая, д. 1</span>
-                </div>
-              </div>
 
               <div className="flex flex-col gap-3">
                 <div className="flex flex-col gap-3">
@@ -56,6 +39,12 @@ export const Footer = () => {
                   <span className="font-medium">{COMPANY_INFO.name}</span>
                   <span>ОГРН: {COMPANY_INFO.ogrn}</span>
                   <span>ИНН: {COMPANY_INFO.inn}</span>
+                  <a 
+                    href={`mailto:${COMPANY_INFO.email}`} 
+                    className="hover:text-white/60 active:text-white/40 transition-colors duration-150"
+                  >
+                    {COMPANY_INFO.email}
+                  </a>
                 </div>
               </div>
             </div>

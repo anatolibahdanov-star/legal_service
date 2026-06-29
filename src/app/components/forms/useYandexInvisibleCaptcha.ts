@@ -62,6 +62,7 @@ export function useYandexInvisibleCaptcha({ variant = "light" }: UseYandexInvisi
         widgetIdRef.current = window.smartCaptcha.render(containerRef.current, {
           sitekey: siteKey,
           invisible: true,
+          hideShield: true,
           hl: "ru",
           callback: (token: string) => {
             const pending = pendingRef.current;

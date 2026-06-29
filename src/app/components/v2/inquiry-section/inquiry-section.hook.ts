@@ -1,16 +1,36 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import {
   validateRequestForm,
   validateQuestionText,
 } from "@/src/app/components/forms/validation/request"
+import { EmailValidator } from "@/src/app/components/forms/validation/common"
 import { submitRequestFormAction } from "@/src/app/components/forms/action/request"
 import { RequestFormI, FormDataObjectT } from "@/src/interfaces/form"
+import { isPhoneComplete } from "@/src/libs/phoneMask"
 import { useYandexInvisibleCaptcha } from "@/src/app/components/forms/useYandexInvisibleCaptcha"
+import { usePhoneBlockCountdown } from "@/src/app/components/forms/hooks/usePhoneBlockCountdown"
 import { TOTAL_VISIBLE_STEPS, type ContactChannel } from './inquiry-section.data'
+import {
+  type VerificationModal,
+  sendInquiryPhoneOtp,
+  resendInquiryPhoneOtp,
+  verifyInquiryPhoneOtp,
+  validateTelegramUsername,
+} from './inquiry-section.verify'
+
+const emptyErrors = (): FormDataObjectT => ({
+  name: "",
+  email: "",
+  topic: "",
+  question: "",
+  agree: false,
+  common: "",
+})
 
 export const useInquirySection = () => {
   const { execute: executeCaptcha } = useYandexInvisibleCaptcha({ variant: "dark" })
-  
+  const phoneBlock = usePhoneBlockCountdown()
+
   // Navigation state
   const [step, setStep] = useState(1)
   const [direction, setDirection] = useState(1)
@@ -20,47 +40,34 @@ export const useInquirySection = () => {
   // Form data
   const [problemText, setProblemText] = useState('')
   const [attachedFiles, setAttachedFiles] = useState<File[]>([])
-  const [complexity, setComplexity] = useState('medium')
   const [channel, setChannel] = useState<ContactChannel>('phone')
   const [contactValue, setContactValue] = useState('')
-  
+
+  // Verification modals
+  const [verificationModal, setVerificationModal] = useState<VerificationModal>('none')
+  const [normalizedPhone, setNormalizedPhone] = useState('')
+  const [pendingEmail, setPendingEmail] = useState('')
+
   // Validation and submission
-  const [errors, setErrors] = useState<FormDataObjectT>({ 
-    name: "", email: "", topic: "", question: "", agree: false, common: "" 
-  })
+  const [errors, setErrors] = useState<FormDataObjectT>(emptyErrors())
   const [captchaToken, setCaptchaToken] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [questionTouched, setQuestionTouched] = useState(false)
 
-  // Navigation functions
   const goNext = () => {
     if (step >= TOTAL_VISIBLE_STEPS) return
-    
-    // Сбрасываем ошибки
-    setErrors({ name: "", email: "", topic: "", question: "", agree: false, common: "" })
-    
-    // Валидация для каждого шага
+
+    setErrors(emptyErrors())
+
     if (step === 1) {
-      // Шаг 1: Проверяем что есть текст проблемы
-      setQuestionTouched(true) // Устанавливаем touched при попытке перехода
-      if (!problemText.trim()) {
-        setErrors(prev => ({ ...prev, question: "Пожалуйста, опишите вашу проблему" }))
-        return
-      }
-      if (problemText.trim().length < 10) {
-        setErrors(prev => ({ ...prev, question: "Пожалуйста, опишите проблему подробнее (минимум 10 символов)" }))
+      setQuestionTouched(true)
+      const questionError = validateQuestionText(problemText)
+      if (questionError) {
+        setErrors(prev => ({ ...prev, question: questionError }))
         return
       }
     }
-    
-    if (step === 2) {
-      // Шаг 2: Проверяем выбор сложности
-      if (!complexity) {
-        setErrors(prev => ({ ...prev, common: "Пожалуйста, выберите сложность вашего дела" }))
-        return
-      }
-    }
-    
+
     directionRef.current = 1
     setDirection(1)
     setStep(s => s + 1)
@@ -73,28 +80,42 @@ export const useInquirySection = () => {
     setStep(s => s - 1)
   }
 
-  // Validation and submission logic
-  const validateAndSubmit = async () => {
-    const newErrors: FormDataObjectT = { 
-      name: "", email: "", topic: "", question: "", agree: false, common: "" 
+  const buildRequestPayload = (): RequestFormI => {
+    const contact = contactValue.trim()
+    let name = 'Пользователь'
+    let email = ''
+
+    if (channel === 'email') {
+      email = contact
+    } else if (channel === 'phone' || channel === 'whatsapp') {
+      name = contact
+      email = `${contact.replace(/\D/g, '')}@phone.enki.local`
+    } else {
+      const username = contact.replace(/^@/, '')
+      name = `@${username}`
+      email = `${username}@telegram.enki.local`
     }
 
-    // Check problem text first
+    return {
+      name,
+      email,
+      topic: '',
+      question: problemText,
+      agree: true,
+      auth: '0',
+    }
+  }
+
+  const validateContactStep = (): FormDataObjectT | null => {
+    const newErrors = emptyErrors()
+
     const questionError = validateQuestionText(problemText)
     if (questionError) {
       newErrors.question = questionError
-      setErrors(newErrors)
-      return false
+      newErrors.common = questionError
+      return newErrors
     }
 
-    // Check complexity
-    if (!complexity) {
-      newErrors.common = "Пожалуйста, выберите сложность вашего дела"
-      setErrors(newErrors)
-      return false
-    }
-
-    // Check contact value
     if (!contactValue.trim()) {
       if (channel === 'phone' || channel === 'whatsapp') {
         newErrors.common = "Пожалуйста, введите номер телефона"
@@ -103,101 +124,136 @@ export const useInquirySection = () => {
       } else if (channel === 'telegram') {
         newErrors.common = "Пожалуйста, введите Telegram username"
       }
-      setErrors(newErrors)
-      return false
+      return newErrors
     }
 
-    // Validate email format if email channel
-    if (channel === 'email') {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-      if (!emailRegex.test(contactValue)) {
-        newErrors.common = "Пожалуйста, введите корректный email"
-        setErrors(newErrors)
-        return false
+    if (channel === 'email' && !EmailValidator(contactValue)) {
+      newErrors.common = "Пожалуйста, введите корректный email"
+      return newErrors
+    }
+
+    if ((channel === 'phone' || channel === 'whatsapp') && !isPhoneComplete(contactValue)) {
+      newErrors.common = "Пожалуйста, введите корректный номер телефона"
+      return newErrors
+    }
+
+    if (channel === 'telegram') {
+      const telegramError = validateTelegramUsername(contactValue)
+      if (telegramError) {
+        newErrors.common = telegramError
+        return newErrors
       }
     }
 
-    // Validate phone format if phone/whatsapp channel
-    if (channel === 'phone' || channel === 'whatsapp') {
-      const digitsOnly = contactValue.replace(/\D/g, '')
-      if (digitsOnly.length !== 11 || !digitsOnly.startsWith('7')) {
-        newErrors.common = "Пожалуйста, введите корректный номер телефона"
-        setErrors(newErrors)
-        return false
-      }
-    }
-
-    // Check captcha
     if (!captchaToken) {
       newErrors.common = "Подтвердите, что вы не робот."
-      setErrors(newErrors)
-      return false
+      return newErrors
     }
 
-    // Prepare form data  
-    const email = channel === 'email' ? contactValue : 'user@noemail.local'
-    const formData: RequestFormI = {
-      name: 'Пользователь',
-      email: email,
-      topic: '',
-      question: problemText,
-      agree: true,
-      auth: '0'
+    const validResult = validateRequestForm(buildRequestPayload())
+    if (!validResult.is_success) {
+      const firstError = validResult.errors?.[0]?.error?.[0]
+      newErrors.common = firstError ?? "Проверьте правильность заполнения полей."
+      return newErrors
     }
 
-    const validResult = validateRequestForm(formData)
-    
-    if (validResult.is_success) {
-      setSubmitting(true)
-      try {
-        const responseData = await submitRequestFormAction(formData, captchaToken)
-        setSubmitting(false)
+    return null
+  }
+
+  const submitAnonymousRequest = async (token: string) => {
+    const responseData = await submitRequestFormAction(buildRequestPayload(), token)
+    if (!responseData.status) {
+      throw new Error(responseData.error || 'Произошла ошибка при отправке. Попробуйте еще раз.')
+    }
+  }
+
+  const handleSubmit = async () => {
+    if (submitting) return
+
+    const validationErrors = validateContactStep()
+    if (validationErrors) {
+      setErrors(validationErrors)
+      return
+    }
+
+    const token = captchaToken!
+    setSubmitting(true)
+    setErrors(emptyErrors())
+
+    try {
+      if (channel === 'phone' || channel === 'whatsapp') {
+        const result = await sendInquiryPhoneOtp(contactValue, token)
         setCaptchaToken(null)
-        
-        if (!responseData.status) {
-          newErrors.common = responseData.error
-          setErrors(newErrors)
-          return false
+
+        if (!result.ok) {
+          phoneBlock.applyFromServer(result.blockPayload)
+          setErrors(prev => ({ ...prev, common: result.error }))
+          return
         }
 
-        // Success - show completion screen
-        setIsComplete(true)
-        
-      } catch (error) {
-        setSubmitting(false)
-        newErrors.common = "Произошла ошибка при отправке. Попробуйте еще раз."
-        setErrors(newErrors)
-        return false
+        if (result.devCode) console.info('[DEV] OTP code:', result.devCode)
+        setNormalizedPhone(result.normalizedPhone)
+        setVerificationModal('otp')
+        return
       }
-    } else {
-      const _errors = validResult.errors
-      if (_errors !== null) {
-        newErrors.common = "Проверьте правильность заполнения полей."
-        for (const error of _errors) {
-          if (Object.prototype.hasOwnProperty.call(newErrors, error.field)) {
-            newErrors[error.field] = error.error.join('<br />')
-          }
-        }
-        setErrors(newErrors)
+
+      if (channel === 'email') {
+        await submitAnonymousRequest(token)
+        setCaptchaToken(null)
+        setPendingEmail(contactValue.trim())
+        setVerificationModal('email')
+        return
       }
-      return false
+
+      await submitAnonymousRequest(token)
+      setCaptchaToken(null)
+      setIsComplete(true)
+    } catch (error) {
+      setErrors(prev => ({
+        ...prev,
+        common: error instanceof Error ? error.message : 'Произошла ошибка при отправке. Попробуйте еще раз.',
+      }))
+    } finally {
+      setSubmitting(false)
     }
   }
 
-  const handleSubmit = () => {
-    validateAndSubmit()
-  }
+  const closeVerificationModal = useCallback(() => {
+    setVerificationModal('none')
+  }, [])
+
+  const handleOtpVerify = useCallback(async (code: string) => {
+    const result = await verifyInquiryPhoneOtp(normalizedPhone, code, problemText)
+    if (result.ok) {
+      setVerificationModal('none')
+      setIsComplete(true)
+    }
+    return result
+  }, [normalizedPhone, problemText])
+
+  const handleOtpResend = useCallback(async () => {
+    let token: string
+    try {
+      token = await executeCaptcha()
+    } catch {
+      return { ok: false, message: 'Не удалось пройти проверку. Попробуйте позже.' }
+    }
+    return resendInquiryPhoneOtp(normalizedPhone, token)
+  }, [executeCaptcha, normalizedPhone])
+
+  const confirmEmailModal = useCallback(() => {
+    setVerificationModal('none')
+    setIsComplete(true)
+  }, [])
 
   const isLastStep = step === TOTAL_VISIBLE_STEPS
 
   return {
-    // State
     step,
     direction,
     isComplete,
     problemText,
     attachedFiles,
-    complexity,
     channel,
     contactValue,
     errors,
@@ -205,20 +261,22 @@ export const useInquirySection = () => {
     submitting,
     questionTouched,
     isLastStep,
-    
-    // Actions
+    verificationModal,
+    normalizedPhone,
+    pendingEmail,
     goNext,
     goBack,
     handleSubmit,
+    closeVerificationModal,
+    handleOtpVerify,
+    handleOtpResend,
+    confirmEmailModal,
     setProblemText,
     setAttachedFiles,
-    setComplexity,
     setChannel,
     setContactValue,
     setCaptchaToken,
     setQuestionTouched,
-    
-    // Utils
     validateQuestionText,
   }
 }
