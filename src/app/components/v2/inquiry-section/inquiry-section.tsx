@@ -23,6 +23,9 @@ import { YandexSmartCaptcha } from "@/src/app/components/forms/YandexSmartCaptch
 import { useInquirySection } from './inquiry-section.hook'
 import { useFileUpload } from './file-upload.hook'
 import { InquiryEmailModal, InquiryOtpModal } from './inquiry-verification-modals'
+import RequestStepProfile from '@/src/app/components/forms/RequestStepProfile'
+import RequestStepPayment from '@/src/app/components/forms/RequestStepPayment'
+import RequestStepSuccess from '@/src/app/components/forms/RequestStepSuccess'
 
 // ─── shared sub-components ────────────────────────────────────────────────────
 
@@ -314,8 +317,17 @@ function ChannelIcon({ id, active }: { id: ContactChannel; active: boolean }) {
   )
   if (id === 'whatsapp') return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <path d="M8 1.5A6.5 6.5 0 0 0 2.1 10.7L1.5 14.5l3.9-.6A6.5 6.5 0 1 0 8 1.5z" stroke={color} strokeWidth="1.3"/>
-      <path d="M5.5 5.5c.2.5.7 1.4 1.3 2 .6.7 1.5 1.3 2 1.5" stroke={color} strokeWidth="1.3" strokeLinecap="round"/>
+      <path
+        d="M8 1.5a6.43 6.43 0 0 0-5.48 9.78L1.75 14.5l3.28-.75A6.43 6.43 0 1 0 8 1.5Z"
+        stroke={color}
+        strokeWidth="1.25"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M5.66 5.1c-.15.02-.32.06-.48.23-.16.17-.62.6-.62 1.45 0 .86.64 1.7.73 1.82.1.12 1.23 1.93 3.05 2.63 1.51.58 1.82.46 2.15.43.33-.03 1.06-.43 1.21-.85.15-.42.15-.78.1-.86-.04-.08-.16-.12-.34-.21-.18-.1-1.06-.53-1.23-.59-.16-.06-.29-.09-.41.09-.12.18-.47.58-.57.7-.1.12-.21.13-.39.04-.18-.09-.76-.28-1.45-.9-.53-.47-.9-1.06-1-1.24-.1-.18-.01-.28.08-.37.08-.08.18-.21.27-.31.09-.11.12-.18.18-.3.06-.12.03-.22-.02-.31-.04-.09-.4-.98-.56-1.34-.14-.34-.29-.34-.4-.35h-.3Z"
+        fill={color}
+      />
     </svg>
   )
   if (id === 'telegram') return (
@@ -633,6 +645,7 @@ export function InquirySection() {
   const {
     step,
     direction,
+    panel,
     isComplete,
     problemText,
     attachedFiles,
@@ -645,6 +658,12 @@ export function InquirySection() {
     isLastStep,
     verificationModal,
     pendingEmail,
+    profileInitialName,
+    profileInitialEmail,
+    questionPrice,
+    userBalance,
+    successKind,
+    successAmount,
     goNext,
     goBack,
     handleSubmit,
@@ -652,6 +671,13 @@ export function InquirySection() {
     handleOtpVerify,
     handleOtpResend,
     confirmEmailModal,
+    handleProfileSubmit,
+    handleProfileContinue,
+    handlePayCard,
+    handlePayBalance,
+    handlePayLater,
+    goToMyQuestions,
+    goToBalance,
     setProblemText,
     setAttachedFiles,
     setChannel,
@@ -688,6 +714,21 @@ export function InquirySection() {
             >
               <FinalScreen />
             </motion.div>
+          ) : panel === 'success' ? (
+            <motion.div
+              key="wizard-success"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="w-full min-h-[662px] flex items-center justify-center p-8"
+            >
+              <div className="w-full max-w-[560px]">
+                <RequestStepSuccess
+                  variant={successKind}
+                  amount={successAmount}
+                  onGoToProfile={goToMyQuestions}
+                />
+              </div>
+            </motion.div>
           ) : (
             <motion.div key="quiz" className="flex w-full min-h-full" initial={false}>
               <div
@@ -715,7 +756,25 @@ export function InquirySection() {
                         exit={{ x: direction > 0 ? -40 : 40, opacity: 0 }}
                         transition={{ duration: 0.3, ease: 'easeInOut' }}
                       >
-                        {step === 1 && (
+                        {panel === 'profile' && (
+                          <RequestStepProfile
+                            initialName={profileInitialName}
+                            initialEmail={profileInitialEmail}
+                            onSubmit={handleProfileSubmit}
+                            onContinue={handleProfileContinue}
+                          />
+                        )}
+                        {panel === 'payment' && (
+                          <RequestStepPayment
+                            price={questionPrice}
+                            balance={userBalance}
+                            onPayCard={handlePayCard}
+                            onPayBalance={handlePayBalance}
+                            onPayLater={handlePayLater}
+                            onTopUp={goToBalance}
+                          />
+                        )}
+                        {panel === 'quiz' && step === 1 && (
                           <Step2Panel 
                             value={problemText} 
                             onChange={setProblemText}
@@ -727,7 +786,7 @@ export function InquirySection() {
                             errors={{ question: typeof errors.question === 'string' ? errors.question : '' }}
                           />
                         )}
-                        {step === 2 && (
+                        {panel === 'quiz' && step === 2 && (
                           <Step5Panel
                             channel={channel}
                             onChannelChange={setChannel}
@@ -765,6 +824,7 @@ export function InquirySection() {
                   </div>
                 </div>
 
+                {panel === 'quiz' && (
                 <div className="flex flex-col gap-4 mt-6" style={{ width: 656 }}>
                   {isLastStep && typeof errors.common === 'string' && errors.common && (
                     <div className="p-3 bg-red-50 border border-red-200 rounded-xl">
@@ -785,6 +845,7 @@ export function InquirySection() {
                   }
                   </div>
                 </div>
+                )}
               </div>
 
               <ProgressPanel step={step} direction={direction} />
