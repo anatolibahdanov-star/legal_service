@@ -32,8 +32,9 @@ async function finalizeWizardQuestion(problemText: string, isFirstQuestionFree: 
     throw new Error(createResponse.error || 'Не удалось сохранить вопрос.')
   }
 
-  const created = createResponse.data as { id?: string | number }
-  if (created.id == null) {
+  const data = createResponse.data as { question?: { id?: string | number } }
+  const created = data.question
+  if (created?.id == null) {
     throw new Error('Не удалось сохранить вопрос.')
   }
 

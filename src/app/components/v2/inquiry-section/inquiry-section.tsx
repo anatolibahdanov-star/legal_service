@@ -23,6 +23,9 @@ import { YandexSmartCaptcha } from "@/src/app/components/forms/YandexSmartCaptch
 import { useInquirySection } from './inquiry-section.hook'
 import { useFileUpload } from './file-upload.hook'
 import { InquiryEmailModal, InquiryOtpModal } from './inquiry-verification-modals'
+import RequestStepProfile from '@/src/app/components/forms/RequestStepProfile'
+import RequestStepPayment from '@/src/app/components/forms/RequestStepPayment'
+import RequestStepSuccess from '@/src/app/components/forms/RequestStepSuccess'
 
 // ─── shared sub-components ────────────────────────────────────────────────────
 
@@ -633,6 +636,7 @@ export function InquirySection() {
   const {
     step,
     direction,
+    panel,
     isComplete,
     problemText,
     attachedFiles,
@@ -645,6 +649,12 @@ export function InquirySection() {
     isLastStep,
     verificationModal,
     pendingEmail,
+    profileInitialName,
+    profileInitialEmail,
+    questionPrice,
+    userBalance,
+    successKind,
+    successAmount,
     goNext,
     goBack,
     handleSubmit,
@@ -652,6 +662,13 @@ export function InquirySection() {
     handleOtpVerify,
     handleOtpResend,
     confirmEmailModal,
+    handleProfileSubmit,
+    handleProfileContinue,
+    handlePayCard,
+    handlePayBalance,
+    handlePayLater,
+    goToMyQuestions,
+    goToBalance,
     setProblemText,
     setAttachedFiles,
     setChannel,
@@ -688,6 +705,21 @@ export function InquirySection() {
             >
               <FinalScreen />
             </motion.div>
+          ) : panel === 'success' ? (
+            <motion.div
+              key="wizard-success"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="w-full min-h-[662px] flex items-center justify-center p-8"
+            >
+              <div className="w-full max-w-[560px]">
+                <RequestStepSuccess
+                  variant={successKind}
+                  amount={successAmount}
+                  onGoToProfile={goToMyQuestions}
+                />
+              </div>
+            </motion.div>
           ) : (
             <motion.div key="quiz" className="flex w-full min-h-full" initial={false}>
               <div
@@ -715,7 +747,25 @@ export function InquirySection() {
                         exit={{ x: direction > 0 ? -40 : 40, opacity: 0 }}
                         transition={{ duration: 0.3, ease: 'easeInOut' }}
                       >
-                        {step === 1 && (
+                        {panel === 'profile' && (
+                          <RequestStepProfile
+                            initialName={profileInitialName}
+                            initialEmail={profileInitialEmail}
+                            onSubmit={handleProfileSubmit}
+                            onContinue={handleProfileContinue}
+                          />
+                        )}
+                        {panel === 'payment' && (
+                          <RequestStepPayment
+                            price={questionPrice}
+                            balance={userBalance}
+                            onPayCard={handlePayCard}
+                            onPayBalance={handlePayBalance}
+                            onPayLater={handlePayLater}
+                            onTopUp={goToBalance}
+                          />
+                        )}
+                        {panel === 'quiz' && step === 1 && (
                           <Step2Panel 
                             value={problemText} 
                             onChange={setProblemText}
@@ -727,7 +777,7 @@ export function InquirySection() {
                             errors={{ question: typeof errors.question === 'string' ? errors.question : '' }}
                           />
                         )}
-                        {step === 2 && (
+                        {panel === 'quiz' && step === 2 && (
                           <Step5Panel
                             channel={channel}
                             onChannelChange={setChannel}
@@ -765,6 +815,7 @@ export function InquirySection() {
                   </div>
                 </div>
 
+                {panel === 'quiz' && (
                 <div className="flex flex-col gap-4 mt-6" style={{ width: 656 }}>
                   {isLastStep && typeof errors.common === 'string' && errors.common && (
                     <div className="p-3 bg-red-50 border border-red-200 rounded-xl">
@@ -785,6 +836,7 @@ export function InquirySection() {
                   }
                   </div>
                 </div>
+                )}
               </div>
 
               <ProgressPanel step={step} direction={direction} />
