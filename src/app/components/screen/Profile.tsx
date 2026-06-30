@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react"
 import { User } from "next-auth";
@@ -8,7 +10,7 @@ import Link from 'next/link';
 import Swal from 'sweetalert2'
 import { toast } from 'sonner'
 
-import { Upload, Eye, EyeOff, Star, Edit, Trash2, StarOff, Share2, Check, CreditCard, Link as LucideLink, AlertCircle, Paperclip } from "lucide-react";
+import { Eye, EyeOff, Star, Edit, StarOff, Share2, Check, CreditCard, Link as LucideLink, AlertCircle, Paperclip } from "lucide-react";
 
 import { CustomGetRequest, CustomRequest } from "@/src/libs/request";
 import { emitBalanceRefresh } from "@/src/libs/balanceEvents";
@@ -373,7 +375,7 @@ interface ProfileJobListPropsI {
   user: User;
 }
 
-const ProfileJobList = ({is_user, user}: ProfileJobListPropsI) => {
+export const ProfileJobList = ({is_user, user}: ProfileJobListPropsI) => {
   const [jobsData, setJobsData] = useState<profileDataQuestionsI | null>(null);
   const [totalItem, setTotalItem] = useState(0);
   const [activeForm, setActiveForm] = useState<"new-question" | null>(null);

@@ -1,11 +1,75 @@
 'use client'
 
+import { signOut } from 'next-auth/react'
+import type { User } from 'next-auth'
+
+import type { DBUser } from '@/src/interfaces/db'
+import { isPhoneEmail } from '@/src/libs/phoneIdentity'
 import { COMPLETION_ITEMS } from './profile-sidebar.data'
 
-export function ProfileSidebar() {
+interface ProfileSidebarProps {
+  data?: DBUser | null
+  user?: User | null
+  documentsComplete?: boolean
+}
+
+const getInitials = (value?: string | null) => {
+  const source = value?.trim()
+  if (!source) return 'П'
+  return source
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase()
+}
+
+const formatClientSince = (value?: string | Date | null) => {
+  if (!value) return 'Клиент'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return 'Клиент'
+  return `Клиент с ${date.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })}`
+}
+
+export function ProfileSidebar({ data = null, user = null, documentsComplete = false }: ProfileSidebarProps) {
+  const createdAt = (data as (DBUser & { created_at?: string | Date }) | null)?.created_at
+  const rawEmail = data?.email ?? user?.email ?? ''
+  const email = rawEmail && !isPhoneEmail(rawEmail) ? rawEmail : ''
+  const phone = data?.phone ?? ''
+  const displayName = data?.name || user?.name || data?.username || 'Пользователь'
+  const initials = getInitials(displayName)
+  const completionItems = COMPLETION_ITEMS.map((item) => {
+    if (item.key === 'email') {
+      return {
+        ...item,
+        description: email || 'Добавьте email',
+        completed: !!email && data?.email_verified === 1,
+      }
+    }
+    if (item.key === 'phone') {
+      return {
+        ...item,
+        description: phone || 'Добавьте телефон',
+        completed: !!phone,
+      }
+    }
+    if (item.key === 'documents') {
+      return {
+        ...item,
+        description: documentsComplete ? 'Паспорт / СНИЛС / ИНН загружены' : item.description,
+        completed: documentsComplete,
+      }
+    }
+    return item
+  })
+  const completionPercent = Math.round(
+    (completionItems.filter((item) => item.completed).length / completionItems.length) * 100
+  )
+  const showCompletion = !documentsComplete
+
   return (
-    <div className="w-[420px] flex flex-col">
-      <div className="bg-white border border-[rgba(18,22,27,0.05)] rounded-[28px] shadow-[0px_3px_36px_0px_rgba(0,0,0,0.04),_0px_-102px_250px_0px_rgba(0,0,0,0.07)]">
+    <div className="w-[420px] shrink-0 flex flex-col">
+      <div className="overflow-hidden bg-white border border-[rgba(18,22,27,0.05)] rounded-[28px] shadow-[0px_3px_36px_0px_rgba(0,0,0,0.04),_0px_-102px_250px_0px_rgba(0,0,0,0.07)]">
         <div 
           className="relative h-[100px] rounded-t-[28px]"
           style={{
@@ -24,14 +88,14 @@ export function ProfileSidebar() {
           </div>
         </div>
 
-        <div className="relative -mt-10 px-8 pb-8">
+        <div className="relative -mt-10 px-8">
           <div className="flex items-end justify-between mb-4">
             <div className="relative">
               <div 
                 className="w-[72px] h-[72px] flex items-center justify-center rounded-[20px] bg-gradient-to-r from-[#2654C0] to-[#34347C] text-white font-bold text-[22px] leading-[33px] tracking-[-0.0114em]"
                 style={{ boxShadow: '0px 0px 0px 4px rgba(255, 255, 255, 1)' }}
               >
-                ИИ
+                {initials}
               </div>
               <div className="absolute bottom-0 right-0 w-5 h-5 bg-[#00BC7D] rounded-full flex items-center justify-center">
                 <div className="w-4 h-4 text-white">
@@ -43,10 +107,10 @@ export function ProfileSidebar() {
             </div>
           </div>
 
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between pb-8">
             <div className="flex-1">
               <h3 className="text-[#12161B] font-semibold text-[20px] leading-[24px] tracking-[-0.01em] mb-1">
-                Иван Иванов
+                {displayName}
               </h3>
               <div className="flex items-center gap-2 text-[rgba(18,22,27,0.5)] text-[14px] leading-[20px]">
                 <div className="w-4 h-4">
@@ -54,7 +118,7 @@ export function ProfileSidebar() {
                     <path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z"/>
                   </svg>
                 </div>
-                <span>Клиент с апреля 2023</span>
+                <span>{formatClientSince(createdAt)}</span>
               </div>
             </div>
             <button className="flex items-center gap-2 px-4 py-[7px] bg-gradient-to-r from-[#34347C] to-[#34537C] border border-[rgba(255,255,255,0.15)] rounded-[12px] text-white text-[14px] leading-[20px] hover:opacity-90 active:opacity-80 transition-opacity">
@@ -68,10 +132,11 @@ export function ProfileSidebar() {
             </button>
           </div>
         </div>
-      </div>
 
-      <div className="bg-white rounded-[28px] mt-0 p-8 pt-12">
+        <div className={`p-8 ${showCompletion ? 'pt-12' : 'pt-6'}`}>
         <div className="flex flex-col gap-8">
+          {showCompletion && (
+            <>
           <div className="flex flex-col gap-2">
             <h4 className="text-[#12161B] font-semibold text-[16px] leading-[20px]">
               Готовность профиля
@@ -89,14 +154,14 @@ export function ProfileSidebar() {
                   WebkitTextFillColor: 'transparent'
                 }}
               >
-                50%
+                {completionPercent}%
               </div>
               <div className="flex-1">
                 <div className="w-full h-2 bg-[rgba(18,22,27,0.05)] rounded-full">
                   <div 
                     className="h-2 bg-gradient-to-r from-[#2654C0] to-[#34347C] rounded-full"
                     style={{ 
-                      width: '50%',
+                      width: `${completionPercent}%`,
                       boxShadow: '0px 0px 12px 0px rgba(92, 122, 240, 0.4)'
                     }}
                   />
@@ -106,7 +171,7 @@ export function ProfileSidebar() {
           </div>
 
           <div className="flex flex-col gap-[10px]">
-            {COMPLETION_ITEMS.map((item, index) => (
+            {completionItems.map((item, index) => (
               <div
                 key={index}
                 className={`flex items-center gap-3 px-4 py-[10px] border rounded-[16px] ${
@@ -152,11 +217,18 @@ export function ProfileSidebar() {
               </div>
             ))}
           </div>
+            </>
+          )}
 
-          <button className="w-full px-4 py-[13px] rounded-[24px] text-[#FB2C36] font-medium text-[14px] leading-[18px] text-center hover:bg-red-50 active:bg-red-100 transition-colors">
+          <button
+            type="button"
+            onClick={() => signOut({ callbackUrl: '/' })}
+            className="w-full px-4 py-[13px] rounded-[24px] text-[#FB2C36] font-medium text-[14px] leading-[18px] text-center hover:bg-red-50 active:bg-red-100 transition-colors"
+          >
             Выйти из аккаунта
           </button>
         </div>
+      </div>
       </div>
     </div>
   )
