@@ -16,17 +16,17 @@ interface HeaderProps {
   isAuthenticated?: boolean
   userName?: string
   userInitials?: string
+  mode?: 'fixed' | 'sticky' | 'static'
 }
 
 export const Header: React.FC<HeaderProps> = ({ 
   isAuthenticated = false,
   userName = "Иван Иванов",
-  userInitials = "ИИ"
+  userInitials = "ИИ",
+  mode = 'sticky',
 }) => {
   const {
     isAuthenticated: actuallyAuthenticated,
-    userName: actualUserName,
-    userInitials: actualUserInitials,
     session,
     activeForm,
     loginPrefillPhone,
@@ -43,7 +43,7 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <>
     {/* Header */}
-    <header id="header" className={styles.header}>
+    <header id="header" className={`${styles.header} ${styles[mode]}`}>
         <div id="container" className={styles.container}>
 
             <Link

@@ -1,19 +1,7 @@
-'use client'; 
-
 import "./globals.css";
-// import Header from "@/src/components/Header";
-// import { Header } from "@/src/app/components/Header";
-// import { Footer } from "@/src/app/components/Footer";
-// import Footer from "@/src/components/Footer";
-import { Header } from "@/src/app/components/v2/header/header";
-import { Footer } from "@/src/app/components/v2/footer/footer";
-import { CookieConsent } from "@/src/app/components/CookieConsent";
-import { SmartCaptchaLegalBadge } from "@/src/app/components/SmartCaptchaLegalBadge";
-import {NextAuthProvider} from "@/src/app/providers/NextAuthProvider"
-import {YandexCaptchaProvider} from "@/src/app/providers/YandexCaptchaProvider"
-import { Toaster } from "@/src/app/components/ui/sonner";
 import '@/src/styles/index.css';
 import "./enki.css";
+import { AppShell } from "@/src/app/components/AppShell";
 
 export default function RootLayout({
   children,
@@ -24,16 +12,7 @@ export default function RootLayout({
     <html lang="en" dir="ltr">
       <body>
         <div className="min-h-screen bg-[#fefdf9]">
-          <NextAuthProvider>
-            <YandexCaptchaProvider>
-              <Header />
-              {children}
-              <Footer />
-              <CookieConsent />
-              <SmartCaptchaLegalBadge />
-              <Toaster richColors position="top-right" />
-            </YandexCaptchaProvider>
-          </NextAuthProvider>
+          <AppShell>{children}</AppShell>
         </div>
       </body>
     </html>

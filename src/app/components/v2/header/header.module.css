@@ -1,8 +1,4 @@
 .header {
-    position: fixed;
-    top: 16px;
-    left: 16px;
-    right: 16px;
     z-index: 100;
 
     margin: 0 auto;
@@ -15,6 +11,24 @@
     backdrop-filter: blur(15px);
     box-shadow: 0 2px 72px 0 rgba(21, 22, 25, 0.2), 0 2px 15px 0 rgba(21, 22, 25, 0.02);
     background: rgba(255, 255, 255, 0.8);
+}
+
+.sticky {
+    position: sticky;
+    top: 16px;
+}
+
+.fixed {
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    right: 16px;
+}
+
+.static {
+    position: relative;
+    top: auto;
+    margin-top: 16px;
 }
 
 .container {
