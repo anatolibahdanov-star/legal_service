@@ -116,15 +116,15 @@ export const PromptVersionEdit = () => (
     <Edit mutationMode="pessimistic">
         <SimpleForm>
             <TextInput label="Код" source="code" disabled fullWidth />
-            <TextInput label="Название" source="name" disabled fullWidth />
+            <TextInput label="Название" source="name" fullWidth validate={[required()]} />
             <TextInput
                 label="Текст промпта"
                 source="body"
                 multiline
                 rows={20}
                 fullWidth
-                disabled
-                helperText="Промпт неизменяем. Чтобы внести правки, создайте новую версию."
+                validate={[required()]}
+                helperText="Изменения применяются к ответам ИИ сразу после сохранения (для активной версии)."
             />
             <BooleanInput
                 label="Активная версия"

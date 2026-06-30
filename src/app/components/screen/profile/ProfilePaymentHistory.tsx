@@ -52,7 +52,8 @@ const itemsPerPage = 10;
 
 export const ProfilePaymentHistory = () => {
   const [items, setItems] = useState<PaymentHistoryItemI[]>([]);
-  const [totalSpent, setTotalSpent] = useState(0);
+  const [totalExpenses, setTotalExpenses] = useState(0);
+  const [totalTopups, setTotalTopups] = useState(0);
   const [totalItems, setTotalItems] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -69,7 +70,8 @@ export const ProfilePaymentHistory = () => {
       if (active && res.status && res.data) {
         setItems(res.data.items ?? []);
         setTotalItems(res.data.count ?? 0);
-        setTotalSpent(res.data.totalSpent ?? 0);
+        setTotalExpenses(res.data.totalExpenses ?? 0);
+        setTotalTopups(res.data.totalTopups ?? 0);
       }
       if (active) setLoading(false);
     };
@@ -104,11 +106,19 @@ export const ProfilePaymentHistory = () => {
 
   return (
     <div>
-      <div className="mt-2 mb-8 w-full max-w-lg rounded-2xl border border-[#e0e0e0] bg-white px-8 py-6">
-        <p className="text-sm text-[#6b7280] mb-3">Общая сумма потраченных средств</p>
-        <p className="text-[40px] leading-none font-bold text-[#29282b]">
-          {formatAmount(totalSpent)}
-        </p>
+      <div className="mt-2 mb-8 flex flex-wrap gap-4">
+        <div className="flex-1 min-w-[240px] rounded-2xl border border-[#e0e0e0] bg-white px-8 py-6">
+          <p className="text-sm text-[#6b7280] mb-3">Общая сумма расходов</p>
+          <p className="text-[40px] leading-none font-bold text-[#ef4444]">
+            {formatAmount(totalExpenses)}
+          </p>
+        </div>
+        <div className="flex-1 min-w-[240px] rounded-2xl border border-[#e0e0e0] bg-white px-8 py-6">
+          <p className="text-sm text-[#6b7280] mb-3">Общая сумма пополнений</p>
+          <p className="text-[40px] leading-none font-bold text-[#10b981]">
+            {formatAmount(totalTopups)}
+          </p>
+        </div>
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-[#e0e0e0] overflow-hidden">

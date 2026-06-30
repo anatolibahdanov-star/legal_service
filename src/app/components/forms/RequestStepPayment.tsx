@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AlertCircle, Check, CreditCard, Loader2, Wallet } from "lucide-react";
+import { AlertCircle, Check, CreditCard, Gift, Loader2, Wallet } from "lucide-react";
 import { cn } from "@/src/app/components/ui/utils";
 
 const BRAND = "#8faaba";
@@ -25,6 +25,12 @@ interface RequestStepPaymentProps {
   onPayLater?: () => Promise<{ ok: boolean; message?: string }>;
   /** Redirects to the balance top-up screen. */
   onTopUp: () => void;
+  /**
+   * Admin-granted free questions available to the user. When > 0 the question
+   * is covered by a free question (consumed server-side via onPayBalance) and
+   * no money is charged — so we show a dedicated free-question view.
+   */
+  freeQuestions?: number;
 }
 
 const formatRub = (n: number): string =>
@@ -37,10 +43,25 @@ export default function RequestStepPayment({
   onPayBalance,
   onPayLater,
   onTopUp,
+  freeQuestions = 0,
 }: RequestStepPaymentProps) {
   const [method, setMethod] = useState<PayMethod | null>(null);
   const [submitting, setSubmitting] = useState<"pay" | "later" | null>(null);
   const [error, setError] = useState<string>("");
+
+  const hasFree = freeQuestions > 0;
+
+  const handleUseFree = async () => {
+    if (submitting) return;
+    setError("");
+    setSubmitting("pay");
+    const res = await onPayBalance();
+    if (!res.ok) {
+      setError(res.message ?? "Не удалось использовать бесплатный вопрос.");
+      setSubmitting(null);
+    }
+    // On success the parent swaps the screen; keep the button disabled.
+  };
 
   const enoughBalance = balance >= price;
   // Card is always payable; balance only if there's enough.
@@ -75,6 +96,77 @@ export default function RequestStepPayment({
       setSubmitting(null);
     }
   };
+
+  // Free question available → it's consumed first (server-side), no money charged.
+  if (hasFree) {
+    return (
+      <div className="bg-[#3d4b5e] rounded-2xl sm:rounded-3xl p-5 sm:p-8 lg:p-10 shadow-2xl">
+        <section className="text-center py-2 mb-6">
+          <p className="text-sm text-white/70">Стоимость вопроса</p>
+          <p className="mt-2 text-4xl sm:text-5xl font-bold tracking-tight text-emerald-300">
+            Бесплатно
+          </p>
+          <p className="mt-2 text-xs text-white/60">
+            Будет использован бесплатный вопрос — деньги не спишутся
+          </p>
+        </section>
+
+        <div className="rounded-2xl border-2 border-emerald-300/60 bg-emerald-400/10 p-4 mb-4 flex items-start gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl shrink-0 bg-white/15 text-emerald-200">
+            <Gift className="h-5 w-5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-white">Бесплатный вопрос</p>
+            <p className="text-sm text-white/70 mt-0.5">
+              Доступно: {freeQuestions}. Один будет списан при отправке.
+            </p>
+          </div>
+        </div>
+
+        {error && (
+          <div className="rounded-xl border border-red-400/40 bg-red-500/15 p-3 flex items-start gap-2 mb-4">
+            <AlertCircle className="h-5 w-5 text-red-300 mt-0.5 shrink-0" />
+            <div className="text-sm">
+              <p className="font-medium text-red-200">Не удалось отправить вопрос</p>
+              <p className="text-white/70 text-xs mt-0.5">{error}</p>
+            </div>
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={handleUseFree}
+          disabled={submitting !== null}
+          className={cn(
+            "w-full font-medium py-4 px-6 rounded-2xl transition-colors text-lg flex items-center justify-center gap-2",
+            submitting !== null
+              ? "bg-[#8faaba]/50 text-white/70 cursor-not-allowed"
+              : "bg-[#8faaba] hover:bg-[#7a98a7] text-white"
+          )}
+          style={submitting === null ? { backgroundColor: BRAND } : undefined}
+        >
+          {submitting === "pay" ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" /> Отправляем…
+            </>
+          ) : (
+            "Использовать бесплатный вопрос"
+          )}
+        </button>
+
+        {onPayLater && (
+          <button
+            type="button"
+            onClick={handleLater}
+            disabled={submitting !== null}
+            className="w-full text-sm text-white/70 hover:text-white transition-colors py-3 mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {submitting === "later" ? "Сохраняем…" : "Оплатить позже"}
+          </button>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="bg-[#3d4b5e] rounded-2xl sm:rounded-3xl p-5 sm:p-8 lg:p-10 shadow-2xl">

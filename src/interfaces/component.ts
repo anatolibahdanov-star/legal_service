@@ -1,5 +1,5 @@
 import { User } from "next-auth";
-import { DBQuestion } from "@/src/interfaces/db";
+import { AttachmentDTO, DBQuestion } from "@/src/interfaces/db";
 
 export interface CaseModalProps {
   user: User;
@@ -16,8 +16,14 @@ export interface ChatMessagePropsI {
   /** Admin view: highlight AI-edited {{...}} spans in red instead of stripping them. */
   isAdmin?: boolean;
   isLastLawyerMessage?: boolean;
-  onAskClarification?: (questionOrId: string) => void;
+  onAskClarification?: (questionOrId: string, files?: File[]) => void;
   showClarificationForm?: boolean;
+  /** When true, render attachments under the question. Never set on the public page. */
+  showAttachments?: boolean;
+  /** Attachments for this question row (already source-filtered by the API). */
+  attachments?: AttachmentDTO[];
+  /** When true, the follow-up form offers a file uploader. */
+  allowAttachments?: boolean;
 }
 
 export interface profileDataQuestionsI {
@@ -32,4 +38,5 @@ export interface StatusPagePropsI {
 export interface AdminJobViewPropsI {
     record: DBQuestion;
     jobs: DBQuestion[];
+    attachmentsMap?: Record<string, AttachmentDTO[]>;
 }

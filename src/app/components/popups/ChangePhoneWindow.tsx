@@ -39,6 +39,7 @@ function ChangePhoneForm({
   const [phoneError, setPhoneError] = useState("");
   const [commonError, setCommonError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [otpExpiresInSec, setOtpExpiresInSec] = useState<number>(0);
 
   const currentDigits = useMemo(() => (currentPhone || "").replace(/\D/g, ""), [currentPhone]);
   const phoneDigits = phone.replace(/\D/g, "");
@@ -82,6 +83,7 @@ function ChangePhoneForm({
     }
     const data = response.data as { phone: string; expiresInSec: number; devCode?: string };
     if (data.devCode) console.info("[DEV] OTP code:", data.devCode);
+    setOtpExpiresInSec(data.expiresInSec ?? 0);
     setNormalizedPhone(data.phone);
     setStep("code");
   };
@@ -108,7 +110,7 @@ function ChangePhoneForm({
       const data = response.data as { phone: string; expiresInSec: number; devCode?: string };
       if (data.devCode) console.info("[DEV] OTP code:", data.devCode);
       setNormalizedPhone(data.phone);
-      return { ok: true, devCode: data.devCode };
+      return { ok: true, devCode: data.devCode, expiresInSec: data.expiresInSec };
     } catch {
       return { ok: false, message: "Не удалось отправить код. Попробуйте позже." };
     }
@@ -137,6 +139,7 @@ function ChangePhoneForm({
     return (
       <OtpCodeStep
         phone={normalizedPhone}
+        initialExpiresInSec={otpExpiresInSec}
         onVerify={handleVerify}
         onResend={handleResend}
         onChangePhone={() => {

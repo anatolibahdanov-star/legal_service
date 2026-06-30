@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
-import { ChevronDown, Plus } from "lucide-react";
+import { ChevronDown, Plus, Gift } from "lucide-react";
 import { DBUser } from "@/src/interfaces/db";
 import { AdminBalanceOperationI } from "@/src/interfaces/payment";
-import { formatRub, formatAmount, formatDateTime, operationTypeLabels } from "./format";
+import { formatRub, formatDateTime, operationTypeLabels, formatOperationValue } from "./format";
 import { TopUpDialog } from "./TopUpDialog";
+import { FreeQuestionsDialog } from "./FreeQuestionsDialog";
 import styles from "./users.module.css";
 
 interface OperationsTabProps {
@@ -18,6 +19,7 @@ const typeFilterOptions = [
     { value: "charge", label: "Списание с баланса" },
     { value: "refund", label: "Возврат" },
     { value: "manual", label: "Ручное изменение" },
+    { value: "free", label: "Бесплатные вопросы" },
 ];
 
 const questionHref = (questionId: number): string => {
@@ -30,6 +32,7 @@ export const OperationsTab = ({ user, apiBase, onChanged }: OperationsTabProps) 
     const [loading, setLoading] = useState(true);
     const [type, setType] = useState("all");
     const [dialogOpen, setDialogOpen] = useState(false);
+    const [freeDialogOpen, setFreeDialogOpen] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [page, setPage] = useState(1);
     const perPage = 5;
@@ -78,6 +81,30 @@ export const OperationsTab = ({ user, apiBase, onChanged }: OperationsTabProps) 
         }
     };
 
+    const handleAccrueFree = async (count: number, comment: string) => {
+        setSubmitting(true);
+        try {
+            const res = await fetch(`${apiBase}/operations/free-questions`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({ user_id: user.id, count, comment }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                return { ok: false, error: data?.message ?? "Не удалось начислить бесплатные вопросы." };
+            }
+            setFreeDialogOpen(false);
+            await loadOperations();
+            onChanged();
+            return { ok: true };
+        } catch {
+            return { ok: false, error: "Сетевая ошибка. Попробуйте ещё раз." };
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
     const renderComment = (op: AdminBalanceOperationI) => {
         if (op.questionId) {
             return (
@@ -110,6 +137,10 @@ export const OperationsTab = ({ user, apiBase, onChanged }: OperationsTabProps) 
                     <p className={styles.balanceBlockLabel}>Платные вопросы</p>
                     <p className={styles.balanceBlockValue}>{Number(user.paid_questions ?? 0)}</p>
                 </div>
+                <div className={styles.balanceBlock}>
+                    <p className={styles.balanceBlockLabel}>Бесплатные вопросы</p>
+                    <p className={styles.balanceBlockValue}>{Number(user.free_questions ?? 0)}</p>
+                </div>
             </div>
 
             <div className={styles.opsToolbar}>
@@ -121,10 +152,16 @@ export const OperationsTab = ({ user, apiBase, onChanged }: OperationsTabProps) 
                     </select>
                     <ChevronDown size={18} className={styles.selectChevron} />
                 </div>
-                <button className={styles.btnPrimary} onClick={() => setDialogOpen(true)}>
-                    <Plus size={18} />
-                    Пополнить баланс
-                </button>
+                <div className={styles.opsToolbarActions}>
+                    <button className={styles.btnSecondary} onClick={() => setFreeDialogOpen(true)}>
+                        <Gift size={18} />
+                        Начислить бесплатные вопросы
+                    </button>
+                    <button className={styles.btnPrimary} onClick={() => setDialogOpen(true)}>
+                        <Plus size={18} />
+                        Пополнить баланс
+                    </button>
+                </div>
             </div>
 
             <div className={styles.opsTableCard}>
@@ -134,7 +171,7 @@ export const OperationsTab = ({ user, apiBase, onChanged }: OperationsTabProps) 
                             <tr>
                                 <th>Дата и время</th>
                                 <th>Тип операции</th>
-                                <th>Сумма, ₽</th>
+                                <th>Сумма / кол-во</th>
                                 <th>Комментарий</th>
                                 <th>Кто изменил</th>
                             </tr>
@@ -150,7 +187,7 @@ export const OperationsTab = ({ user, apiBase, onChanged }: OperationsTabProps) 
                                 <tr key={op.id}>
                                     <td>{formatDateTime(op.createdAt)}</td>
                                     <td>{operationTypeLabels[op.type]}</td>
-                                    <td className={styles.opsAmount}>{formatAmount(Math.abs(op.amount))}</td>
+                                    <td className={styles.opsAmount}>{formatOperationValue(op)}</td>
                                     <td>{renderComment(op)}</td>
                                     <td>{op.actor}</td>
                                 </tr>
@@ -183,6 +220,13 @@ export const OperationsTab = ({ user, apiBase, onChanged }: OperationsTabProps) 
                 submitting={submitting}
                 onClose={() => setDialogOpen(false)}
                 onApply={handleApply}
+            />
+
+            <FreeQuestionsDialog
+                open={freeDialogOpen}
+                submitting={submitting}
+                onClose={() => setFreeDialogOpen(false)}
+                onApply={handleAccrueFree}
             />
         </div>
     );

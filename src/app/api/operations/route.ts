@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 
 const cmnMsg = "API OPERATIONS "
 
-const allowedTypes = new Set<string>(Object.values(AdminOperationTypeE))
+const allowedTypes = new Set<string>([...Object.values(AdminOperationTypeE), 'free'])
 
 async function requireSuperAdmin() {
     const session = await getServerSession(authOptions)
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ success: false, message: 'user_id is required.' }, { status: 400 })
     }
     const rawType = searchParams.get('type') ?? 'all'
-    const type = allowedTypes.has(rawType) ? (rawType as AdminOperationTypeE) : 'all'
+    const type = allowedTypes.has(rawType) ? (rawType as AdminOperationTypeE | 'free') : 'all'
 
     try {
         const items = await getAdminUserOperations(userId, type)

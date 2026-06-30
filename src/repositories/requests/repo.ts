@@ -9,6 +9,8 @@ import {UserRatingRequest, UserRequest} from "@/src/interfaces/api"
 import {getCategoryByName} from "@/src/repositories/categories/repo"
 import { ReplyStatusesE, FinalReplyStatusesE, QuestionStatusesE, QuestionInfoStatusesE, EmailStatusesE } from '@/src/interfaces/data';
 import { generateShortId } from '@/src/services/pdf/shortId';
+import { getAttachmentsByQuestionId } from '@/src/repositories/question_attachments/repo';
+import { deleteAttachmentByKey } from '@/src/services/attachments/storage';
 
 const msgGlobal = "REPO QUESTION "
 
@@ -819,11 +821,20 @@ export async function saveQuestionRating(id: string, ratingInfo: UserRatingReque
 export async function deleteQuestion(id: string): Promise<DBQuestion[] | null> {
     const msg = msgGlobal + "deleteQuestion - ";
     const questions = await getQuestionsByIds([id])
-    if(questions === null) {
+    if(questions === null || questions.length === 0) {
         logger.error(msg + 'Question not found ', id)
         return null
     }
     const question: DBQuestion = questions[0]
+
+    try {
+        const attachments = await getAttachmentsByQuestionId(question.id)
+        for (const att of attachments) {
+            await deleteAttachmentByKey(att.storage_key)
+        }
+    } catch (err) {
+        logger.error(msg + 'attachment S3 cleanup failed', (err as Error).message)
+    }
 
     const questionDeleteSQL = `DELETE FROM question WHERE id=?`;
     const params = [question.id];

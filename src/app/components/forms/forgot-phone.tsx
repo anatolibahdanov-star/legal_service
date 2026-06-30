@@ -29,6 +29,7 @@ export default function ForgotPhoneForm({ onSwitchToLogin, onHeaderlessChange }:
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [normalizedPhone, setNormalizedPhone] = useState<string>("");
   const [maskedPhone, setMaskedPhone] = useState<string>("");
+  const [otpExpiresInSec, setOtpExpiresInSec] = useState<number>(0);
   const [errors, setErrors] = useState<{ phone: string; common: string }>({
     phone: "",
     common: "",
@@ -69,6 +70,7 @@ export default function ForgotPhoneForm({ onSwitchToLogin, onHeaderlessChange }:
     }
     const data = response.data as { phone: string; expiresInSec: number; devCode?: string };
     setNormalizedPhone(data.phone);
+    setOtpExpiresInSec(data.expiresInSec ?? 0);
     if (data.devCode) console.info("[DEV] OTP code:", data.devCode);
     setStep("code");
   };
@@ -98,7 +100,7 @@ export default function ForgotPhoneForm({ onSwitchToLogin, onHeaderlessChange }:
       const data = response.data as { phone: string; expiresInSec: number; devCode?: string };
       setNormalizedPhone(data.phone);
       if (data.devCode) console.info("[DEV] OTP code:", data.devCode);
-      return { ok: true };
+      return { ok: true, expiresInSec: data.expiresInSec };
     } catch {
       return { ok: false, message: "Не удалось отправить код. Попробуйте позже." };
     }
@@ -167,6 +169,7 @@ export default function ForgotPhoneForm({ onSwitchToLogin, onHeaderlessChange }:
         onVerify={handleVerify}
         onResend={handleResend}
         onChangePhone={goBackToPhoneStep}
+        initialExpiresInSec={otpExpiresInSec}
       />
     );
   }

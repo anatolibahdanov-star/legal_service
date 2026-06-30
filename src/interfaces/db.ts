@@ -42,6 +42,31 @@ export interface DBQuestion extends RowDataPacket, User {
   isGenerate?: boolean;
   admin_id?: number|null;
   child_id?: number|null;
+  attachments?: AttachmentDTO[];
+}
+
+export interface DBQuestionAttachment extends RowDataPacket {
+  id: number;
+  question_id: number;
+  user_id: number;
+  source: 'user' | 'lawyer';
+  uploaded_by_admin_id: number | null;
+  filename: string;
+  storage_key: string;
+  file_size: number;
+  extension: string;
+  mime: string | null;
+  created_at: DateTime;
+}
+
+export interface AttachmentDTO {
+  id: number;
+  question_id: number;
+  source: 'user' | 'lawyer';
+  filename: string;
+  file_size: number;
+  extension: string;
+  url: string;
 }
 
 export interface DBUser extends RowDataPacket, User {
@@ -64,6 +89,7 @@ export interface DBUser extends RowDataPacket, User {
   is_register?: boolean;
   is_first_question_free?: number;
   paid_questions?: number;
+  free_questions?: number;
   status?: number;
   created_at: DateTime;
 }

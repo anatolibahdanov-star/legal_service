@@ -1,15 +1,15 @@
 /* eslint-disable react/jsx-key */
-import { RecordContext, ShowControllerProps, FunctionField, useRecordContext, useRefresh, useUpdate, Button, useNotify, useEditController, InputProps, ReferenceInput, Filter, DateInput, Show, SimpleShowLayout, required, SelectInput, TextInput, SimpleForm, Edit, List, Datagrid, DateField, TextField, SelectField, EditButton, DeleteButton, EditControllerProps, useShowController, Toolbar, SaveButton} from 'react-admin';
+import { RecordContext, ShowControllerProps, FunctionField, useRecordContext, useRefresh, useUpdate, Button, useNotify, useEditController, ReferenceInput, Filter, DateInput, Show, SimpleShowLayout, required, SelectInput, TextInput, SimpleForm, Edit, List, Datagrid, DateField, TextField, SelectField, EditButton, DeleteButton, EditControllerProps, useShowController, Toolbar, SaveButton} from 'react-admin';
 import {RichTextInput, DefaultEditorOptions} from "ra-input-rich-text"
 import { EditMarkHighlight } from "@/src/app/components/admin/editMarkHighlight"
 import { JSX } from 'react/jsx-runtime';
-import { Typography, Box } from '@mui/material';
 import { QuestionStatusesE, EmailStatusesE } from '@/src/interfaces/data';
 import { getAdminChoices } from '@/src/helpers/tools';
 import CopyToClipboardButton from "@/src/app/components/admin/CopyToClipboardButton"
 import {Tooltip, TooltipTrigger, TooltipContent } from "@/src/app/components/ui/tooltip"
 import AdjustIcon from '@mui/icons-material/Adjust';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import AttachFileIcon from '@mui/icons-material/AttachFile';
 import { PdfIcon } from "@/src/app/components/popups/pdf";
 import { Loader2 } from "lucide-react";
 import { useFormContext, useWatch } from 'react-hook-form';
@@ -17,7 +17,37 @@ import React, { useEffect, useState, useContext, useCallback, createContext } fr
 import { JobDataI } from '@/src/interfaces/form';
 import { CustomGetRequest } from "@/src/libs/request"
 import { AdminJobView } from '@/src/app/components/admin/AdminJobView';
-import { DBQuestion } from '@/src/interfaces/db';
+import { AttachmentDTO, DBQuestion } from '@/src/interfaces/db';
+import { FileUpload } from "@/src/app/components/forms/FileUpload";
+import { uploadQuestionAttachmentsAction } from "@/src/app/components/forms/action/attachments";
+
+const AttachmentIcons = ({ attachments }: { attachments?: AttachmentDTO[] }) => {
+    if (!attachments || attachments.length === 0) return null;
+    return (
+        <span className="inline-flex items-center gap-1">
+            {attachments.map((att) => (
+                <Tooltip key={att.id}>
+                    <TooltipTrigger asChild>
+                        <a href={att.url} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', color: '#8faaba' }}>
+                            <AttachFileIcon fontSize="small" />
+                        </a>
+                    </TooltipTrigger>
+                    <TooltipContent>{att.filename}{att.source === 'lawyer' ? ' (юрист)' : ''}</TooltipContent>
+                </Tooltip>
+            ))}
+        </span>
+    );
+};
+
+const fetchAttachmentsMap = async (
+    questionId: string | number,
+): Promise<Record<string, AttachmentDTO[]>> => {
+    const res = await CustomGetRequest("/attachments/question/" + questionId, { thread: "1" });
+    if (res.status && res.data && typeof res.data === "object") {
+        return res.data as Record<string, AttachmentDTO[]>;
+    }
+    return {};
+};
 
 const nextMonth = new Date()
 nextMonth.setMonth(nextMonth.getMonth() + 1);
@@ -60,6 +90,7 @@ export const RequestList = () => (
                     }
                     return value;
                 }} />
+            <FunctionField label="Файлы" render={(record) => <AttachmentIcons attachments={record.attachments} />} />
             <SelectField label="Статус" source='job_status' choices={getAdminChoices(QuestionStatusesE, "Статус обработки вопроса: ")} optionValue={'status'} />
             <SelectField label="Email" source='email_status' choices={getAdminChoices(EmailStatusesE, "Статус отправки уведомления: ")} optionValue={'email_status'} />
             <DateField label="Дата" source='created_at' locales="ru-RU" showTime />
@@ -106,6 +137,7 @@ const contentSig = (s?: string | null): number => {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const RequestEdit = (props: EditControllerProps<any, Error> | undefined) => {
     const [data, setData] = useState<JobDataI | null>(null);
+    const [attachmentsMap, setAttachmentsMap] = useState<Record<string, AttachmentDTO[]>>({});
     const [reloadKey, setReloadKey] = useState(0);
     const reloadJobs = useCallback(() => setReloadKey((k) => k + 1), []);
     const notify = useNotify();
@@ -122,6 +154,7 @@ export const RequestEdit = (props: EditControllerProps<any, Error> | undefined) 
                     const count = jobData.count ?? 0
                     setData({data: jobData.data, count: count})
                 }
+                setAttachmentsMap(await fetchAttachmentsMap(record.id))
             };
 
             fetchData();
@@ -168,18 +201,21 @@ export const RequestEdit = (props: EditControllerProps<any, Error> | undefined) 
                         reply: lastLawyerMessage.reply,
                         final_reply_id: lastLawyerMessage.final_reply_id,
                         final_reply: lastLawyerMessage.final_reply,
+                        consultant_question: lastLawyerMessage.question ?? '',
                     };
                     return (
                         <SimpleForm key={formKey} record={modifiedRecord} toolbar={<EditToolbar />}>
-                            <AdminJobView record={record} jobs={jobs} />
+                            <AdminJobView record={record} jobs={jobs} attachmentsMap={attachmentsMap} />
                             <TextInput source="child_id" style={{ display: 'none' }} />
                             <TextInput source="reply_id" style={{ display: 'none' }} />
                             <TextInput source="final_reply_id" style={{ display: 'none' }} />
-                            <MyCustomHtmlInput source="https://ai.conslegal.ru/" label="Консультант+ AI" />
-                            <RichTextInput source="reply" validate={[required()]} editorOptions={editorOptions} />
+                            <TextInput source="consultant_question" label="Последний вопрос" multiline fullWidth minRows={4} />
+                            <ConsultantPlusButton />
+                            <RichTextInput source="reply" label="Ответ от Консультант+" validate={[required()]} editorOptions={editorOptions} />
                             <CustomSaveButton />
-                            <RichTextInput source="final_reply" editorOptions={editorOptions} />
+                            <RichTextInput source="final_reply" label="Ответ пользователю" editorOptions={editorOptions} />
                             <SelectInput label="Статус" source="job_status" choices={getAdminChoices(QuestionStatusesE, "Статус обработки вопроса: ", true)} />
+                            <LawyerAttachmentUpload onUploaded={reloadJobs} />
                             {/* <PresetFieldLogic lastRecord={lastLawyerMessage} /> */}
                         </SimpleForm>
                     );
@@ -193,18 +229,20 @@ export const RequestEdit = (props: EditControllerProps<any, Error> | undefined) 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const RequestShow = (props: ShowControllerProps<any, Error> | undefined) => {
     const [data, setData] = useState<JobDataI | null>(null);
+    const [attachmentsMap, setAttachmentsMap] = useState<Record<string, AttachmentDTO[]>>({});
     const { record, error, isPending } = useShowController(props)
 
     useEffect(() => {
         const path = "/requests/" + record.id
         const request = {parent_id: record.id}
-        
+
         const fetchData = async () => {
             const jobData = await CustomGetRequest(path, request)
             if(jobData.status) {
                 const count = jobData.count ?? 0
                 setData({data: jobData.data, count: count})
             }
+            setAttachmentsMap(await fetchAttachmentsMap(record.id))
         };
 
         fetchData();
@@ -228,39 +266,10 @@ export const RequestShow = (props: ShowControllerProps<any, Error> | undefined) 
     return (
         <Show loading={<p>Загружаем запрос...</p>}>
             <SimpleShowLayout>
-                <AdminJobView record={record} jobs={jobs} />
+                <AdminJobView record={record} jobs={jobs} attachmentsMap={attachmentsMap} />
             </SimpleShowLayout>
         </Show>
     )
-};
-
-interface MyCustomHtmlInputProps extends InputProps {
-    source: string;
-    label: string;
-}
-
-const MyCustomHtmlInput: React.FC<MyCustomHtmlInputProps> = (props) => {
-    const { source, label } = props;
-
-    // You can access the current record if needed using useRecordContext
-    // const record = useRecordContext();
-    // Example of custom HTML/JSX
-    return (
-        <Box
-            sx={{
-                width: '100%',
-                height: 600,
-                bgcolor: 'primary.main', // Accesses theme primary color
-                '&:hover': {
-                bgcolor: 'primary.dark',
-                },
-                p: 2, // Shorthand for padding
-            }}
-        >
-            <Typography variant="h6">{label}</Typography>
-            <iframe src={source} name="myIframe" width="100%" height="500"></iframe>
-        </Box>
-    );
 };
 
 const PDF_LOADING_HTML = `<!doctype html><html lang="ru"><head><meta charset="utf-8">
@@ -362,6 +371,60 @@ const EditToolbar = () => (
   </Toolbar>
 );
 
+const consultantAnswerToHtml = (text: string): string => {
+  const value = (text ?? '').trim();
+  if (!value) return '';
+  if (/<[a-z][\s\S]*>/i.test(value)) return value;
+  return value
+    .split(/\n{2,}/)
+    .map((para) => '<p>' + para.replace(/\n/g, '<br />') + '</p>')
+    .join('');
+};
+
+const ConsultantPlusButton = () => {
+  const notify = useNotify();
+  const { setValue } = useFormContext();
+  const question = useWatch({ name: 'consultant_question' });
+  const [loading, setLoading] = useState(false);
+
+  const handleClick = async () => {
+    const value = (question ?? '').trim();
+    if (!value) {
+      notify('Заполните поле «Последний вопрос».', { type: 'warning' });
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch('/api/consultant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: value }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.message || 'Не удалось получить ответ от Консультант+.');
+      }
+      setValue('reply', consultantAnswerToHtml(data.reply), { shouldDirty: true, shouldValidate: true });
+      notify('Ответ от Консультант+ получен.', { type: 'success' });
+    } catch (err) {
+      notify((err as Error).message, { type: 'error', multiLine: true });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Button
+      disabled={loading}
+      variant="contained"
+      color="primary"
+      startIcon={loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircleIcon />}
+      label="Обработать в Консультант+"
+      onClick={handleClick}
+    />
+  );
+};
+
 const CustomSaveButton = () => {
   const notify = useNotify();
   const { handleSubmit } = useFormContext(); // Get form submission handler
@@ -393,14 +456,57 @@ const CustomSaveButton = () => {
   });
 
   return (
-    <Button 
+    <Button
         disabled={isLoading}
         variant="contained"
         color="primary"
         startIcon={<CheckCircleIcon />}
-        label="Обработать в Grok " 
-        onClick={handleSaveAndPublish} 
+        label="Обработать в Grok "
+        onClick={handleSaveAndPublish}
       // You can also use react-admin's <SaveButton> and override the mutationOptions or redirect prop for simpler cases
     />
+  );
+};
+
+const LawyerAttachmentUpload = ({ onUploaded }: { onUploaded?: () => void }) => {
+  const notify = useNotify();
+  const record = useRecordContext();
+  const childId = useWatch({ name: 'child_id' });
+  const targetId = childId ?? record?.id;
+  const [files, setFiles] = useState<File[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const handleUpload = async () => {
+    if (!targetId || files.length === 0 || loading) return;
+    setLoading(true);
+    try {
+      const res = await uploadQuestionAttachmentsAction(targetId, files, true);
+      if (!res.ok) {
+        notify(res.error ?? 'Не удалось загрузить файлы.', { type: 'warning' });
+        return;
+      }
+      notify('Файлы загружены.', { type: 'success' });
+      setFiles([]);
+      if (onUploaded) onUploaded();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={{ width: '100%', maxWidth: 520, marginTop: 8 }}>
+      <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Прикрепить файлы к ответу (только для юриста)</p>
+      <FileUpload files={files} onFilesChange={setFiles} disabled={loading} />
+      <div style={{ marginTop: 8 }}>
+        <Button
+          disabled={loading || files.length === 0}
+          variant="contained"
+          color="primary"
+          startIcon={loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <AttachFileIcon />}
+          label="Загрузить файлы"
+          onClick={handleUpload}
+        />
+      </div>
+    </div>
   );
 };

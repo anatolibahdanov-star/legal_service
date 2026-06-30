@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { AlertCircle, Lock } from "lucide-react";
 import { cn } from "@/src/app/components/ui/utils";
-import { useOtpStep, OtpStepResult } from "@/src/app/components/forms/hooks/useOtpStep";
+import { useOtpStep, formatOtpDuration, OtpStepResult } from "@/src/app/components/forms/hooks/useOtpStep";
 
 export type { OtpStepResult };
 
@@ -26,6 +26,7 @@ interface RequestStepOtpProps {
   onVerify: (code: string) => Promise<OtpStepResult>;
   onResend: () => Promise<OtpStepResult>;
   initialResendCooldownSec?: number;
+  initialExpiresInSec?: number;
   initialDevCode?: string;
 }
 
@@ -35,11 +36,13 @@ export default function RequestStepOtp({
   onVerify,
   onResend,
   initialResendCooldownSec = 0,
+  initialExpiresInSec = 0,
   initialDevCode,
 }: RequestStepOtpProps) {
   const otp = useOtpStep({
     codeLength: CODE_LENGTH,
     resendCooldownSec: initialResendCooldownSec,
+    expiresInSec: initialExpiresInSec,
     initialDevCode,
     autoSubmit: true,
     onVerify,
@@ -132,7 +135,11 @@ export default function RequestStepOtp({
           </p>
         )}
 
-        <p className="text-[12px] text-white/60">Срок действия кода — 24 часа.</p>
+        <p className="text-[12px] text-white/60">
+          {otp.expiryRemainingSec > 0
+            ? `Код действителен ещё ${formatOtpDuration(otp.expiryRemainingSec)}`
+            : "Срок действия кода истёк. Запросите новый."}
+        </p>
 
         <button
           type="button"

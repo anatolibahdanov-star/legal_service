@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import logger from '@/src/libs/logger';
 import { authOptions } from '@/src/app/api/auth/[...nextauth]/route';
-import { getQuestionPriceFor, QuestionSource } from '@/src/services/pricing';
+import { getQuestionPriceForFresh, QuestionSource } from '@/src/services/pricing';
 import { payQuestionWithBalance } from '@/src/services/payWithBalance';
 
 export const dynamic = 'force-dynamic';
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
   }
 
   const source: QuestionSource = body.source === 'lk' ? 'lk' : 'main';
-  const price = getQuestionPriceFor(source);
+  const price = await getQuestionPriceForFresh(source);
   const userId = session.user.id.toString();
 
   logger.info(msg + 'request received', {
@@ -115,6 +115,7 @@ export async function POST(request: NextRequest) {
       },
       orderId: result.orderId,
       amount: result.amount,
+      freeUsed: result.freeUsed ?? false,
     },
     { status: 200 },
   );

@@ -9,6 +9,7 @@ export interface SwitchToLoginPrefill {
    * mount directly in the OTP code-entry step instead of asking for the
    * captcha + phone input again. */
   otpAlreadySent?: boolean;
+  expiresInSec?: number;
 }
 
 export interface FormProps {
@@ -32,6 +33,7 @@ export interface AuthFormPropsI {
    * code-entry step — used when the OTP was already issued upstream
    * (e.g. user tried to register a number that's already taken). */
   prefillPhoneOtpSent?: boolean;
+  prefillExpiresInSec?: number;
 }
 
 export interface AuthWindowProps extends AuthFormPropsI  {

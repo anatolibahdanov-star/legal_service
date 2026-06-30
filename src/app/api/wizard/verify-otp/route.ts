@@ -172,6 +172,7 @@ export async function POST(request: NextRequest) {
       isFirstQuestionFree: firstFree,
       questionPrice: getQuestionPrice(),
       userBalance: existing?.balance ?? 0,
+      freeQuestions: existing?.free_questions ?? 0,
     },
     { status: 200 },
   );

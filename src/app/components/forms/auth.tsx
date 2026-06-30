@@ -56,6 +56,7 @@ export default function AuthForm({
   onSwitchToReset,
   prefillPhone,
   prefillPhoneOtpSent,
+  prefillExpiresInSec,
 }: AuthFormPropsI) {
   const router = useRouter();
   const { update } = useSession();
@@ -138,6 +139,9 @@ export default function AuthForm({
   );
   const [phoneErrors, setPhoneErrors] = useState({ phone: "", code: "", common: "" });
   const [phoneSubmitting, setPhoneSubmitting] = useState(false);
+  const [otpExpiresInSec, setOtpExpiresInSec] = useState<number>(
+    prefillPhoneOtpSent && prefillExpiresInSec ? prefillExpiresInSec : 0,
+  );
   const phoneBlock = usePhoneBlockCountdown();
   /** null = unknown / not checked; true/false = result of /login-phone/check. */
   const [phoneExists, setPhoneExists] = useState<boolean | null>(null);
@@ -160,9 +164,10 @@ export default function AuthForm({
       if (prefillPhoneOtpSent) {
         setNormalizedPhone(prefillPhone);
         setPhoneStep("code");
+        setOtpExpiresInSec(prefillExpiresInSec ?? 0);
       }
     }
-  }, [prefillPhone, prefillPhoneOtpSent]);
+  }, [prefillPhone, prefillPhoneOtpSent, prefillExpiresInSec]);
 
   const phoneValid = useMemo(() => isPhoneComplete(phone), [phone]);
   const canSubmitPhone =
@@ -290,6 +295,7 @@ export default function AuthForm({
     }
     const data = response.data as { phone: string; expiresInSec: number; devCode?: string };
     setNormalizedPhone(data.phone);
+    setOtpExpiresInSec(data.expiresInSec ?? 0);
     if (data.devCode) console.info("[DEV] OTP code:", data.devCode);
     setPhoneStep("code");
   };
@@ -318,8 +324,9 @@ export default function AuthForm({
       }
       const data = response.data as { phone: string; expiresInSec: number; devCode?: string };
       setNormalizedPhone(data.phone);
+      setOtpExpiresInSec(data.expiresInSec ?? 0);
       if (data.devCode) console.info("[DEV] OTP code:", data.devCode);
-      return { ok: true };
+      return { ok: true, expiresInSec: data.expiresInSec };
     } catch {
       return { ok: false, message: "Не удалось пройти проверку. Попробуйте позже." };
     }
@@ -358,6 +365,7 @@ export default function AuthForm({
     return (
       <OtpCodeStep
         phone={normalizedPhone}
+        initialExpiresInSec={otpExpiresInSec}
         onVerify={handlePhoneVerify}
         onResend={handlePhoneResend}
         onChangePhone={() => {

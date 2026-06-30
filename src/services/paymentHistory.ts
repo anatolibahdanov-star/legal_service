@@ -3,6 +3,8 @@ import {
     getUserPayments,
     getUserPaymentsCount,
     getUserTotalSpent,
+    getUserTotalExpenses,
+    getUserTotalTopups,
     DBPaymentRow,
 } from "@/src/repositories/payments/repo";
 import {
@@ -94,15 +96,19 @@ export const getPaymentHistory = async (
     userId: string | number, page: number = 1, limit: number = 10
 ): Promise<PaymentHistoryResponseI> => {
     const msg = msgGlobal + "getPaymentHistory - "
-    const [rows, count, totalSpent] = await Promise.all([
+    const [rows, count, totalSpent, totalExpenses, totalTopups] = await Promise.all([
         getUserPayments(userId, page, limit),
         getUserPaymentsCount(userId),
         getUserTotalSpent(userId),
+        getUserTotalExpenses(userId),
+        getUserTotalTopups(userId),
     ])
     logger.info(msg + "loaded", { user_id: userId, page, count })
     return {
         items: rows.map(mapPaymentRow),
         count,
         totalSpent,
+        totalExpenses,
+        totalTopups,
     }
 }

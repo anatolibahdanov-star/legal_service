@@ -12,11 +12,13 @@ export interface OtpStepResult {
   lockedUntil?: string | Date | null;
   attemptsLeft?: number | null;
   devCode?: string;
+  expiresInSec?: number;
 }
 
 export interface UseOtpStepOptions {
   codeLength?: number;
   resendCooldownSec?: number;
+  expiresInSec?: number;
   initialDevCode?: string;
   autoSubmit?: boolean;
   onVerify: (code: string) => Promise<OtpStepResult>;
@@ -44,6 +46,7 @@ export interface UseOtpStepReturn {
   canResend: boolean;
   cooldownRemainingSec: number;
   resendRemainingSec: number;
+  expiryRemainingSec: number;
   blockBanner: BlockBanner | null;
   devCode: string | undefined;
   // actions
@@ -69,6 +72,7 @@ export const formatOtpDuration = (totalSeconds: number): string => {
 export function useOtpStep({
   codeLength = DEFAULT_CODE_LENGTH,
   resendCooldownSec = DEFAULT_RESEND_COOLDOWN_SEC,
+  expiresInSec,
   initialDevCode,
   autoSubmit = false,
   onVerify,
@@ -82,6 +86,9 @@ export function useOtpStep({
   const [lockedUntil, setLockedUntil] = useState<Date | null>(null);
   const [resendUntil, setResendUntil] = useState<Date | null>(() =>
     resendCooldownSec > 0 ? new Date(Date.now() + resendCooldownSec * 1000) : null
+  );
+  const [expiryUntil, setExpiryUntil] = useState<Date | null>(() =>
+    expiresInSec && expiresInSec > 0 ? new Date(Date.now() + expiresInSec * 1000) : null
   );
   const [nowMs, setNowMs] = useState<number>(() => Date.now());
   const [devCode, setDevCode] = useState<string | undefined>(initialDevCode);
@@ -99,6 +106,9 @@ export function useOtpStep({
     : 0;
   const resendRemainingSec = resendUntil
     ? Math.max(0, Math.ceil((resendUntil.getTime() - nowMs) / 1000))
+    : 0;
+  const expiryRemainingSec = expiryUntil
+    ? Math.max(0, Math.ceil((expiryUntil.getTime() - nowMs) / 1000))
     : 0;
   const inputDisabled = verifying || isBlocked;
   const canSubmit = code.length === codeLength && !inputDisabled;
@@ -162,6 +172,9 @@ export function useOtpStep({
       if (resendCooldownSec > 0) {
         setResendUntil(new Date(Date.now() + resendCooldownSec * 1000));
       }
+      if (typeof res.expiresInSec === "number" && res.expiresInSec > 0) {
+        setExpiryUntil(new Date(Date.now() + res.expiresInSec * 1000));
+      }
       setCode("");
       setCooldownUntil(null);
       setAttemptsLeft(null);
@@ -209,6 +222,7 @@ export function useOtpStep({
     canResend,
     cooldownRemainingSec,
     resendRemainingSec,
+    expiryRemainingSec,
     blockBanner,
     devCode,
     submit,

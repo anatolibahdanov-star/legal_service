@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import logger from '@/src/libs/logger';
 import { authOptions } from '@/src/app/api/auth/[...nextauth]/route';
-import { getPromptVersionById, activatePromptVersion, deactivatePromptVersion } from '@/src/repositories/settings/repo';
+import { getPromptVersionById, updatePromptVersion } from '@/src/repositories/settings/repo';
 import { DBPromptVersion } from '@/src/interfaces/db';
 
 export const dynamic = 'force-dynamic';
@@ -53,9 +53,15 @@ export async function PUT(request: NextRequest) {
     const id = idFromUrl(request.url);
     const body: Partial<DBPromptVersion> = await request.json();
     try {
-        const version = body.is_active
-            ? await activatePromptVersion(id, auth.adminId)
-            : await deactivatePromptVersion(id, auth.adminId);
+        const version = await updatePromptVersion(
+            id,
+            {
+                name: body.name,
+                body: body.body,
+                is_active: body.is_active === undefined ? undefined : !!body.is_active,
+            },
+            auth.adminId,
+        );
         if (!version) {
             return NextResponse.json({ success: false, message: 'Версия не найдена.' }, { status: 404 });
         }
