@@ -40,6 +40,8 @@ import {
   payWithBalanceAction,
 } from "@/src/app/components/forms/action/wizard";
 import { needsProfileCompletion, isPhoneEmail, phoneToDefaultName } from "@/src/libs/phoneIdentity";
+import { FileUpload } from "@/src/app/components/forms/FileUpload";
+import { uploadQuestionAttachmentsAction } from "@/src/app/components/forms/action/attachments";
 import { emitBalanceRefresh } from "@/src/libs/balanceEvents";
 import { cn } from "@/src/app/components/ui/utils";
 import {
@@ -75,6 +77,7 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
     const [captchaToken, setCaptchaToken] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
     const [questionTouched, setQuestionTouched] = useState(false);
+    const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
     const [consents, setConsents] = useState<LegalConsentsValue>(emptyLegalConsents);
     const [consentErrors, setConsentErrors] = useState<Partial<Record<keyof LegalConsentsValue, string>>>({});
     const block = usePhoneBlockCountdown();
@@ -96,6 +99,7 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
     const [phoneCommonError, setPhoneCommonError] = useState("");
     const [sendingOtp, setSendingOtp] = useState(false);
     const [otpDevCode, setOtpDevCode] = useState<string | undefined>(undefined);
+    const [otpExpiresInSec, setOtpExpiresInSec] = useState<number>(0);
     const [verifiedUser, setVerifiedUser] = useState<{ id: number; name: string; email: string } | null>(null);
     /** verifyToken survives across verify-otp → profile-save → signIn via peekVerifyToken. */
     const [verifyToken, setVerifyToken] = useState<string>("");
@@ -105,6 +109,8 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
     const [questionPrice, setQuestionPrice] = useState<number>(0);
     /** User's balance (rubles) from backend. */
     const [userBalance, setUserBalance] = useState<number>(0);
+    /** Admin-granted free questions; consumed before charging money. */
+    const [freeQuestions, setFreeQuestions] = useState<number>(0);
     /** Controls the success-step copy/icon. */
     const [successKind, setSuccessKind] = useState<SuccessKind>("free");
     /** Charged/paid amount shown on the success screen for balance/card. */
@@ -121,6 +127,8 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
     const questionIdRef = useRef<string | number | null>(null);
     const questionUuidRef = useRef<string | null>(null);
     const committedQuestionTextRef = useRef<string>("");
+    /** Guards the one-time upload of staged attachments to the created question. */
+    const attachmentsUploadedRef = useRef<boolean>(false);
     /**
      * Idempotency key for the "pay with balance" action. Generated once per
      * wizard session and reused on retries so the server can dedup repeated
@@ -243,6 +251,7 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
             isLogin?: boolean;
         };
         setNormalizedPhone(data.phone);
+        setOtpExpiresInSec(data.expiresInSec ?? 0);
         if (data.devCode) {
             console.info("[DEV] OTP code:", data.devCode);
             setOtpDevCode(data.devCode);
@@ -275,6 +284,7 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
             isFirstQuestionFree?: boolean;
             questionPrice?: number;
             userBalance?: number;
+            freeQuestions?: number;
         };
 
         // Keep verifyToken alive — we'll consume it later, either via signIn
@@ -284,6 +294,7 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
         setIsFirstQuestionFree(data.isFirstQuestionFree ?? false);
         if (typeof data.questionPrice === "number") setQuestionPrice(data.questionPrice);
         if (typeof data.userBalance === "number") setUserBalance(data.userBalance);
+        if (typeof data.freeQuestions === "number") setFreeQuestions(data.freeQuestions);
 
         const user = data.user ?? null;
         if (user) {
@@ -316,6 +327,13 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
                     return { ok: false, message: submit.message };
                 }
                 return { ok: true };
+            }
+            // Начислены бесплатные вопросы → списываем один (без денег) через
+            // pay-with-balance: на сервере free-вопрос имеет приоритет над балансом.
+            if ((data.freeQuestions ?? 0) > 0) {
+                const r = await handlePayBalance();
+                if (r.ok) return { ok: true };
+                // Не удалось — даём выбрать обычный способ оплаты.
             }
             setStep("payment");
             return { ok: true };
@@ -355,7 +373,8 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
             console.info("[DEV] OTP code:", data.devCode);
             setOtpDevCode(data.devCode);
         }
-        return { ok: true, devCode: data.devCode };
+        setOtpExpiresInSec(data.expiresInSec ?? 0);
+        return { ok: true, devCode: data.devCode, expiresInSec: data.expiresInSec };
     };
 
     const goToMyQuestions = () => {
@@ -426,6 +445,27 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
     };
 
     /**
+     * Uploads the files staged on Step 1 to the (already created, still Unpaid)
+     * question. Runs once per wizard session — files become immutable once the
+     * question leaves Unpaid. No-op when nothing is attached.
+     */
+    const uploadStagedAttachments = async (
+        questionId: string | number,
+    ): Promise<{ ok: boolean; message?: string }> => {
+        if (attachmentsUploadedRef.current) return { ok: true };
+        if (attachedFiles.length === 0) {
+            attachmentsUploadedRef.current = true;
+            return { ok: true };
+        }
+        const result = await uploadQuestionAttachmentsAction(questionId, attachedFiles);
+        if (!result.ok) {
+            return { ok: false, message: result.error || "Не удалось загрузить файлы." };
+        }
+        attachmentsUploadedRef.current = true;
+        return { ok: true };
+    };
+
+    /**
      * Finalizes a free question (first-question benefit): flips the
      * existing Unpaid row to InProgress. Used both when the profile step
      * is skipped (user already has full data) and after profile-save.
@@ -433,6 +473,8 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
     const submitFreeAndShowSuccess = async (): Promise<{ ok: boolean; message?: string }> => {
         const ensured = await ensureUnpaidQuestionExists();
         if (!ensured.ok) return { ok: false, message: ensured.message };
+        const uploaded = await uploadStagedAttachments(ensured.id);
+        if (!uploaded.ok) return { ok: false, message: uploaded.message };
         const response = await wizardSubmitQuestionAction({
             questionId: ensured.id,
             paymentMethod: "free",
@@ -451,6 +493,11 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
         if (!ensured.ok) {
             showPaymentError(ensured.message);
             return { ok: false, message: ensured.message };
+        }
+        const uploaded = await uploadStagedAttachments(ensured.id);
+        if (!uploaded.ok) {
+            showPaymentError(uploaded.message ?? "Не удалось загрузить файлы.");
+            return { ok: false, message: uploaded.message };
         }
         const response = await createWizardCardOrderAction(questionPrice, ensured.id);
         if (!response.status) {
@@ -477,6 +524,11 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
             showPaymentError(ensured.message);
             return { ok: false, message: ensured.message };
         }
+        const uploaded = await uploadStagedAttachments(ensured.id);
+        if (!uploaded.ok) {
+            showPaymentError(uploaded.message ?? "Не удалось загрузить файлы.");
+            return { ok: false, message: uploaded.message };
+        }
         const response = await payWithBalanceAction({
             questionId: ensured.id,
             idempotencyKey: paymentIdempotencyKey,
@@ -487,8 +539,8 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
             showPaymentError(msg);
             return { ok: false, message: msg };
         }
-        const data = response.data as { amount?: number };
-        setSuccessKind("balance");
+        const data = response.data as { amount?: number; freeUsed?: boolean };
+        setSuccessKind(data?.freeUsed ? "free" : "balance");
         setSuccessAmount(typeof data?.amount === "number" ? data.amount : questionPrice);
         emitBalanceRefresh();
         setStep("success");
@@ -498,6 +550,8 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
     const handlePayLater = async (): Promise<{ ok: boolean; message?: string }> => {
         const ensured = await ensureUnpaidQuestionExists();
         if (!ensured.ok) return { ok: false, message: ensured.message };
+        const uploaded = await uploadStagedAttachments(ensured.id);
+        if (!uploaded.ok) return { ok: false, message: uploaded.message };
         const response = await wizardSubmitQuestionAction({
             questionId: ensured.id,
             paymentMethod: "later",
@@ -558,6 +612,7 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
             isFirstQuestionFree?: boolean;
             questionPrice?: number;
             userBalance?: number;
+            freeQuestions?: number;
         };
         if (data.user) {
             setVerifiedUser(data.user);
@@ -570,6 +625,7 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
         }
         if (typeof data.questionPrice === "number") setQuestionPrice(data.questionPrice);
         if (typeof data.userBalance === "number") setUserBalance(data.userBalance);
+        if (typeof data.freeQuestions === "number") setFreeQuestions(data.freeQuestions);
         // User is now in the DB — sign in via NextAuth so subsequent steps
         // (payment, balance, question submit) have a session.
         const signInResult = await signInWithPhoneOtp(normalizedPhone, verifyToken);
@@ -709,16 +765,19 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
                     isFirstQuestionFree?: boolean;
                     questionPrice?: number;
                     userBalance?: number;
+                    freeQuestions?: number;
                 };
                 const isFirstFree = !!initData.isFirstQuestionFree;
                 const price = typeof initData.questionPrice === "number" ? initData.questionPrice : 0;
                 const balance = typeof initData.userBalance === "number" ? initData.userBalance : 0;
+                const freeQ = typeof initData.freeQuestions === "number" ? initData.freeQuestions : 0;
 
                 // Surface the fresh numbers so Step 5 renders correctly if
                 // we end up falling through to it.
                 setIsFirstQuestionFree(isFirstFree);
                 setQuestionPrice(price);
                 setUserBalance(balance);
+                setFreeQuestions(freeQ);
 
                 // LK-side equivalent of "Step 3 after phone confirmation":
                 // the user is already authenticated, so once they commit to
@@ -743,7 +802,10 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
                     return;
                 }
 
-                if (balance >= price) {
+                // Бесплатные вопросы списываются первоочередно: если они есть —
+                // идём в pay-with-balance даже при нулевом балансе (сервер спишет
+                // бесплатный вопрос, деньги не тронет).
+                if (freeQ > 0 || balance >= price) {
                     const r = await handlePayBalance();
                     if (!r.ok) {
                         // Balance dropped between init and pay (or other
@@ -832,6 +894,12 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
                             </span>
                         </div>
                     </div>
+
+                    <FileUpload
+                        files={attachedFiles}
+                        onFilesChange={setAttachedFiles}
+                        disabled={submitting}
+                    />
 
                     {!isAuthed && (
                         <YandexSmartCaptcha
@@ -985,6 +1053,7 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
             <RequestStepOtp
                 phone={normalizedPhone}
                 initialDevCode={otpDevCode}
+                initialExpiresInSec={otpExpiresInSec}
                 onChangePhone={() => setStep("phone")}
                 onVerify={handleOtpVerify}
                 onResend={handleOtpResend}
@@ -1014,6 +1083,11 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
                         submitFreeAndShowSuccess().then((r) => {
                             if (!r.ok) setStep("payment");
                         });
+                    } else if (freeQuestions > 0) {
+                        // Начисленные бесплатные вопросы списываются первоочередно.
+                        handlePayBalance().then((r) => {
+                            if (!r.ok) setStep("payment");
+                        });
                     } else {
                         setStep("payment");
                     }
@@ -1028,6 +1102,7 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
             <RequestStepPayment
                 price={questionPrice}
                 balance={userBalance}
+                freeQuestions={freeQuestions}
                 onPayCard={handlePayCard}
                 onPayBalance={handlePayBalance}
                 onPayLater={handlePayLater}

@@ -8,8 +8,33 @@ import {EmailDataNewRequestI} from "@/src/interfaces/email"
 import { verifyCaptcha } from "@/src/libs/captcha"
 import { validateRequestForm } from "@/src/app/components/forms/validation/request"
 import { RequestFormI } from "@/src/interfaces/form"
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '../auth/[...nextauth]/route';
+import { getAttachmentsByQuestionIds } from "@/src/repositories/question_attachments/repo"
+import { toAttachmentDTO } from "@/src/services/attachments"
 
 export const dynamic = 'force-dynamic'; // defaults to auto
+
+function isStaff(role: string | undefined): boolean {
+    return role === 'admin' || role === 'lowyer';
+}
+
+async function attachAttachmentsToRows(rows: DBQuestion[], staff: boolean): Promise<void> {
+    if (rows.length === 0) return;
+    const sourceFilter = staff ? undefined : ('user' as const);
+    const ids = rows.map((r) => Number(r.id));
+    const attachments = await getAttachmentsByQuestionIds(ids, sourceFilter);
+    const byQuestion = new Map<string, ReturnType<typeof toAttachmentDTO>[]>();
+    for (const att of attachments) {
+        const key = String(att.question_id);
+        const list = byQuestion.get(key) ?? [];
+        list.push(toAttachmentDTO(att));
+        byQuestion.set(key, list);
+    }
+    for (const row of rows) {
+        row.attachments = byQuestion.get(String(row.id)) ?? [];
+    }
+}
 
 export async function GET(request: NextRequest) {
     // logger.info("QUESTIONS GET request", request)
@@ -40,6 +65,10 @@ export async function GET(request: NextRequest) {
     try {
         questions = await getQuestions(page, limit, sort, filter)
         total = await getTotalQuestions(filter)
+        const session = await getServerSession(authOptions);
+        if (session?.user?.id && questions && questions.length > 0) {
+            await attachAttachmentsToRows(questions, isStaff(session.user.role))
+        }
     } catch(err) {
         logger.error("(ERROR)API QUESTIONS GET: ", (err as Error).message)
         return NextResponse.json(

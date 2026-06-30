@@ -408,6 +408,46 @@ export async function deactivatePromptVersion(id: string | number, adminId: numb
     return getPromptVersionById(id);
 }
 
+export async function updatePromptVersion(
+    id: string | number,
+    patch: { name?: string; body?: string; is_active?: boolean },
+    adminId: number | null
+): Promise<DBPromptVersion | null> {
+    const msg = msgGlobal + 'updatePromptVersion - ';
+    const target = await getPromptVersionById(id);
+    if (!target) {
+        logger.warn(msg + 'version not found', { id });
+        return null;
+    }
+    const nextName = patch.name !== undefined ? patch.name : target.name;
+    const nextBody = patch.body !== undefined ? patch.body : target.body;
+    const conn = await pool.getConnection();
+    try {
+        await conn.beginTransaction();
+        await conn.query<ResultSetHeader>(
+            `UPDATE prompt_version SET name = ?, body = ? WHERE id = ?`,
+            [nextName, nextBody, id]
+        );
+        if (patch.is_active !== undefined) {
+            if (patch.is_active) {
+                await conn.query<ResultSetHeader>(`UPDATE prompt_version SET is_active = 0 WHERE code = ?`, [target.code]);
+                await conn.query<ResultSetHeader>(`UPDATE prompt_version SET is_active = 1 WHERE id = ?`, [id]);
+            } else {
+                await conn.query<ResultSetHeader>(`UPDATE prompt_version SET is_active = 0 WHERE id = ?`, [id]);
+            }
+        }
+        await conn.commit();
+        logger.info(msg + 'updated', { id, code: target.code, admin_id: adminId, is_active: patch.is_active });
+    } catch (error) {
+        await conn.rollback();
+        logger.error(msg + 'transaction failed', { id, error });
+        return null;
+    } finally {
+        conn.release();
+    }
+    return getPromptVersionById(id);
+}
+
 export async function seedPromptVersionIfEmpty(
     code: string, name: string, body: string
 ): Promise<void> {

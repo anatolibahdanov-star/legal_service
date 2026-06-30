@@ -31,6 +31,7 @@ export const Header: React.FC<HeaderProps> = ({
     activeForm,
     loginPrefillPhone,
     loginPrefillOtpSent,
+    loginPrefillExpiresInSec,
     handleAuthClick,
     handleLogout,
     switchToLogin,
@@ -153,6 +154,7 @@ export const Header: React.FC<HeaderProps> = ({
       onSwitchToReset={switchToReset}
       prefillPhone={loginPrefillPhone}
       prefillPhoneOtpSent={loginPrefillOtpSent}
+      prefillExpiresInSec={loginPrefillExpiresInSec}
     />
     <RegisterFormWindow
       isOpen={activeForm === "register"}

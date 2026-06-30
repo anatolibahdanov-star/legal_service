@@ -7,9 +7,11 @@ import Link from 'next/link';
 import { JobDataI, JobIdI, RatingFormI, RequestFormI } from '@/src/interfaces/form';
 import { CustomGetRequest } from "@/src/libs/request"
 import { submitRequestFormAction } from "@/src/app/components/forms/action/request";
+import { uploadQuestionAttachmentsAction } from "@/src/app/components/forms/action/attachments";
 import { submitRatingFormAction } from "../forms/action/rating";
 import { format } from 'date-fns';
 import { ChatMessage } from "@/src/app/components/data/ChatMessage";
+import { AttachmentDTO } from "@/src/interfaces/db";
 
 export function CaseModal({ caseItem, isOpen, onClose, openRatingSection, user, openNewQuestionWindow }: CaseModalProps) {
   const [isRatingExpanded, setIsRatingExpanded] = useState(false);
@@ -24,6 +26,7 @@ export function CaseModal({ caseItem, isOpen, onClose, openRatingSection, user, 
   const [askClarificationMessageId, setAskClarificationMessageId] = useState("");
   const [showQuestionSaved, setShowQuestionSaved] = useState(false);
   const [data, setData] = useState<JobDataI | null>(null);
+  const [attachmentsMap, setAttachmentsMap] = useState<Record<string, AttachmentDTO[]>>({});
 
   useEffect(() => {
       const path = "/requests/" + caseItem.id
@@ -36,6 +39,10 @@ export function CaseModal({ caseItem, isOpen, onClose, openRatingSection, user, 
           if(jobData.status) {
               const count = jobData.count ?? 0
               setData({data: jobData.data, count: count})
+              const attData = await CustomGetRequest("/attachments/question/" + caseItem.id, { thread: "1" })
+              if (attData.status && attData.data && typeof attData.data === "object") {
+                  setAttachmentsMap(attData.data as Record<string, AttachmentDTO[]>)
+              }
               // Синхронизируем рейтинг-стейт со свежим parent question.
               // caseItem-проп может быть stale, если родительский список ещё не
               // рефетчнулся после предыдущего сохранения — иначе пользователь
@@ -171,7 +178,7 @@ export function CaseModal({ caseItem, isOpen, onClose, openRatingSection, user, 
     openNewQuestionWindow()
   }
 
-  const handleAskClarification = async (questionOrId: string) => {
+  const handleAskClarification = async (questionOrId: string, files?: File[]) => {
     // Empty string — close the form
     if (questionOrId === "") {
       setAskClarificationMessageId("");
@@ -196,6 +203,13 @@ export function CaseModal({ caseItem, isOpen, onClose, openRatingSection, user, 
     }
 
     const newMessage: DBQuestion = responseData.data
+
+    if (files && files.length > 0 && newMessage?.id) {
+      const uploaded = await uploadQuestionAttachmentsAction(newMessage.id, files)
+      if (uploaded.ok && uploaded.attachments && uploaded.attachments.length > 0) {
+        setAttachmentsMap((prev) => ({ ...prev, [String(newMessage.id)]: uploaded.attachments! }))
+      }
+    }
 
     setData({ data: [...data.data, newMessage], count: data.count + 1 });
     setAskClarificationMessageId("");
@@ -388,6 +402,9 @@ export function CaseModal({ caseItem, isOpen, onClose, openRatingSection, user, 
                   isLastLawyerMessage={message.id === lastLawyerMessage?.id}
                   onAskClarification={handleAskClarification}
                   showClarificationForm={askClarificationMessageId === message.id}
+                  showAttachments
+                  allowAttachments
+                  attachments={attachmentsMap[String(message.id)]}
                 />
               ))}
               <div ref={messagesEndRef} />

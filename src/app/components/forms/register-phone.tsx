@@ -32,6 +32,7 @@ export default function RegisterPhoneForm({ onClose, onSwitchToLogin }: FormCont
   const [phone, setPhone] = useState("");
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [normalizedPhone, setNormalizedPhone] = useState<string>("");
+  const [otpExpiresInSec, setOtpExpiresInSec] = useState<number>(0);
   const [errors, setErrors] = useState<{ phone: string; common: string }>({
     phone: "",
     common: "",
@@ -84,10 +85,11 @@ export default function RegisterPhoneForm({ onClose, onSwitchToLogin }: FormCont
       // Phone is already registered — the server issued a login-compatible
       // OTP for us. Hand off to the login form's code step so verifying the
       // SMS code signs the user in instead of trying to register again.
-      onSwitchToLogin({ phone: data.phone, otpAlreadySent: true });
+      onSwitchToLogin({ phone: data.phone, otpAlreadySent: true, expiresInSec: data.expiresInSec });
       return;
     }
     setNormalizedPhone(data.phone);
+    setOtpExpiresInSec(data.expiresInSec ?? 0);
     setStep("code");
   };
 
@@ -124,11 +126,11 @@ export default function RegisterPhoneForm({ onClose, onSwitchToLogin }: FormCont
         // Edge case: the phone became registered between the initial send
         // and the resend. Bail to the login OTP step instead of letting the
         // register verify endpoint reject it later.
-        onSwitchToLogin({ phone: data.phone, otpAlreadySent: true });
+        onSwitchToLogin({ phone: data.phone, otpAlreadySent: true, expiresInSec: data.expiresInSec });
         return { ok: true };
       }
       setNormalizedPhone(data.phone);
-      return { ok: true };
+      return { ok: true, expiresInSec: data.expiresInSec };
     } catch {
       return { ok: false, message: "Не удалось отправить код. Попробуйте позже." };
     }
@@ -172,6 +174,7 @@ export default function RegisterPhoneForm({ onClose, onSwitchToLogin }: FormCont
     return (
       <OtpCodeStep
         phone={normalizedPhone}
+        initialExpiresInSec={otpExpiresInSec}
         onVerify={handleVerify}
         onResend={handleResend}
         onChangePhone={() => {

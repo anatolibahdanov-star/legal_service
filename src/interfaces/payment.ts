@@ -127,6 +127,8 @@ export interface PaymentHistoryResponseI {
   items: PaymentHistoryItemI[];
   count: number;
   totalSpent: number;
+  totalExpenses: number;
+  totalTopups: number;
 }
 
 export enum AdminOperationTypeE {
@@ -134,6 +136,13 @@ export enum AdminOperationTypeE {
   Charge = "charge",
   Refund = "refund",
   Manual = "manual",
+  FreeAccrual = "free_accrual",
+  FreeCharge = "free_charge",
+}
+
+export enum FreeQuestionOpTypeE {
+  Accrual = 1,
+  Charge = 2,
 }
 
 export interface AdminBalanceOperationI {

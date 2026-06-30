@@ -13,17 +13,20 @@ export default function SignInComponent() {
   const [activeForm, setActiveForm] = useState<"login" | "register" | "reset" | null>(null);
   const [loginPrefillPhone, setLoginPrefillPhone] = useState<string | undefined>(undefined);
   const [loginPrefillOtpSent, setLoginPrefillOtpSent] = useState<boolean>(false);
+  const [loginPrefillExpiresInSec, setLoginPrefillExpiresInSec] = useState<number | undefined>(undefined);
   const { data: session } = useSession()
 
   const switchToLogin = (prefill?: SwitchToLoginPrefill) => {
     setLoginPrefillPhone(prefill?.phone);
     setLoginPrefillOtpSent(!!prefill?.otpAlreadySent);
+    setLoginPrefillExpiresInSec(prefill?.expiresInSec);
     setActiveForm("login");
   };
   const closeAll = () => {
     setActiveForm(null);
     setLoginPrefillPhone(undefined);
     setLoginPrefillOtpSent(false);
+    setLoginPrefillExpiresInSec(undefined);
   };
   let content;
   if (session) {
@@ -61,11 +64,13 @@ export default function SignInComponent() {
         onSwitchToRegister={() => {
           setLoginPrefillPhone(undefined);
           setLoginPrefillOtpSent(false);
+          setLoginPrefillExpiresInSec(undefined);
           setActiveForm("register");
         }}
         onSwitchToReset={() => setActiveForm("reset")}
         prefillPhone={loginPrefillPhone}
         prefillPhoneOtpSent={loginPrefillOtpSent}
+        prefillExpiresInSec={loginPrefillExpiresInSec}
       />
       <RegisterFormWindow
         isOpen={activeForm === "register"}

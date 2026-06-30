@@ -23,6 +23,8 @@ interface Props {
   onChangePhone: () => void;
   /** Resend cooldown seconds set by parent after first send. 0 means resend is allowed immediately. */
   initialResendCooldown?: number;
+  /** OTP code lifetime in seconds (from send-otp). Drives the live expiry countdown. */
+  initialExpiresInSec?: number;
 }
 
 export default function OtpCodeStep({
@@ -31,10 +33,12 @@ export default function OtpCodeStep({
   onResend,
   onChangePhone,
   initialResendCooldown = 0,
+  initialExpiresInSec = 0,
 }: Props) {
   const otp = useOtpStep({
     codeLength: CODE_LENGTH,
     resendCooldownSec: initialResendCooldown,
+    expiresInSec: initialExpiresInSec,
     onVerify,
     onResend,
   });
@@ -108,7 +112,11 @@ export default function OtpCodeStep({
               } transition-all disabled:opacity-60 disabled:cursor-not-allowed`}
             />
           </div>
-          <p className="text-[12px] text-[#6B7280] ml-[4px]">Срок действия кода — 24 часа.</p>
+          <p className="text-[12px] text-[#6B7280] ml-[4px]">
+            {otp.expiryRemainingSec > 0
+              ? `Код действителен ещё ${formatOtpDuration(otp.expiryRemainingSec)}`
+              : "Срок действия кода истёк. Запросите новый."}
+          </p>
           {otp.error && !otp.blockBanner && (
             <p className="text-[12px] text-red-500 ml-[4px]">{otp.error}</p>
           )}

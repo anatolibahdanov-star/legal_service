@@ -5,13 +5,16 @@ import { format } from 'date-fns';
 import { dFormat } from "@/src/interfaces/data";
 import { ChatMessagePropsI } from "@/src/interfaces/component";
 import { stripAnalysisSection, stripEditMarks, highlightEditMarks } from "@/src/libs/grokReply";
+import { AttachmentList } from "@/src/app/components/data/AttachmentList";
+import { FileUpload } from "@/src/app/components/forms/FileUpload";
 
 
-export const ChatMessage = ({ message, isLastLawyerMessage, onAskClarification, showClarificationForm, isFromUser = true, isAdmin = false }: ChatMessagePropsI) => {
+export const ChatMessage = ({ message, isLastLawyerMessage, onAskClarification, showClarificationForm, isFromUser = true, isAdmin = false, showAttachments = false, attachments, allowAttachments = false }: ChatMessagePropsI) => {
   const [isContentExpanded, setIsContentExpanded] = useState(false);
   const [isReplyExpanded, setIsReplyExpanded] = useState(false);
   const [error, setError] = useState("");
   const [clarificationQuestion, setClarificationQuestion] = useState("");
+  const [clarificationFiles, setClarificationFiles] = useState<File[]>([]);
 
   const userShortName = isFromUser ? "Вы" : "Юзер"
   const userFullName = isFromUser ? "Вы" : message.username
@@ -43,8 +46,9 @@ export const ChatMessage = ({ message, isLastLawyerMessage, onAskClarification, 
     // (the submit button is already disabled while the field is blank).
     const question = clarificationQuestion.trim()
     if (!question) return false
-    if (onAskClarification) onAskClarification(question);
+    if (onAskClarification) onAskClarification(question, clarificationFiles);
     setClarificationQuestion("");
+    setClarificationFiles([]);
   };
 
   const onChangeClarification = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -72,6 +76,10 @@ export const ChatMessage = ({ message, isLastLawyerMessage, onAskClarification, 
               <button onClick={() => setIsContentExpanded(!isContentExpanded)}
                 className="text-[#8faaba] text-xs hover:text-[#7a8fa0] transition-colors mt-2"
               >{isContentExpanded ? "Свернуть" : "Показать полностью"}</button>
+            )}
+
+            {showAttachments && attachments && attachments.length > 0 && (
+              <AttachmentList attachments={attachments} showSource={isAdmin} />
             )}
           </div>
         </div>
@@ -117,11 +125,14 @@ export const ChatMessage = ({ message, isLastLawyerMessage, onAskClarification, 
                 {error}
             </p>
           )}
+          {allowAttachments && (
+            <FileUpload files={clarificationFiles} onFilesChange={setClarificationFiles} />
+          )}
           <div className="flex gap-2">
             <button onClick={handleSubmitClarification} disabled={!clarificationQuestion.trim()}
               className="px-6 py-2 rounded-lg bg-[#8faaba] hover:bg-[#7a8fa0] text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >Отправить вопрос</button>
-            <button onClick={() => {if(onAskClarification) onAskClarification("")}}
+            <button onClick={() => {setClarificationFiles([]); if(onAskClarification) onAskClarification("")}}
               className="px-6 py-2 rounded-lg bg-[rgba(41,40,43,0.1)] hover:bg-[rgba(41,40,43,0.15)] text-[#29282b] font-medium transition-colors"
             >Отмена</button>
           </div>

@@ -17,6 +17,7 @@ export const useHeader = ({
   const [activeForm, setActiveForm] = useState<"login" | "register" | "reset" | null>(null)
   const [loginPrefillPhone, setLoginPrefillPhone] = useState<string | undefined>(undefined)
   const [loginPrefillOtpSent, setLoginPrefillOtpSent] = useState<boolean>(false)
+  const [loginPrefillExpiresInSec, setLoginPrefillExpiresInSec] = useState<number | undefined>(undefined)
   const { data: session } = useSession()
   
   const handleAuthClick = () => {
@@ -30,12 +31,14 @@ export const useHeader = ({
   const switchToLogin = (prefill?: SwitchToLoginPrefill) => {
     setLoginPrefillPhone(prefill?.phone)
     setLoginPrefillOtpSent(!!prefill?.otpAlreadySent)
+    setLoginPrefillExpiresInSec(prefill?.expiresInSec)
     setActiveForm("login")
   }
 
   const switchToRegister = () => {
     setLoginPrefillPhone(undefined)
     setLoginPrefillOtpSent(false)
+    setLoginPrefillExpiresInSec(undefined)
     setActiveForm("register")
   }
 
@@ -47,6 +50,7 @@ export const useHeader = ({
     setActiveForm(null)
     setLoginPrefillPhone(undefined)
     setLoginPrefillOtpSent(false)
+    setLoginPrefillExpiresInSec(undefined)
   }
 
   // Determine if user is actually authenticated
@@ -64,6 +68,7 @@ export const useHeader = ({
     activeForm,
     loginPrefillPhone,
     loginPrefillOtpSent,
+    loginPrefillExpiresInSec,
     handleAuthClick,
     handleLogout,
     switchToLogin,

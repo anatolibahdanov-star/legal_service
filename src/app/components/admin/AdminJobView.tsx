@@ -7,7 +7,7 @@ import { statusesDesign, StatusColorI } from '@/src/interfaces/data';
 import { format } from 'date-fns';
 import { AdminJobViewPropsI } from '@/src/interfaces/component';
 
-export const AdminJobView = ({record, jobs}: AdminJobViewPropsI) => {
+export const AdminJobView = ({record, jobs, attachmentsMap}: AdminJobViewPropsI) => {
     const {id, username, category_name, job_status, created_at, lawyer, category_id, email_status} = record;
     const statusColor: StatusColorI = job_status && [0,1,2,3,4].includes(job_status) ? statusesDesign[job_status] : statusesDesign[QuestionStatusesE.New]
     const createdAt = created_at ? format(new Date(created_at), "dd.MM.yyyy hh:ii") : null
@@ -80,7 +80,8 @@ export const AdminJobView = ({record, jobs}: AdminJobViewPropsI) => {
 
         {/* Messages */}
         {jobs.map((message) => (
-            <ChatMessage key={'user-reply-' + message.id} message={message} isFromUser={false} isAdmin={true} />
+            <ChatMessage key={'user-reply-' + message.id} message={message} isFromUser={false} isAdmin={true}
+                showAttachments attachments={attachmentsMap?.[String(message.id)]} />
         ))}
     </>
     )

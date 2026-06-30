@@ -218,3 +218,37 @@ export async function getUserTotalSpent(userId: string | number): Promise<number
     const [[rows]] = executedQueries;
     return rows.length === 0 ? 0 : Number(rows[0].total) || 0
 }
+
+export async function getUserTotalExpenses(userId: string | number): Promise<number> {
+    const msg = msgGlobal + "getUserTotalExpenses - "
+    const query = `SELECT COALESCE(SUM(po.amount), 0) as total
+        FROM porder po
+        WHERE po.user_id = ?
+          AND po.status = ${OrderStatusE.Paid}
+          AND po.order_type = ${OrderTypeE.OneTime}`
+    const calcFunc = findOne({ query, values: [userId] });
+    const executedQueries = await queryTransactionWrapper<RowDataPacket>([calcFunc], msg);
+    if (!executedQueries) {
+        logger.error(msg + "SQL not results from execution", query)
+        return 0
+    }
+    const [[rows]] = executedQueries;
+    return rows.length === 0 ? 0 : Number(rows[0].total) || 0
+}
+
+export async function getUserTotalTopups(userId: string | number): Promise<number> {
+    const msg = msgGlobal + "getUserTotalTopups - "
+    const query = `SELECT COALESCE(SUM(po.amount / 100), 0) as total
+        FROM porder po
+        WHERE po.user_id = ?
+          AND po.status = ${OrderStatusE.Paid}
+          AND po.order_type = ${OrderTypeE.Balance}`
+    const calcFunc = findOne({ query, values: [userId] });
+    const executedQueries = await queryTransactionWrapper<RowDataPacket>([calcFunc], msg);
+    if (!executedQueries) {
+        logger.error(msg + "SQL not results from execution", query)
+        return 0
+    }
+    const [[rows]] = executedQueries;
+    return rows.length === 0 ? 0 : Number(rows[0].total) || 0
+}

@@ -139,14 +139,12 @@
 .nameCell {
     font-weight: 700;
     color: #14171d;
+    cursor: pointer;
+    border-radius: 6px;
 }
 
-.emailLink {
-    color: #5b8fb0;
-    text-decoration: none;
-}
-
-.emailLink:hover {
+.nameCell:hover {
+    color: #2b3645;
     text-decoration: underline;
 }
 
@@ -286,7 +284,7 @@
 
 .modal {
     width: 100%;
-    max-width: 880px;
+    max-width: 960px;
     margin: auto;
     max-height: calc(100vh - 48px);
     max-height: calc(100dvh - 48px);
@@ -415,7 +413,7 @@
 /* ---------- Operations tab ---------- */
 .balanceBlocks {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(3, 1fr);
     gap: 16px;
     margin-bottom: 16px;
 }
@@ -443,8 +441,16 @@
 .opsToolbar {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 14px;
     margin-bottom: 20px;
+}
+
+.opsToolbarActions {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-left: auto;
 }
 
 .selectWrap {
@@ -496,6 +502,11 @@
 .btnPrimary:disabled { background: #9aa3b2; cursor: not-allowed; }
 
 .btnSecondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    white-space: nowrap;
     background: #fff;
     color: #2b303a;
     border: 1px solid #d8dde4;
@@ -532,12 +543,12 @@
     overflow: hidden;
 }
 
-.opsTableScroll { overflow-x: auto; }
+.opsTableScroll { overflow-x: hidden; }
 
 .opsTable {
     width: 100%;
     border-collapse: collapse;
-    min-width: 720px;
+    table-layout: fixed;
 }
 
 .opsTable thead th {
@@ -545,7 +556,7 @@
     font-size: 13px;
     font-weight: 500;
     color: #9aa3b2;
-    padding: 16px 18px;
+    padding: 14px 14px;
     border-bottom: 1px solid #eef1f4;
     white-space: nowrap;
 }
@@ -553,10 +564,17 @@
 .opsTable tbody td {
     font-size: 14px;
     color: #2b303a;
-    padding: 16px 18px;
+    padding: 14px 14px;
     border-bottom: 1px solid #eef1f4;
-    white-space: nowrap;
+    vertical-align: top;
+    overflow-wrap: anywhere;
 }
+
+.opsTable th:nth-child(1), .opsTable td:nth-child(1) { width: 18%; white-space: nowrap; }
+.opsTable th:nth-child(2), .opsTable td:nth-child(2) { width: 20%; }
+.opsTable th:nth-child(3), .opsTable td:nth-child(3) { width: 16%; white-space: nowrap; }
+.opsTable th:nth-child(4), .opsTable td:nth-child(4) { width: 26%; }
+.opsTable th:nth-child(5), .opsTable td:nth-child(5) { width: 20%; }
 
 .opsTable tbody tr:last-child td { border-bottom: none; }
 

@@ -4,9 +4,10 @@ import Link from 'next/link';
 interface BalanceCardPropsI {
     handleCreateOrder: () => void;
     data: DBUser|null;
+    minTopupRub: number;
 }
 
-const BalanceCard = ({handleCreateOrder, data}: BalanceCardPropsI) => {
+const BalanceCard = ({handleCreateOrder, data, minTopupRub}: BalanceCardPropsI) => {
     const rubFormatter = new Intl.NumberFormat('ru-RU', {
         style: 'currency',
         currency: 'RUB', // Use "RUB" as the ISO code for Russian Ruble
@@ -21,7 +22,7 @@ const BalanceCard = ({handleCreateOrder, data}: BalanceCardPropsI) => {
       {/* <p className="mt-4 text-xs text-muted-foreground">Updated: 2026-04-12</p> */}
       <Link href="#" 
         className="mt-5 inline-block rounded-lg bg-[#EE2A23] px-6 py-2.5 text-sm font-medium text-alfa-red-foreground transition-opacity hover:opacity-90"
-        onClick={handleCreateOrder}>Пополнить баланс на 100 рублей</Link>
+        onClick={handleCreateOrder}>Пополнить баланс на {minTopupRub} рублей</Link>
     </div>
   );
 };

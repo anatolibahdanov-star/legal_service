@@ -159,10 +159,13 @@ export const UsersList = () => {
                                 return (
                                     <tr key={user.id}>
                                         <td className={styles.idCell}>{user.id}</td>
-                                        <td className={styles.nameCell}>{user.name}</td>
-                                        <td>
-                                            <a className={styles.emailLink} href={`mailto:${user.email}`}>{user.email}</a>
+                                        <td
+                                            className={styles.nameCell}
+                                            onClick={() => setModal({ id: user.id.toString(), tab: "general" })}
+                                        >
+                                            {user.name}
                                         </td>
+                                        <td>{user.email}</td>
                                         <td>{formatDate(user.created_at as unknown as string)}</td>
                                         <td>
                                             <span className={`${styles.badge} ${badgeClass(meta.tone)}`}>{meta.label}</span>

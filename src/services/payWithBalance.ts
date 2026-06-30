@@ -1,5 +1,6 @@
 import logger from '@/src/libs/logger';
 import { chargeUserBalance } from '@/src/repositories/balances/repo';
+import { chargeFreeQuestion } from '@/src/repositories/freeQuestions/repo';
 import { createEmptyOrder, updateOrderQuestionLink } from '@/src/repositories/orders/repo';
 import {
   getWizardQuestionById,
@@ -30,6 +31,8 @@ export interface PayWithBalanceResult {
   questionUuid?: string;
   orderId?: string;
   amount?: number;
+  /** True when the question was covered by a granted free question (no money charged). */
+  freeUsed?: boolean;
 }
 
 interface CachedEntry {
@@ -123,6 +126,41 @@ async function runPayment(params: PayParams): Promise<PayWithBalanceResult> {
       ok: false,
       code: 'already_paid',
       message: 'Этот вопрос уже оплачен.',
+    };
+  }
+
+  // 1a-bis. Free-first: если пользователю начислены бесплатные вопросы,
+  // списываем один вместо денег и сразу переводим вопрос в работу. Декремент
+  // атомарный (free_questions >= 1), повторный вызов перехватит уже не-Unpaid
+  // статус выше — двойного списания не будет.
+  const freeCharge = await chargeFreeQuestion(userId, question.id);
+  if (freeCharge.ok) {
+    const updatedFree = await updateWizardQuestionStatus(
+      question.id,
+      QuestionStatusesE.InProgress,
+      userId,
+    );
+    if (!updatedFree) {
+      logger.error(msgGlobal + 'status update failed AFTER free charge', {
+        ...ctx,
+        operation_id: freeCharge.operationId,
+      });
+      return {
+        ok: false,
+        code: 'update_failed',
+        message: 'Бесплатный вопрос списан, но не удалось обновить статус. Свяжитесь с поддержкой.',
+      };
+    }
+    logger.info(msgGlobal + 'paid with free question', {
+      ...ctx,
+      operation_id: freeCharge.operationId,
+    });
+    return {
+      ok: true,
+      freeUsed: true,
+      amount: 0,
+      questionId: updatedFree.id.toString(),
+      questionUuid: updatedFree.uuid,
     };
   }
 

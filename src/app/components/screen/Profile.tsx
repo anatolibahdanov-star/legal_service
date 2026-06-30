@@ -8,7 +8,7 @@ import Link from 'next/link';
 import Swal from 'sweetalert2'
 import { toast } from 'sonner'
 
-import { Upload, Eye, EyeOff, Star, Edit, Trash2, StarOff, Share2, Check, CreditCard, Link as LucideLink, AlertCircle } from "lucide-react";
+import { Upload, Eye, EyeOff, Star, Edit, Trash2, StarOff, Share2, Check, CreditCard, Link as LucideLink, AlertCircle, Paperclip } from "lucide-react";
 
 import { CustomGetRequest, CustomRequest } from "@/src/libs/request";
 import { emitBalanceRefresh } from "@/src/libs/balanceEvents";
@@ -534,9 +534,25 @@ const ProfileJobList = ({is_user, user}: ProfileJobListPropsI) => {
                   {!is_user && (<td className="p-4 text-sm text-[#333]">{caseItem.username}</td>)}
                   <td className="p-4 text-sm text-[#2196f3]">{caseItem.category_name}</td>
                   <td className="p-4 text-sm text-[#333] max-w-xs truncate">
-                    <Link href={domainUrl + '/consultation/' + caseItem.uuid + '/'} target="_blank" rel="noopener noreferrer" 
+                    <Link href={domainUrl + '/consultation/' + caseItem.uuid + '/'} target="_blank" rel="noopener noreferrer"
                         className="font-['Inter:Regular',sans-serif] font-normal text-[14px] text-[#87b7ce] hover:text-[#6fa2b8] transition-colors line-clamp-2"
                     >{caseItem.question}</Link>
+                    {caseItem.attachments && caseItem.attachments.length > 0 && (
+                      <div className="flex items-center gap-1.5 mt-1.5">
+                        {caseItem.attachments.map((att) => (
+                          <Tooltip key={att.id} content={att.filename}>
+                            <a
+                              href={att.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center justify-center text-[#8faaba] hover:text-[#6fa2b8] transition-colors"
+                            >
+                              <Paperclip className="size-4" />
+                            </a>
+                          </Tooltip>
+                        ))}
+                      </div>
+                    )}
                   </td>
                   <td className="p-4 text-sm text-[#333] min-w-[180px]">
                     <div className="flex flex-wrap items-center gap-2">

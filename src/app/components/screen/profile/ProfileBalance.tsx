@@ -27,7 +27,18 @@ export const ProfileBalance = ({data, setUserBalance}: ProfileBalancePropsI) => 
     const queryParams = new URLSearchParams(window.location.search);
     const msg = queryParams.get('msg');
     console.log("Params", msg)
-    const balance = 10000
+    const [minTopupRub, setMinTopupRub] = useState(100)
+    const topupKop = Math.round(minTopupRub * 100)
+
+    useEffect(() => {
+        const fetchMinTopup = async () => {
+            const res = await CustomGetRequest("/orders/min-topup/")
+            if(res.status && typeof res.data?.minTopupRub === "number") {
+                setMinTopupRub(res.data.minTopupRub)
+            }
+        };
+        fetchMinTopup();
+    }, []);
 
     useEffect(() => {
         if(!newOrder) {
@@ -75,7 +86,7 @@ export const ProfileBalance = ({data, setUserBalance}: ProfileBalancePropsI) => 
     
     const handleCreateOrder = async () => {
         const path = "/orders/"
-        const orderSendData = { amount: balance }
+        const orderSendData = { amount: topupKop }
         const orderData = await CustomRequest(path, orderSendData)
         console.log('handleCreateOrder orderData', orderData, )
         if(orderData.status) {
@@ -95,7 +106,7 @@ export const ProfileBalance = ({data, setUserBalance}: ProfileBalancePropsI) => 
       <div className="mx-auto max-w-7xl px-4">
         {/* Balance */}
         <div className="mt-8">
-          <BalanceCard data={data} handleCreateOrder={handleCreateOrder} />
+          <BalanceCard data={data} handleCreateOrder={handleCreateOrder} minTopupRub={minTopupRub} />
         </div>
 
         {/* Payment methods */}

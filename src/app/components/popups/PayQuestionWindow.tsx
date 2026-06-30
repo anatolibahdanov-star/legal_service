@@ -35,11 +35,14 @@ export default function PayQuestionWindow({
 }: PayQuestionWindowProps) {
   const [price, setPrice] = useState<number>(0);
   const [balance, setBalance] = useState<number>(0);
+  const [freeQuestions, setFreeQuestions] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
   const [loadError, setLoadError] = useState<string>("");
   const [idempotencyKey, setIdempotencyKey] = useState<string>("");
   /** Сумма списания, чтобы показать её на экране успеха. */
   const [paidAmount, setPaidAmount] = useState<number>(0);
+  /** Вопрос покрыт бесплатным — на экране успеха показываем free-вариант. */
+  const [paidWithFree, setPaidWithFree] = useState<boolean>(false);
   /** После успешной оплаты с баланса заменяем платёжный экран на success. */
   const [paid, setPaid] = useState<boolean>(false);
 
@@ -50,6 +53,7 @@ export default function PayQuestionWindow({
     setLoadError("");
     setPaid(false);
     setPaidAmount(0);
+    setPaidWithFree(false);
     setIdempotencyKey(
       `paylist_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`,
     );
@@ -61,9 +65,10 @@ export default function PayQuestionWindow({
         setLoading(false);
         return;
       }
-      const data = res.data as { questionPrice?: number; userBalance?: number };
+      const data = res.data as { questionPrice?: number; userBalance?: number; freeQuestions?: number };
       setPrice(typeof data.questionPrice === "number" ? data.questionPrice : 0);
       setBalance(typeof data.userBalance === "number" ? data.userBalance : 0);
+      setFreeQuestions(typeof data.freeQuestions === "number" ? data.freeQuestions : 0);
       setLoading(false);
     })();
     return () => {
@@ -93,13 +98,14 @@ export default function PayQuestionWindow({
     if (!res.status) {
       return { ok: false, message: res.error || "Не удалось провести оплату с баланса." };
     }
-    const data = res.data as { amount?: number } | null;
+    const data = res.data as { amount?: number; freeUsed?: boolean } | null;
     const amount = typeof data?.amount === "number" ? data.amount : price;
     emitBalanceRefresh();
     // Список перечитываем уже сейчас, чтобы к моменту закрытия модалки
     // статус в таблице был «В работе».
     onPaid();
     setPaidAmount(amount);
+    setPaidWithFree(!!data?.freeUsed);
     setPaid(true);
     return { ok: true };
   };
@@ -150,7 +156,7 @@ export default function PayQuestionWindow({
           </div>
         ) : paid ? (
           <RequestStepSuccess
-            variant="balance"
+            variant={paidWithFree ? "free" : "balance"}
             amount={paidAmount}
             onGoToProfile={onClose}
           />
@@ -158,6 +164,7 @@ export default function PayQuestionWindow({
           <RequestStepPayment
             price={price}
             balance={balance}
+            freeQuestions={freeQuestions}
             onPayCard={handlePayCard}
             onPayBalance={handlePayBalance}
             onPayLater={handlePayLater}

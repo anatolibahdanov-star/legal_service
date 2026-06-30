@@ -1,13 +1,20 @@
 import logger from "@/src/libs/logger"
 import { getAllUserPaymentsForAdmin } from "@/src/repositories/payments/repo"
 import { adminAdjustBalance, getUserManualOperations } from "@/src/repositories/balances/repo"
+import { accrueFreeQuestions, getUserFreeQuestionOperations } from "@/src/repositories/freeQuestions/repo"
 import { mapPaymentRow } from "@/src/services/paymentHistory"
 import {
     AdminBalanceOperationI,
     AdminOperationTypeE,
+    FreeQuestionOpTypeE,
     PaymentDisplayStatusE,
     PaymentOperationE,
 } from "@/src/interfaces/payment"
+
+const freeQuestionTypes = new Set<AdminOperationTypeE>([
+    AdminOperationTypeE.FreeAccrual,
+    AdminOperationTypeE.FreeCharge,
+])
 
 const msgGlobal = "SERVICE ADMIN-OPERATIONS "
 
@@ -37,13 +44,14 @@ const mapPorderOperation = (
 
 export const getAdminUserOperations = async (
     userId: string | number,
-    typeFilter: AdminOperationTypeE | "all" = "all",
+    typeFilter: AdminOperationTypeE | "all" | "free" = "all",
 ): Promise<AdminBalanceOperationI[]> => {
     const msg = msgGlobal + "getAdminUserOperations - "
     const operationsCap = 2000
-    const [porderRows, manualRows] = await Promise.all([
+    const [porderRows, manualRows, freeRows] = await Promise.all([
         getAllUserPaymentsForAdmin(userId, operationsCap),
         getUserManualOperations(userId, operationsCap),
+        getUserFreeQuestionOperations(userId, operationsCap),
     ])
 
     const operations: AdminBalanceOperationI[] = []
@@ -70,9 +78,28 @@ export const getAdminUserOperations = async (
         })
     }
 
+    for (const row of freeRows) {
+        const isAccrual = row.op_type === FreeQuestionOpTypeE.Accrual
+        operations.push({
+            id: `f-${row.id}`,
+            createdAt: new Date(row.created_at).toISOString(),
+            type: isAccrual ? AdminOperationTypeE.FreeAccrual : AdminOperationTypeE.FreeCharge,
+            amount: Number(row.amount),
+            comment: row.comment ?? null,
+            actor: isAccrual ? formatActor(row.admin_name, row.admin_username) : "Система",
+            questionId: row.question_id ?? null,
+            questionUuid: row.question_uuid ?? null,
+        })
+    }
+
     operations.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
 
-    const filtered = typeFilter === "all" ? operations : operations.filter((o) => o.type === typeFilter)
+    const filtered =
+        typeFilter === "all"
+            ? operations
+            : typeFilter === "free"
+                ? operations.filter((o) => freeQuestionTypes.has(o.type))
+                : operations.filter((o) => o.type === typeFilter)
     logger.info(msg + "loaded", { user_id: userId, total: operations.length, filtered: filtered.length })
     return filtered
 }
@@ -103,5 +130,25 @@ export const adminTopUp = async (
         return { ok: false, error: "Не удалось изменить баланс." }
     }
     logger.info(msg + "done", { user_id: userId, amountRub, admin_id: adminId })
+    return { ok: true }
+}
+
+export const adminAccrueFreeQuestions = async (
+    userId: string | number,
+    count: number,
+    comment: string,
+    adminId: number | null,
+): Promise<AdminTopUpResult> => {
+    const msg = msgGlobal + "adminAccrueFreeQuestions - "
+    if (!Number.isInteger(count) || count <= 0) {
+        return { ok: false, error: "Количество вопросов должно быть положительным целым числом." }
+    }
+    const trimmed = (comment ?? "").trim()
+    const result = await accrueFreeQuestions(userId, count, adminId, trimmed.length > 0 ? trimmed : null)
+    if (!result.ok) {
+        logger.error(msg + "accrue failed", { user_id: userId, count })
+        return { ok: false, error: "Не удалось начислить бесплатные вопросы." }
+    }
+    logger.info(msg + "done", { user_id: userId, count, admin_id: adminId })
     return { ok: true }
 }
