@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import { useSession } from 'next-auth/react'
 import {
   validateRequestForm,
   validateQuestionText,
@@ -12,6 +13,7 @@ import { completeProfileAction } from "@/src/app/components/forms/action/complet
 import {
   createWizardCardOrderAction,
   payWithBalanceAction,
+  wizardAuthInitAction,
   wizardCreateQuestionAction,
   wizardSubmitQuestionAction,
   wizardUpdateQuestionTextAction,
@@ -46,6 +48,7 @@ const emptyErrors = (): FormDataObjectT => ({
 })
 
 export const useInquirySection = () => {
+  const { data: session, status: sessionStatus } = useSession()
   const { execute: executeCaptcha } = useYandexInvisibleCaptcha({ variant: "dark" })
   const phoneBlock = usePhoneBlockCountdown()
 
@@ -89,12 +92,88 @@ export const useInquirySection = () => {
     () => `inquiry_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`
   )
 
+  const handleNextAuthed = async () => {
+    setQuestionTouched(true)
+    const questionError = validateQuestionText(problemText)
+    if (questionError || submitting) {
+      if (questionError) setErrors((prev) => ({ ...prev, question: questionError }))
+      return
+    }
+
+    setSubmitting(true)
+    setErrors(emptyErrors())
+    try {
+      const initResponse = await wizardAuthInitAction()
+      if (!initResponse.status) {
+        setErrors((prev) => ({
+          ...prev,
+          common: initResponse.error || "Не удалось получить данные пользователя. Попробуйте позже.",
+        }))
+        return
+      }
+
+      const initData = initResponse.data as {
+        isFirstQuestionFree?: boolean
+        questionPrice?: number
+        userBalance?: number
+      }
+      const isFirstFree = !!initData.isFirstQuestionFree
+      const price = typeof initData.questionPrice === 'number' ? initData.questionPrice : 0
+      const balance = typeof initData.userBalance === 'number' ? initData.userBalance : 0
+
+      setIsFirstQuestionFree(isFirstFree)
+      setQuestionPrice(price)
+      setUserBalance(balance)
+
+      const ensured = await ensureUnpaidQuestionExists()
+      if (!ensured.ok) {
+        setErrors((prev) => ({
+          ...prev,
+          common: ensured.message || "Не удалось сохранить вопрос.",
+        }))
+        return
+      }
+
+      if (isFirstFree) {
+        const result = await submitFreeAndShowSuccess()
+        if (!result.ok) {
+          setErrors((prev) => ({
+            ...prev,
+            common: result.message || "Не удалось сохранить вопрос.",
+          }))
+        }
+        return
+      }
+
+      if (balance >= price) {
+        const result = await handlePayBalance()
+        if (!result.ok) {
+          setErrors((prev) => ({
+            ...prev,
+            common: result.message || "Не удалось списать с баланса. Выберите способ оплаты.",
+          }))
+          setPanel('payment')
+        }
+        return
+      }
+
+      setPanel('payment')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   const goNext = () => {
     if (step >= TOTAL_VISIBLE_STEPS) return
 
     setErrors(emptyErrors())
 
     if (step === 1) {
+      if (session?.user) {
+        void handleNextAuthed()
+        return
+      }
+
       setQuestionTouched(true)
       const questionError = validateQuestionText(problemText)
       if (questionError) {
@@ -113,6 +192,18 @@ export const useInquirySection = () => {
     directionRef.current = -1
     setDirection(-1)
     setStep(s => s - 1)
+  }
+
+  const handleProblemTextChange = (value: string) => {
+    setProblemText(value)
+    setErrors((prev) => {
+      if (!prev.question) return prev
+      return {
+        ...prev,
+        question: "",
+        common: prev.common === prev.question ? "" : prev.common,
+      }
+    })
   }
 
   const buildRequestPayload = (): RequestFormI => {
@@ -299,8 +390,10 @@ export const useInquirySection = () => {
           return
         }
 
-        if (result.devCode) console.info('[DEV] OTP code:', result.devCode)
         setNormalizedPhone(result.normalizedPhone)
+        if (result.devCode) {
+          console.info('[DEV] OTP code:', result.devCode)
+        }
         setVerificationModal('otp')
         return
       }
@@ -330,8 +423,8 @@ export const useInquirySection = () => {
     setVerificationModal('none')
   }
 
-  const handleOtpVerify = async (code: string): Promise<OtpStepResult> => {
-    const response = await wizardVerifyOtpAction({ phone: normalizedPhone, code })
+  const verifyOtpCode = async (phone: string, code: string): Promise<OtpStepResult> => {
+    const response = await wizardVerifyOtpAction({ phone, code })
     if (!response.status) {
       const errData = response.data as
         | { cooldownUntil?: string | null; lockedUntil?: string | null; attemptsLeft?: number | null }
@@ -390,6 +483,10 @@ export const useInquirySection = () => {
     setVerificationModal('none')
     setPanel('payment')
     return { ok: true }
+  }
+
+  const handleOtpVerify = async (code: string): Promise<OtpStepResult> => {
+    return verifyOtpCode(normalizedPhone, code)
   }
 
   const handleOtpResend = async () => {
@@ -507,6 +604,8 @@ export const useInquirySection = () => {
   }
 
   const isLastStep = step === TOTAL_VISIBLE_STEPS
+  const isAuthed = !!session?.user
+  const isSessionLoading = sessionStatus === 'loading'
   const placeholderName = normalizedPhone ? phoneToDefaultName(normalizedPhone) : null
   const profileInitialName = verifiedUser?.name && verifiedUser.name !== placeholderName
     ? verifiedUser.name
@@ -529,6 +628,8 @@ export const useInquirySection = () => {
     submitting,
     questionTouched,
     isLastStep,
+    isAuthed,
+    isSessionLoading,
     verificationModal,
     normalizedPhone,
     pendingEmail,
@@ -552,7 +653,7 @@ export const useInquirySection = () => {
     handlePayLater: showPayLaterSuccess,
     goToMyQuestions,
     goToBalance,
-    setProblemText,
+    setProblemText: handleProblemTextChange,
     setAttachedFiles,
     setChannel: (next: ContactChannel) => {
       setChannel(next)

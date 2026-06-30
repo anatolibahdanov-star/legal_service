@@ -25,7 +25,6 @@ import { useFileUpload } from './file-upload.hook'
 import { InquiryEmailModal, InquiryOtpModal } from './inquiry-verification-modals'
 import RequestStepProfile from '@/src/app/components/forms/RequestStepProfile'
 import RequestStepPayment from '@/src/app/components/forms/RequestStepPayment'
-import RequestStepSuccess from '@/src/app/components/forms/RequestStepSuccess'
 
 // ─── shared sub-components ────────────────────────────────────────────────────
 
@@ -656,14 +655,14 @@ export function InquirySection() {
     submitting,
     questionTouched,
     isLastStep,
+    isAuthed,
+    isSessionLoading,
     verificationModal,
     pendingEmail,
     profileInitialName,
     profileInitialEmail,
     questionPrice,
     userBalance,
-    successKind,
-    successAmount,
     goNext,
     goBack,
     handleSubmit,
@@ -676,7 +675,6 @@ export function InquirySection() {
     handlePayCard,
     handlePayBalance,
     handlePayLater,
-    goToMyQuestions,
     goToBalance,
     setProblemText,
     setAttachedFiles,
@@ -719,15 +717,9 @@ export function InquirySection() {
               key="wizard-success"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="w-full min-h-[662px] flex items-center justify-center p-8"
+              className="w-full min-h-[662px] flex"
             >
-              <div className="w-full max-w-[560px]">
-                <RequestStepSuccess
-                  variant={successKind}
-                  amount={successAmount}
-                  onGoToProfile={goToMyQuestions}
-                />
-              </div>
+              <FinalScreen />
             </motion.div>
           ) : (
             <motion.div key="quiz" className="flex w-full min-h-full" initial={false}>
@@ -758,6 +750,7 @@ export function InquirySection() {
                       >
                         {panel === 'profile' && (
                           <RequestStepProfile
+                            variant="v2"
                             initialName={profileInitialName}
                             initialEmail={profileInitialEmail}
                             onSubmit={handleProfileSubmit}
@@ -766,6 +759,7 @@ export function InquirySection() {
                         )}
                         {panel === 'payment' && (
                           <RequestStepPayment
+                            variant="v2"
                             price={questionPrice}
                             balance={userBalance}
                             onPayCard={handlePayCard}
@@ -826,11 +820,6 @@ export function InquirySection() {
 
                 {panel === 'quiz' && (
                 <div className="flex flex-col gap-4 mt-6" style={{ width: 656 }}>
-                  {isLastStep && typeof errors.common === 'string' && errors.common && (
-                    <div className="p-3 bg-red-50 border border-red-200 rounded-xl">
-                      <p className="text-[12px] text-red-600">{errors.common}</p>
-                    </div>
-                  )}
                   <div className="flex items-center justify-between gap-4">
                   <button
                     onClick={goBack}
@@ -840,8 +829,12 @@ export function InquirySection() {
                     Назад
                   </button>
                   {isLastStep
-                    ? <VioletBtn label={submitting ? "Подтверждаем..." : "Подтвердить"} onClick={handleSubmit} disabled={submitting} />
-                    : <VioletBtn label="Далее" onClick={goNext} />
+                    ? <VioletBtn label={submitting ? "Подтверждаем..." : "Подтвердить"} onClick={handleSubmit} disabled={submitting || isSessionLoading} />
+                    : <VioletBtn
+                        label={submitting ? "Обрабатываем..." : isAuthed ? "Отправить" : "Далее"}
+                        onClick={goNext}
+                        disabled={submitting || isSessionLoading}
+                      />
                   }
                   </div>
                 </div>
