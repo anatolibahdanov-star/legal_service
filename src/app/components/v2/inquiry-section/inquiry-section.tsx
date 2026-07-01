@@ -457,7 +457,7 @@ function Step5Panel({
           token={captchaToken}
           onChange={onCaptchaChange}
           disabled={submitting}
-          variant="dark"
+          variant="light"
           fullWidth
         />
         
@@ -472,7 +472,7 @@ function Step5Panel({
 
 // ─── final screen ─────────────────────────────────────────────────────────────
 
-function FinalScreen() {
+function FinalScreen({ onAskAnother }: { onAskAnother: () => void }) {
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.97 }}
@@ -509,6 +509,13 @@ function FinalScreen() {
           </Link>
           {' '}или дождитесь уведомления о готовности
         </p>
+        <button
+          type="button"
+          onClick={onAskAnother}
+          className="text-[16px] leading-[22px] tracking-tight text-[#34347C] underline underline-offset-2 transition-opacity hover:opacity-80 active:opacity-60 cursor-pointer"
+        >
+          Хотите задать ещё один вопрос?
+        </button>
       </div>
 
       <motion.div
@@ -676,6 +683,7 @@ export function InquirySection() {
     handlePayBalance,
     handlePayLater,
     goToBalance,
+    resetForm,
     setProblemText,
     setAttachedFiles,
     setChannel,
@@ -710,7 +718,7 @@ export function InquirySection() {
               animate={{ opacity: 1 }}
               className="w-full min-h-[662px] flex"
             >
-              <FinalScreen />
+              <FinalScreen onAskAnother={resetForm} />
             </motion.div>
           ) : panel === 'success' ? (
             <motion.div
@@ -719,7 +727,7 @@ export function InquirySection() {
               animate={{ opacity: 1 }}
               className="w-full min-h-[662px] flex"
             >
-              <FinalScreen />
+              <FinalScreen onAskAnother={resetForm} />
             </motion.div>
           ) : (
             <motion.div key="quiz" className="flex w-full min-h-full" initial={false}>

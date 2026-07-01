@@ -5,7 +5,7 @@ import Link from "next/link";
 import styles from "./header.module.css";
 
 import logo from "@/public/design/v2-main-page/icons/header-logo.svg";
-import { NAV_LINKS, SOCIAL_LINKS } from "./header.data";
+import { NAV_LINKS /* , SOCIAL_LINKS */ } from "./header.data";
 import { useHeader } from "./header.hook";
 import { AuthFormWindow } from "@/src/app/components/popups/AuthFormWindow";
 import { RegisterFormWindow } from "@/src/app/components/popups/RegisterFormWindow";
@@ -56,7 +56,7 @@ export const Header: React.FC<HeaderProps> = ({
                 <span>ЭНКИ</span>
             </Link>
 
-            <nav id="navigation" className="flex items-center gap-4 ml-auto">
+            <nav id="navigation" className={`${styles.navigation} flex items-center gap-4`}>
                 <ul className="flex items-center gap-1">
                     {NAV_LINKS.map(({ label, href }) => (
                       <li key={label}>
@@ -72,6 +72,7 @@ export const Header: React.FC<HeaderProps> = ({
                 </ul>
             </nav>
 
+            {/* Social icons — temporarily hidden
             <nav className="flex items-center gap-1 ml-auto">
                 <ul className="flex items-center gap-1">
                     {SOCIAL_LINKS.map(({ src, alt, href }) => (
@@ -86,6 +87,7 @@ export const Header: React.FC<HeaderProps> = ({
                     ))}
                 </ul>
             </nav>
+            */}
 
             {actuallyAuthenticated ? (
               <div className="flex flex-col items-end gap-1.5">

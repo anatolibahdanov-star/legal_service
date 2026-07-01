@@ -49,7 +49,7 @@ const emptyErrors = (): FormDataObjectT => ({
 
 export const useInquirySection = () => {
   const { data: session, status: sessionStatus } = useSession()
-  const { execute: executeCaptcha } = useYandexInvisibleCaptcha({ variant: "dark" })
+  const { execute: executeCaptcha } = useYandexInvisibleCaptcha({ variant: "light" })
   const phoneBlock = usePhoneBlockCountdown()
 
   // Navigation state
@@ -88,9 +88,41 @@ export const useInquirySection = () => {
   const questionIdRef = useRef<string | number | null>(null)
   const questionUuidRef = useRef<string | null>(null)
   const committedQuestionTextRef = useRef('')
-  const [paymentIdempotencyKey] = useState(
+  const [paymentIdempotencyKey, setPaymentIdempotencyKey] = useState(
     () => `inquiry_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`
   )
+
+  const resetForm = () => {
+    directionRef.current = 1
+    setStep(1)
+    setDirection(1)
+    setIsComplete(false)
+    setProblemText('')
+    setAttachedFiles([])
+    setChannel('phone')
+    setContactValue('')
+    setVerificationModal('none')
+    setNormalizedPhone('')
+    setPendingEmail('')
+    setErrors(emptyErrors())
+    setCaptchaToken(null)
+    setSubmitting(false)
+    setQuestionTouched(false)
+    setPanel('quiz')
+    setVerifiedUser(null)
+    setVerifyToken('')
+    setIsFirstQuestionFree(false)
+    setQuestionPrice(0)
+    setUserBalance(0)
+    setSuccessKind('free')
+    setSuccessAmount(0)
+    questionIdRef.current = null
+    questionUuidRef.current = null
+    committedQuestionTextRef.current = ''
+    setPaymentIdempotencyKey(
+      `inquiry_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`
+    )
+  }
 
   const handleNextAuthed = async () => {
     setQuestionTouched(true)
@@ -653,6 +685,7 @@ export const useInquirySection = () => {
     handlePayLater: showPayLaterSuccess,
     goToMyQuestions,
     goToBalance,
+    resetForm,
     setProblemText: handleProblemTextChange,
     setAttachedFiles,
     setChannel: (next: ContactChannel) => {
