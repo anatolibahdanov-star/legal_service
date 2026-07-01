@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import type { User } from 'next-auth'
 import Link from 'next/link'
 import { format } from 'date-fns'
-import { ArrowRight, Briefcase, CreditCard, FileText, MessageCircle, Plus, Upload } from 'lucide-react'
+import { ArrowRight, CreditCard, FileText, MessageCircle, Plus, Upload } from 'lucide-react'
 
 import type { DBQuestion } from '@/src/interfaces/db'
 import { QuestionStatusesE, dFormat, statusesDesign } from '@/src/interfaces/data'
@@ -81,12 +81,12 @@ export function V2ProfileCases({ user }: V2ProfileCasesProps) {
   }, [currentPage, user.id, refreshToken, refreshFlag])
 
   const refresh = () => setRefreshToken((value) => value + 1)
-  const stats = {
-    total: totalItems || jobs.length,
-    work: jobs.filter((item) => item.job_status === QuestionStatusesE.InProgress).length,
-    wait: jobs.filter((item) => item.job_status === QuestionStatusesE.New || item.job_status === QuestionStatusesE.Unpaid).length,
-    done: jobs.filter((item) => item.job_status === QuestionStatusesE.Approved).length,
-  }
+  // const stats = {
+  //   total: totalItems || jobs.length,
+  //   work: jobs.filter((item) => item.job_status === QuestionStatusesE.InProgress).length,
+  //   wait: jobs.filter((item) => item.job_status === QuestionStatusesE.New || item.job_status === QuestionStatusesE.Unpaid).length,
+  //   done: jobs.filter((item) => item.job_status === QuestionStatusesE.Approved).length,
+  // }
 
   const filteredJobs = jobs.filter((item) => {
     if (filter === 'all') return true
@@ -97,30 +97,30 @@ export function V2ProfileCases({ user }: V2ProfileCasesProps) {
 
   return (
     <div className="flex w-full flex-col gap-12">
-      <div className="flex items-center justify-between gap-6">
+      {/* <div className="flex items-center justify-between gap-8">
         {[
-          { label: 'Всего', value: stats.total, bg: '#34347C', icon: '#4242A1', text: 'text-white', sub: 'text-white/80' },
-          { label: 'В работе', value: stats.work, bg: '#D8D054', icon: '#E9E15B', text: 'text-[#12161B]', sub: 'text-[rgba(18,22,27,0.7)]' },
-          { label: 'Ожидает', value: stats.wait, bg: '#C44021', icon: '#DE4927', text: 'text-white', sub: 'text-white/80' },
-          { label: 'Завершено', value: stats.done, bg: '#183E35', icon: '#205246', text: 'text-white', sub: 'text-white/80' },
+          { label: 'Всего', value: stats.total, bg: '#34347C', icon: '#4242A1', text: 'text-white', sub: 'text-white/80', width: 171 },
+          { label: 'В работе', value: stats.work, bg: '#D8D054', icon: '#E9E15B', text: 'text-[#12161B]', sub: 'text-[rgba(18,22,27,0.7)]', width: 190 },
+          { label: 'Ожидает', value: stats.wait, bg: '#C44021', icon: '#DE4927', text: 'text-white', sub: 'text-white/80', width: 203 },
+          { label: 'Завершено', value: stats.done, bg: '#183E35', icon: '#205246', text: 'text-white', sub: 'text-white/80', width: 210 },
         ].map((item) => (
           <div
             key={item.label}
-            className="flex shrink-0 items-center gap-6 rounded-[21px] border border-[rgba(18,22,27,0.05)] p-3 pr-6 shadow-[0px_3px_36px_0px_rgba(0,0,0,0.04),_0px_-102px_250px_0px_rgba(0,0,0,0.07)]"
-            style={{ background: item.bg }}
+            className="flex h-[76px] shrink-0 items-center gap-3 rounded-[16px] border border-white/10 p-[10px] pr-4 shadow-[0px_10px_28px_0px_rgba(21,22,25,0.16)]"
+            style={{ width: item.width, background: item.bg }}
           >
-            <div className="flex h-[72px] w-[72px] items-center justify-center rounded-[10px] border border-white/50 text-white shadow-[0px_4px_16px_0px_rgba(0,0,0,0.12)] backdrop-blur-md" style={{ background: item.icon }}>
-              <Briefcase className="h-10 w-10" />
+            <div className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-[8px] border border-white/35 text-white shadow-[0px_4px_12px_0px_rgba(0,0,0,0.12)] backdrop-blur-md" style={{ background: item.icon }}>
+              <Briefcase className="h-[30px] w-[30px]" strokeWidth={1.7} />
             </div>
-            <div className="flex items-end gap-3">
-              <span className={`text-[64px] font-medium leading-[70px] tracking-[-0.01em] ${item.text}`}>
+            <div className="flex min-w-0 items-end gap-2">
+              <span className={`text-[44px] font-medium leading-[48px] tracking-[-0.03em] ${item.text}`}>
                 {item.value}
               </span>
-              <span className={`pb-[7px] text-[16px] font-semibold leading-5 ${item.sub}`}>{item.label}</span>
+              <span className={`pb-[8px] text-[12px] font-semibold leading-[14px] ${item.sub}`}>{item.label}</span>
             </div>
           </div>
         ))}
-      </div>
+      </div> */}
 
       <div className="overflow-hidden rounded-[28px] border border-[rgba(18,22,27,0.05)] bg-white shadow-[0px_3px_36px_0px_rgba(0,0,0,0.04),_0px_-102px_250px_0px_rgba(0,0,0,0.07)]">
         <div className="flex items-center justify-between px-8 pb-5 pt-8">

@@ -15,9 +15,9 @@ export interface SocialLink {
 }
 
 export const NAV_LINKS: NavLink[] = [
-  { label: 'Задать вопрос',    href: '#inquiry' },
-  { label: 'Почему мы',        href: '#why-us' },
-  { label: 'Как мы работаем', href: '#how-it-works' },
+  { label: 'Задать вопрос',    href: '/#inquiry' },
+  { label: 'Почему мы',        href: '/#why-us' },
+  { label: 'Как мы работаем', href: '/#how-it-works' },
   // { label: 'О нас',            href: '/about' },
 ]
 

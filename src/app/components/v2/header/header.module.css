@@ -37,3 +37,8 @@
     align-items: center;
     justify-content: space-between;
 }
+
+.navigation {
+    margin-right: auto;
+    margin-left: auto;
+}

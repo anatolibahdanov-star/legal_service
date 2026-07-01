@@ -395,13 +395,22 @@ interface PayOptionProps {
 function PayOption({ variant = "legacy", selected, onClick, icon, title, subtitle, footer }: PayOptionProps) {
   const isV2 = variant === "v2";
 
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      onClick();
+    }
+  };
+
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
+      onKeyDown={handleKeyDown}
       aria-pressed={selected}
       className={cn(
-        "w-full text-left rounded-2xl p-4 transition-all min-h-[110px] flex",
+        "w-full text-left rounded-2xl p-4 transition-all min-h-[110px] flex cursor-pointer",
         isV2
           ? selected
             ? "border-[1.5px] border-[#34347C] bg-white shadow-sm"
@@ -440,6 +449,6 @@ function PayOption({ variant = "legacy", selected, onClick, icon, title, subtitl
           )}
         </div>
       </div>
-    </button>
+    </div>
   );
 }
