@@ -1,6 +1,6 @@
 import logger from "@/src/libs/logger"
 import { getEmailTemplateByCode } from "@/src/repositories/emailTemplates/repo"
-import { SendSendGridBrandedEmail } from "@/src/libs/sendgrid"
+import { sendBrandedEmail } from "@/src/libs/email/senders"
 import { isPhoneEmail } from "@/src/libs/phoneIdentity"
 
 const msgGlobal = "SERVICE UNPAID-REMINDER-NOTIFY "
@@ -62,7 +62,7 @@ export async function notifyUnpaidReminder(input: UnpaidReminderInput): Promise<
             payment_url: input.paymentUrl,
         }
 
-        const sent = await SendSendGridBrandedEmail({
+        const sent = await sendBrandedEmail({
             recipient: input.recipient,
             subject: renderPlaceholders(subjectTpl, vars),
             bodyText: renderPlaceholders(bodyTpl, vars),

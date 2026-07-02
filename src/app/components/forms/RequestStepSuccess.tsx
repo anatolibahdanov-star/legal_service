@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CheckCircle2, Clock, CreditCard, Gift, Wallet } from "lucide-react";
+import { CheckCircle2, Clock, CreditCard, Gift, Sparkles, Wallet } from "lucide-react";
 
 const BRAND = "#8faaba";
 const REDIRECT_SECONDS = 5;
 
-export type SuccessVariant = "free" | "balance" | "card" | "later";
+export type SuccessVariant = "free" | "bonus" | "balance" | "card" | "later";
 
 interface RequestStepSuccessProps {
   /** Drives the icon / heading / subtitle / amount block. */
@@ -38,6 +38,16 @@ const buildVariantCopy = (variant: SuccessVariant, amount: number): VariantCopy 
           "Вопрос успешно сохранён и отправлен юристу. Ответ придёт в Личный кабинет и на Вашу электронную почту.",
         ],
         icon: Gift,
+      };
+    case "bonus":
+      return {
+        heading: "Ваш вопрос принят",
+        paragraphs: [
+          "Ваш вопрос успешно отправлен юристу.",
+          "Для его отправки был использован 1 бесплатный бонусный вопрос. Бесплатные вопросы всегда используются в первую очередь, поэтому Ваш основной баланс не изменился.",
+          "Ответ поступит в Личный кабинет и на Вашу электронную почту.",
+        ],
+        icon: Sparkles,
       };
     case "balance":
       return {

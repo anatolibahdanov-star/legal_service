@@ -40,20 +40,14 @@ export async function GET(
   const session = await getServerSession(authOptions);
   const staff = isStaff(session?.user?.role);
 
-  if (attachment.source === 'lawyer') {
-    if (!staff) {
-      return NextResponse.json({ success: false, message: 'Доступ запрещён.' }, { status: 403 });
-    }
-  } else {
-    let allowed = staff;
-    if (!allowed && session?.user?.id) {
-      const questions = await getQuestionsByIds([attachment.question_id.toString()]);
-      const owner = questions && questions.length > 0 ? questions[0].user_id : null;
-      allowed = owner != null && owner.toString() === session.user.id.toString();
-    }
-    if (!allowed) {
-      return NextResponse.json({ success: false, message: 'Доступ запрещён.' }, { status: 403 });
-    }
+  let allowed = staff;
+  if (!allowed && session?.user?.id) {
+    const questions = await getQuestionsByIds([attachment.question_id.toString()]);
+    const owner = questions && questions.length > 0 ? questions[0].user_id : null;
+    allowed = owner != null && owner.toString() === session.user.id.toString();
+  }
+  if (!allowed) {
+    return NextResponse.json({ success: false, message: 'Доступ запрещён.' }, { status: 403 });
   }
 
   try {

@@ -41,6 +41,9 @@ export const ChatMessage = ({ message, isLastLawyerMessage, onAskClarification, 
   const createdAt = message.created_at ? format(new Date(message.created_at), dFormat) : null
   const replyCreatedAt = message.final_reply_date ? format(new Date(message.final_reply_date), dFormat) : null
 
+  const userAttachments = (attachments ?? []).filter((a) => a.source !== "lawyer")
+  const lawyerAttachments = (attachments ?? []).filter((a) => a.source === "lawyer")
+
   const handleSubmitClarification = () => {
     // Follow-up questions have no length limit; only the empty case is rejected
     // (the submit button is already disabled while the field is blank).
@@ -78,8 +81,8 @@ export const ChatMessage = ({ message, isLastLawyerMessage, onAskClarification, 
               >{isContentExpanded ? "Свернуть" : "Показать полностью"}</button>
             )}
 
-            {showAttachments && attachments && attachments.length > 0 && (
-              <AttachmentList attachments={attachments} showSource={isAdmin} />
+            {showAttachments && userAttachments.length > 0 && (
+              <AttachmentList attachments={userAttachments} showSource={isAdmin} />
             )}
           </div>
         </div>
@@ -107,7 +110,19 @@ export const ChatMessage = ({ message, isLastLawyerMessage, onAskClarification, 
           </div>
         </div>
       </div>)}
-      
+
+      {showAttachments && lawyerAttachments.length > 0 && (
+        <div className="py-4 border-b border-[rgba(41,40,43,0.1)] last:border-b-0">
+          <div className="flex gap-4">
+            <div className="size-12 rounded-full flex items-center justify-center shrink-0 text-sm font-medium bg-[#323c54] text-white">Юрист</div>
+            <div className="flex-1 min-w-0">
+              <h4 className="text-sm font-medium text-[#29282b] mb-2">Документы от юриста</h4>
+              <AttachmentList attachments={lawyerAttachments} />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Follow-up question form */}
       {showClarificationForm && isLastLawyerMessage && (
         <div className="ml-16 mt-4 bg-[rgba(143,170,186,0.1)] rounded-lg p-4 space-y-3">

@@ -9,7 +9,7 @@ import {
   getUsersByIds,
   issueEmailVerification,
 } from '@/src/repositories/users/repo';
-import { SendSendGridEmailVerification } from '@/src/libs/sendgrid';
+import { sendVerificationEmail } from '@/src/libs/email/senders';
 import { normalizePhoneE164 } from '@/src/libs/phoneIdentity';
 import { peekVerifyToken } from '@/src/libs/otpStore';
 import { isFirstQuestionFree } from '@/src/services/firstQuestion';
@@ -179,7 +179,7 @@ export async function POST(request: NextRequest) {
     } else {
       const base = (process.env.NEXTAUTH_URL ?? 'https://enki.legal').replace(/\/$/, '');
       const verifyUrl = `${base}/api/users/verify-email?token=${encodeURIComponent(issued.token)}`;
-      const sent = await SendSendGridEmailVerification({
+      const sent = await sendVerificationEmail({
         recipient: resultUser.email,
         username: resultUser.name,
         password: issued.password,

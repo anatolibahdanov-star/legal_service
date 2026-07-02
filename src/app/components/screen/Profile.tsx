@@ -571,7 +571,7 @@ export const ProfileJobList = ({is_user, user}: ProfileJobListPropsI) => {
                       )}
                     </div>
                   </td>
-                  <td className="p-4 text-sm text-[#333]">{format((new Date(caseItem.updated_at)), dFormat)}</td>
+                  <td className="p-4 text-sm text-[#333]">{format((new Date(caseItem.created_at)), dFormat)}</td>
                   <td className="p-4 flex items-center justify-center gap-2"> 
                     {!is_user ? (
                       <AdminJobComponent jobId={caseItem.id} />

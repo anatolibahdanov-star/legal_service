@@ -5,7 +5,7 @@ import logger from '@/src/libs/logger';
 import { authOptions } from '@/src/app/api/auth/[...nextauth]/route';
 import { getQuestionByShortId, getQuestionsByIds } from '@/src/repositories/requests/repo';
 import { getOrGeneratePdf } from '@/src/services/pdf';
-import { SendSendGridPdfAttachment } from '@/src/libs/sendgrid';
+import { sendPdfAttachmentEmail } from '@/src/libs/email/senders';
 import { dFormat } from '@/src/interfaces/data';
 import { PDF_ID_REGEX, isShortId } from '@/src/services/pdf/shortId';
 
@@ -121,7 +121,7 @@ export async function POST(
     }
   })();
 
-  const ok = await SendSendGridPdfAttachment({
+  const ok = await sendPdfAttachmentEmail({
     recipient,
     question_id: question.id,
     question_subject: question.category_name ?? '',

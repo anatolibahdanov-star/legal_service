@@ -41,7 +41,7 @@ export async function GET(
   if (!staff && !isOwner) {
     return NextResponse.json({}, { status: 200 });
   }
-  const sourceFilter = staff ? undefined : ('user' as const);
+  const sourceFilter = staff || isOwner ? undefined : ('user' as const);
 
   try {
     const wantsThread = request.nextUrl.searchParams.get('thread') === '1';
