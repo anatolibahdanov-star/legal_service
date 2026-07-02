@@ -156,7 +156,7 @@ export default function PayQuestionWindow({
           </div>
         ) : paid ? (
           <RequestStepSuccess
-            variant={paidWithFree ? "free" : "balance"}
+            variant={paidWithFree ? "bonus" : "balance"}
             amount={paidAmount}
             onGoToProfile={onClose}
           />

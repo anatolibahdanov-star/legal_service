@@ -3,7 +3,7 @@ import {addClientQuestion, getQuestions, getTotalQuestions} from "@/src/reposito
 import {DBQuestion} from "@/src/interfaces/db"
 import {UserRequest} from "@/src/interfaces/api"
 import logger from "@/src/libs/logger"
-import { SendSendGridEmailNewRequest } from '@/src/libs/sendgrid';
+import { sendNewRequestEmail } from '@/src/libs/email/senders';
 import {EmailDataNewRequestI} from "@/src/interfaces/email"
 import { verifyCaptcha } from "@/src/libs/captcha"
 import { validateRequestForm } from "@/src/app/components/forms/validation/request"
@@ -159,7 +159,7 @@ export async function POST(request: Request) {
             email: question.email,
             admin_id: question.admin_id,
         }
-        const isSendEmail = await SendSendGridEmailNewRequest(sendData)
+        const isSendEmail = await sendNewRequestEmail(sendData)
         if(!isSendEmail) {
             logger.error(msg + "email on new request event was not sent", sendData)
         }

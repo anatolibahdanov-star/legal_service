@@ -10,7 +10,7 @@ import { useHeader } from "./header.hook";
 import { AuthFormWindow } from "@/src/app/components/popups/AuthFormWindow";
 import { RegisterFormWindow } from "@/src/app/components/popups/RegisterFormWindow";
 import { ResetPasswordFormWindow } from "@/src/app/components/popups/ResetPasswordFormWindow";
-// import HeaderBalance from "@/src/app/components/HeaderBalance";
+import HeaderBalance from "@/src/app/components/HeaderBalance";
 
 interface HeaderProps {
   isAuthenticated?: boolean
@@ -129,7 +129,7 @@ export const Header: React.FC<HeaderProps> = ({
                     Выйти
                   </button>
                 </div>
-                {/* <HeaderBalance /> */}
+                <HeaderBalance />
               </div>
             ) : (
               <button

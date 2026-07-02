@@ -4,7 +4,7 @@ import { authOptions } from '@/src/app/api/auth/[...nextauth]/route';
 import {login, profile, register, reset, getUsersByIds, saveUser, deleteUser, issueEmailVerificationToken} from "@/src/repositories/users/repo"
 import {DBUser} from "@/src/interfaces/db"
 import logger from "@/src/libs/logger"
-import { SendSendGridEmailForgot, SendSendGridEmailVerifyNewEmail } from '@/src/libs/sendgrid';
+import { sendForgotPasswordEmail, sendVerifyNewEmail } from '@/src/libs/email/senders';
 import { EmailDataForgotI } from '@/src/interfaces/email';
 import { verifyCaptcha } from "@/src/libs/captcha"
 import { maskEmail } from "@/src/helpers/maskEmail"
@@ -172,7 +172,7 @@ export async function POST(request: Request) {
           url: domainUrl,
           url_about: domainUrl + '/about/',
         }
-        const isSendEmail = await SendSendGridEmailForgot(emailData)
+        const isSendEmail = await sendForgotPasswordEmail(emailData)
         if(!isSendEmail) {
             logger.error("(ERROR)" + msg + "reset email was not sent", { user_id: user.id })
             return NextResponse.json(
@@ -247,7 +247,7 @@ export async function PUT(request: Request) {
             } else {
                 const base = (process.env.NEXTAUTH_URL ?? 'https://enki.legal').replace(/\/$/, '')
                 const verifyUrl = `${base}/api/users/verify-email?token=${encodeURIComponent(token)}`
-                const sent = await SendSendGridEmailVerifyNewEmail({
+                const sent = await sendVerifyNewEmail({
                     recipient: newEmail,
                     username: user.name ?? '',
                     url: verifyUrl,

@@ -202,7 +202,7 @@ export function V2ProfileCases({ user }: V2ProfileCasesProps) {
                       </div>
                     </div>
                     <span className="shrink-0 text-[14px] leading-5 text-[rgba(18,22,27,0.5)]">
-                      {format(new Date(caseItem.updated_at), dFormat)}
+                      {format(new Date(caseItem.created_at), dFormat)}
                     </span>
                   </div>
 

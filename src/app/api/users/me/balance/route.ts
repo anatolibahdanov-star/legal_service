@@ -35,5 +35,8 @@ export async function GET() {
     );
   }
 
-  return NextResponse.json({ success: true, balance: user.balance ?? 0 }, { status: 200 });
+  return NextResponse.json(
+    { success: true, balance: user.balance ?? 0, freeQuestions: user.free_questions ?? 0 },
+    { status: 200 },
+  );
 }

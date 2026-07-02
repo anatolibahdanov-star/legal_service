@@ -99,6 +99,9 @@ export function CaseModal({ caseItem, isOpen, onClose, openRatingSection, user, 
   // пользователь видит ответ, но не может оценить.
   const hasLawyerAnswer = jobs.some(m => !!m.final_reply && m.final_reply.trim() !== '')
 
+  const canAskClarification =
+    [QuestionStatusesE.New, QuestionStatusesE.InProgress, QuestionStatusesE.Approved].includes(caseItem.job_status)
+
   const getStatusBadge = (status: number) => {
   
       const isValidColor = (value: number): value is QuestionStatusesE => {
@@ -250,7 +253,7 @@ export function CaseModal({ caseItem, isOpen, onClose, openRatingSection, user, 
               {/* Action buttons */}
               <div className="flex gap-3 mt-4">
                 {/* Ask follow-up question button */}
-                {lastLawyerMessage && hasLawyerAnswer && (
+                {lastLawyerMessage && canAskClarification && (
                   <button onClick={() => setAskClarificationMessageId(lastLawyerMessage.id)}
                     className="text-[#8faaba] hover:text-white text-sm font-medium transition-colors flex items-center gap-2"
                   >
@@ -422,7 +425,7 @@ export function CaseModal({ caseItem, isOpen, onClose, openRatingSection, user, 
             )}
 
             {/* Ask follow-up question button (bottom) */}
-            {lastLawyerMessage && [QuestionStatusesE.Approved, QuestionStatusesE.Spam].includes(caseItem.job_status) && (
+            {lastLawyerMessage && canAskClarification && (
               <button onClick={() => setAskClarificationMessageId(lastLawyerMessage.id)}
                 className="w-full mt-6 py-4 px-6 rounded-lg bg-[#8faaba] hover:bg-[#7a8fa0] text-white font-medium transition-colors flex items-center justify-center gap-2"
               >

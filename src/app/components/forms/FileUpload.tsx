@@ -21,6 +21,7 @@ interface FileUploadProps {
   onFilesChange: (files: File[]) => void
   disabled?: boolean
   maxFiles?: number
+  existingCount?: number
   className?: string
 }
 
@@ -29,6 +30,7 @@ export function FileUpload({
   onFilesChange,
   disabled = false,
   maxFiles = ATTACH_MAX_FILES,
+  existingCount = 0,
   className = '',
 }: FileUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null)
@@ -55,10 +57,11 @@ export function FileUpload({
       valid.push(file)
     }
 
+    const remaining = Math.max(0, maxFiles - existingCount)
     let combined = [...files, ...valid]
-    if (combined.length > maxFiles) {
+    if (combined.length > remaining) {
       nextError = `Можно прикрепить не более ${maxFiles} файлов.`
-      combined = combined.slice(0, maxFiles)
+      combined = combined.slice(0, remaining)
     }
     setError(nextError)
     onFilesChange(combined)
@@ -86,7 +89,7 @@ export function FileUpload({
             </svg>
             <div className="flex flex-col gap-0.5 text-center">
               <span className="text-[12px] leading-[17px] text-[rgba(18,22,27,0.5)]">Прикрепите документы (необязательно)</span>
-              <span className="text-[12px] leading-[17px] text-[rgba(18,22,27,0.35)]">DOC, DOCX, PDF, XLSX — до 3 МБ, не более {maxFiles}</span>
+              <span className="text-[12px] leading-[17px] text-[rgba(18,22,27,0.35)]">DOC, DOCX, PDF, XLSX — до 3 МБ, не более {maxFiles} файлов</span>
             </div>
           </>
         ) : (
@@ -95,7 +98,7 @@ export function FileUpload({
               <span className="text-[12px] font-medium leading-[17px] text-[rgba(18,22,27,0.7)]">
                 Прикреплённые файлы ({files.length}):
               </span>
-              {files.length < maxFiles && !disabled && (
+              {files.length + existingCount < maxFiles && !disabled && (
                 <button
                   type="button"
                   onClick={handleClick}

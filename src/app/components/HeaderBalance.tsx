@@ -9,8 +9,11 @@ import { subscribeBalanceRefresh } from "@/src/libs/balanceEvents";
 
 type BalanceState =
   | { status: "loading" }
-  | { status: "ready"; balance: number }
+  | { status: "ready"; balance: number; freeQuestions: number }
   | { status: "error" };
+
+const readFreeQuestions = (value: unknown): number =>
+  typeof value === "number" && Number.isFinite(value) ? value : 0;
 
 const formatRub = (value: number): string =>
   new Intl.NumberFormat("ru-RU").format(value);
@@ -33,7 +36,7 @@ export default function HeaderBalance() {
       setState({ status: "error" });
       return;
     }
-    setState({ status: "ready", balance: res.data.balance });
+    setState({ status: "ready", balance: res.data.balance, freeQuestions: readFreeQuestions(res.data.freeQuestions) });
   }, []);
 
   useEffect(() => {
@@ -46,7 +49,7 @@ export default function HeaderBalance() {
         setState({ status: "error" });
         return;
       }
-      setState({ status: "ready", balance: res.data.balance });
+      setState({ status: "ready", balance: res.data.balance, freeQuestions: readFreeQuestions(res.data.freeQuestions) });
     })();
     return () => {
       cancelled = true;
@@ -68,15 +71,29 @@ export default function HeaderBalance() {
   const isPositive = state.status === "ready" && state.balance > 0;
   const amountColor = isPositive ? "text-[#10b981]" : "text-[#9ca3af]";
 
+  const freeQuestions = state.status === "ready" ? state.freeQuestions : 0;
+
   return (
-    <Link
-      href="/profile/?tab=balance"
-      aria-label="Перейти на страницу баланса"
-      className="inline-flex items-center gap-1.5 text-sm hover:opacity-80 transition-opacity"
-    >
-      <Wallet className={`w-4 h-4 ${isPositive ? "text-[#10b981]" : "text-[#9ca3af]"}`} strokeWidth={2} />
-      <span className="text-[#29282b]/70">Баланс:</span>
-      <span className={`font-bold tabular-nums ${amountColor}`}>{amountText}</span>
-    </Link>
+    <div className="flex items-center justify-end gap-4 pr-3">
+      <Link
+        href="/profile/?tab=balance"
+        aria-label="Перейти на страницу баланса"
+        className="inline-flex items-center gap-1.5 text-sm hover:opacity-80 transition-opacity"
+      >
+        <Wallet className={`w-4 h-4 ${isPositive ? "text-[#10b981]" : "text-[#9ca3af]"}`} strokeWidth={2} />
+        <span className="text-[#29282b]/70">Баланс:</span>
+        <span className={`font-bold tabular-nums ${amountColor}`}>{amountText}</span>
+      </Link>
+      {freeQuestions > 0 && (
+        <Link
+          href="/profile/?tab=balance"
+          aria-label="Перейти к бесплатным вопросам"
+          className="inline-flex items-center gap-1.5 text-sm hover:opacity-80 transition-opacity"
+        >
+          <span className="text-[#29282b]/70">Бесплатные вопросы:</span>
+          <span className="font-bold tabular-nums text-[#34347C]">{freeQuestions}</span>
+        </Link>
+      )}
+    </div>
   );
 }

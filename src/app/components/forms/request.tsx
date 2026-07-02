@@ -66,7 +66,7 @@ const FIELD_BG = "rgba(143, 170, 186, 0.18)";
 type WizardStep = "question" | "phone" | "otp" | "profile" | "payment" | "success" | "error";
 
 /** Discriminates success-screen variants — drives copy + icon + amount. */
-type SuccessKind = "free" | "balance" | "card" | "later";
+type SuccessKind = "free" | "bonus" | "balance" | "card" | "later";
 
 export default function RequestForm({parent = null, setCurrent, setPage, onClose, isProfile = false}: RequestFormOptionsI) {
 
@@ -540,7 +540,7 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
             return { ok: false, message: msg };
         }
         const data = response.data as { amount?: number; freeUsed?: boolean };
-        setSuccessKind(data?.freeUsed ? "free" : "balance");
+        setSuccessKind(data?.freeUsed ? "bonus" : "balance");
         setSuccessAmount(typeof data?.amount === "number" ? data.amount : questionPrice);
         emitBalanceRefresh();
         setStep("success");

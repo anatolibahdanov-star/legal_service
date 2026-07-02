@@ -19,7 +19,8 @@ import { CustomGetRequest } from "@/src/libs/request"
 import { AdminJobView } from '@/src/app/components/admin/AdminJobView';
 import { AttachmentDTO, DBQuestion } from '@/src/interfaces/db';
 import { FileUpload } from "@/src/app/components/forms/FileUpload";
-import { uploadQuestionAttachmentsAction } from "@/src/app/components/forms/action/attachments";
+import { uploadQuestionAttachmentsAction, deleteQuestionAttachmentAction } from "@/src/app/components/forms/action/attachments";
+import { ATTACH_MAX_FILES } from "@/src/app/components/forms/validation/attachments";
 
 const AttachmentIcons = ({ attachments }: { attachments?: AttachmentDTO[] }) => {
     if (!attachments || attachments.length === 0) return null;
@@ -215,7 +216,7 @@ export const RequestEdit = (props: EditControllerProps<any, Error> | undefined) 
                             <CustomSaveButton />
                             <RichTextInput source="final_reply" label="Ответ пользователю" editorOptions={editorOptions} />
                             <SelectInput label="Статус" source="job_status" choices={getAdminChoices(QuestionStatusesE, "Статус обработки вопроса: ", true)} />
-                            <LawyerAttachmentUpload onUploaded={reloadJobs} />
+                            <LawyerAttachmentUpload attachments={(attachmentsMap[String(lastLawyerMessage.id)] ?? []).filter((a) => a.source === 'lawyer')} onUploaded={reloadJobs} />
                             {/* <PresetFieldLogic lastRecord={lastLawyerMessage} /> */}
                         </SimpleForm>
                     );
@@ -468,16 +469,24 @@ const CustomSaveButton = () => {
   );
 };
 
-const LawyerAttachmentUpload = ({ onUploaded }: { onUploaded?: () => void }) => {
+const LawyerAttachmentUpload = ({ attachments = [], onUploaded }: { attachments?: AttachmentDTO[]; onUploaded?: () => void }) => {
   const notify = useNotify();
   const record = useRecordContext();
   const childId = useWatch({ name: 'child_id' });
   const targetId = childId ?? record?.id;
   const [files, setFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  const existingCount = attachments.length;
+  const overLimit = existingCount + files.length > ATTACH_MAX_FILES;
 
   const handleUpload = async () => {
     if (!targetId || files.length === 0 || loading) return;
+    if (overLimit) {
+      notify(`Можно прикрепить не более ${ATTACH_MAX_FILES} файлов.`, { type: 'warning' });
+      return;
+    }
     setLoading(true);
     try {
       const res = await uploadQuestionAttachmentsAction(targetId, files, true);
@@ -493,13 +502,44 @@ const LawyerAttachmentUpload = ({ onUploaded }: { onUploaded?: () => void }) => 
     }
   };
 
+  const handleDelete = async (attachmentId: number) => {
+    if (deletingId) return;
+    setDeletingId(attachmentId);
+    try {
+      const res = await deleteQuestionAttachmentAction(attachmentId);
+      if (!res.ok) {
+        notify(res.error ?? 'Не удалось удалить файл.', { type: 'warning' });
+        return;
+      }
+      notify('Файл удалён.', { type: 'success' });
+      if (onUploaded) onUploaded();
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   return (
     <div style={{ width: '100%', maxWidth: 520, marginTop: 8 }}>
       <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Прикрепить файлы к ответу (только для юриста)</p>
-      <FileUpload files={files} onFilesChange={setFiles} disabled={loading} />
+      {existingCount > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 8 }}>
+          <span style={{ fontSize: 12, color: 'rgba(18,22,27,0.6)' }}>Уже прикреплено ({existingCount}):</span>
+          {attachments.map((att) => (
+            <div key={att.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '6px 10px', border: '1px solid rgba(18,22,27,0.12)', borderRadius: 8, background: '#fff' }}>
+              <a href={att.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: '#34347C', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {att.filename}
+              </a>
+              <button type="button" onClick={() => handleDelete(att.id)} disabled={deletingId === att.id} aria-label="Удалить файл" style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#c0392b', fontSize: 18, lineHeight: 1 }}>
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      <FileUpload files={files} onFilesChange={setFiles} disabled={loading} existingCount={existingCount} />
       <div style={{ marginTop: 8 }}>
         <Button
-          disabled={loading || files.length === 0}
+          disabled={loading || files.length === 0 || overLimit}
           variant="contained"
           color="primary"
           startIcon={loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <AttachFileIcon />}

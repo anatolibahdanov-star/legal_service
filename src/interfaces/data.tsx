@@ -87,4 +87,4 @@ export const statusesDesign: Record<number, StatusColorI> = {
     0: {color: "#ef4444", name: "Ошибка"},
   }
 
-export const dFormat = 'dd.MM.yyyy в hh:ii'
+export const dFormat = 'dd.MM.yyyy в HH:mm'

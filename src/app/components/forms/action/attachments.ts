@@ -33,3 +33,22 @@ export async function uploadQuestionAttachmentsAction(
     return { ok: false, error: 'Не удалось загрузить файлы.' }
   }
 }
+
+export async function deleteQuestionAttachmentAction(
+  attachmentId: string | number,
+): Promise<{ ok: boolean; error?: string }> {
+  const api_url = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost/api'
+
+  try {
+    const response = await fetch(`${api_url}/attachments/file/${attachmentId}`, {
+      method: 'DELETE',
+    })
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok || data?.success === false) {
+      return { ok: false, error: data?.message ?? 'Не удалось удалить файл.' }
+    }
+    return { ok: true }
+  } catch {
+    return { ok: false, error: 'Не удалось удалить файл.' }
+  }
+}

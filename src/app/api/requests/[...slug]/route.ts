@@ -13,7 +13,7 @@ import {EmailLawRatingDataI} from "@/src/interfaces/email"
 import {QuestionStatusesE, EmailStatusesE} from "@/src/interfaces/data"
 import {sendGrokBot, sendConsultantPlusBot} from "@/src/libs/llm";
 import { toClientReply } from "@/src/libs/grokReply";
-import {sendEmailLowRating} from "@/src/libs/sendgrid"
+import {sendLowRatingEmail} from "@/src/libs/email/senders"
 import { notifyQuestionAnswer } from "@/src/services/questionAnswerNotify"
 import { invalidatePdfCache, deleteDraftPdf, regenerateCanonicalPdf } from "@/src/services/pdf"
 import logger from "@/src/libs/logger"
@@ -163,7 +163,7 @@ export async function POST(request: Request) {
             question_rating_comment: question.comment ?? "",
             created_at: question.updated_at,
         }
-        const isSendEmail = await sendEmailLowRating(sendData)
+        const isSendEmail = await sendLowRatingEmail(sendData)
         if(!isSendEmail) {
             logger.error("(ERROR)" + msg + "E-mail on update rating for question was not sent", sendData)
         }

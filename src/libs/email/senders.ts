@@ -1,58 +1,13 @@
-import sgMail from '@sendgrid/mail';
-import nodemailer from 'nodemailer';
 import logger from "@/src/libs/logger"
 import { format } from 'date-fns';
 import { dFormat } from '@/src/interfaces/data';
-import {EmailDataI, EmailDataForgotI, EmailDataNewRequestI, EmailLawRatingDataI, EmailContactDataI, EmailPdfAttachmentI, EmailDataVerifyI, EmailDataVerifyNewI, EmailDataBalanceI, EmailDataBrandedI} from "@/src/interfaces/email"
-import { getAdministrators } from '../repositories/administrators/repo';
-import { DBFilterAdministrators } from '../interfaces/filters';
-import { getAdminAdminUrl, getAdminContactUrl, getAdminQuestionUrl, getAdminUserUrl } from '../helpers/tools';
-
-// Set the SendGrid API key from environment variables
-sgMail.setApiKey(process.env.SENDGRID_API_KEY as string);
-
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: Number(process.env.SMTP_PORT),
-  secure: false, // true for port 465, false for other ports
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASSWORD,
-  },
-  tls: {
-    // This allows the connection to a server with a self-signed certificate
-    rejectUnauthorized: false 
-  }
-});
-
-export async function SendSendGridEmail(emailData: EmailDataI): Promise<boolean | null> {
-  const msg = "SENDGRID SEND SendSendGridEmail - "
-  if (!emailData.recipient || !emailData.username) {
-    logger.error(msg + "Missing required fields", emailData)
-    return null;
-  }
-  const templateId = process.env.SENDGRID_API_TPL ?? 'd-345899f3277849be87a032cc287e7acb'
-  const verifiedEmail = process.env.SENDGRID_API_EMAIL ?? 'anatoli.bahdanov@gmail.com'
-
-  const email = {
-    to: emailData.recipient, // Recipient email address
-    from: verifiedEmail, // Your verified sender email address
-    templateId: templateId, // The ID of your SendGrid dynamic template
-    dynamicTemplateData: {
-      firstname: emailData.username, // Data for the {{firstName}} placeholder in your template
-      lllms_url: emailData.url,
-    },
-  };
-
-  try {
-    await sgMail.send(email);
-    logger.info(msg + "Email sent successfully", emailData)
-    return true
-  } catch (error) {
-    logger.error(msg + "Error in sending email", (error as Error).message, emailData)
-    return false
-  }
-}
+import {EmailDataForgotI, EmailDataNewRequestI, EmailLawRatingDataI, EmailContactDataI, EmailPdfAttachmentI, EmailDataVerifyI, EmailDataVerifyNewI, EmailDataBalanceI, EmailDataBrandedI} from "@/src/interfaces/email"
+import { getAdministrators } from '../../repositories/administrators/repo';
+import { DBFilterAdministrators } from '../../interfaces/filters';
+import { getAdminAdminUrl, getAdminContactUrl, getAdminQuestionUrl, getAdminUserUrl } from '../../helpers/tools';
+import { sendEmail, EmailAttachment } from './transport';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 
 const FORGOT_EMAIL_SUBJECT = 'Новый временный пароль — Enki.legal';
 
@@ -142,31 +97,26 @@ const buildForgotEmailHtml = (recipient: string, password: string, loginUrl: str
 </html>`;
 };
 
-export async function SendSendGridEmailForgot(emailData: EmailDataForgotI): Promise<boolean | null> {
-  const msg = "SENDGRID SEND SendSendGridEmailForgot - "
+export async function sendForgotPasswordEmail(emailData: EmailDataForgotI): Promise<boolean | null> {
+  const msg = "EMAIL SEND sendForgotPasswordEmail - "
   if (!emailData.recipient || !emailData.password) {
     logger.error(msg + "Missing required fields", { recipient: emailData.recipient })
     return null;
   }
-  const verifiedEmail = process.env.SENDGRID_API_EMAIL ?? 'anatoli.bahdanov@gmail.com'
   const loginUrl = emailData.url || (process.env.NEXTAUTH_URL ?? 'https://enki.legal')
 
-  const email = {
+  const ok = await sendEmail({
     to: emailData.recipient,
-    from: verifiedEmail,
     subject: FORGOT_EMAIL_SUBJECT,
     text: buildForgotEmailText(emailData.recipient, emailData.password, loginUrl),
     html: buildForgotEmailHtml(emailData.recipient, emailData.password, loginUrl),
-  };
-
-  try {
-    await sgMail.send(email);
+  })
+  if (ok) {
     logger.info(msg + "Email sent successfully", { recipient: emailData.recipient })
-    return true
-  } catch (error) {
-    logger.error(msg + "Error in sending email", (error as Error).message, { recipient: emailData.recipient })
-    return false
+  } else {
+    logger.error(msg + "Error in sending email", { recipient: emailData.recipient })
   }
+  return ok
 }
 
 const VERIFY_EMAIL_SUBJECT = 'Подтверждение email — Enki.legal';
@@ -254,30 +204,24 @@ const buildVerifyEmailHtml = (name: string, recipient: string, password: string,
 </html>`;
 };
 
-export async function SendSendGridEmailVerification(emailData: EmailDataVerifyI): Promise<boolean | null> {
-  const msg = "SENDGRID SEND SendSendGridEmailVerification - "
+export async function sendVerificationEmail(emailData: EmailDataVerifyI): Promise<boolean | null> {
+  const msg = "EMAIL SEND sendVerificationEmail - "
   if (!emailData.recipient || !emailData.password || !emailData.url) {
     logger.error(msg + "Missing required fields", { recipient: emailData.recipient })
     return null;
   }
-  const verifiedEmail = process.env.SENDGRID_API_EMAIL ?? 'anatoli.bahdanov@gmail.com'
-
-  const email = {
+  const ok = await sendEmail({
     to: emailData.recipient,
-    from: verifiedEmail,
     subject: VERIFY_EMAIL_SUBJECT,
     text: buildVerifyEmailText(emailData.username, emailData.recipient, emailData.password, emailData.url),
     html: buildVerifyEmailHtml(emailData.username, emailData.recipient, emailData.password, emailData.url),
-  };
-
-  try {
-    await sgMail.send(email);
+  })
+  if (ok) {
     logger.info(msg + "Email sent successfully", { recipient: emailData.recipient })
-    return true
-  } catch (error) {
-    logger.error(msg + "Error in sending email", (error as Error).message, { recipient: emailData.recipient })
-    return false
+  } else {
+    logger.error(msg + "Error in sending email", { recipient: emailData.recipient })
   }
+  return ok
 }
 
 const VERIFY_NEW_EMAIL_SUBJECT = 'Подтвердите новый email на Enki.legal';
@@ -338,42 +282,113 @@ const buildVerifyNewEmailHtml = (name: string, verifyUrl: string): string => {
 </html>`;
 };
 
-export async function SendSendGridEmailVerifyNewEmail(emailData: EmailDataVerifyNewI): Promise<boolean | null> {
-  const msg = "SENDGRID SEND SendSendGridEmailVerifyNewEmail - "
+export async function sendVerifyNewEmail(emailData: EmailDataVerifyNewI): Promise<boolean | null> {
+  const msg = "EMAIL SEND sendVerifyNewEmail - "
   if (!emailData.recipient || !emailData.url) {
     logger.error(msg + "Missing required fields", { recipient: emailData.recipient })
     return null;
   }
-  const verifiedEmail = process.env.SENDGRID_API_EMAIL ?? 'anatoli.bahdanov@gmail.com'
-
-  const email = {
+  const ok = await sendEmail({
     to: emailData.recipient,
-    from: verifiedEmail,
     subject: VERIFY_NEW_EMAIL_SUBJECT,
     text: buildVerifyNewEmailText(emailData.username, emailData.url),
     html: buildVerifyNewEmailHtml(emailData.username, emailData.url),
-  };
-
-  try {
-    await sgMail.send(email);
+  })
+  if (ok) {
     logger.info(msg + "Email sent successfully", { recipient: emailData.recipient })
-    return true
-  } catch (error) {
-    logger.error(msg + "Error in sending email", (error as Error).message, { recipient: emailData.recipient })
-    return false
+  } else {
+    logger.error(msg + "Error in sending email", { recipient: emailData.recipient })
   }
+  return ok
 }
 
-export async function SendSendGridEmailNewRequest(emailData: EmailDataNewRequestI, isNew: boolean = true): Promise<boolean | null> {
-  const msg = "SENDGRID SEND SendSendGridEmailNewRequest - "
+const buildNewRequestSubject = (isNew: boolean, id: string): string =>
+  isNew ? `Новый вопрос №${id} — Enki.legal` : `Вопрос №${id} ожидает ответа — Enki.legal`
+
+const buildNewRequestText = (
+  adminName: string, userName: string, userEmail: string, id: string, siteUrl: string, editUrl: string, isNew: boolean,
+): string => {
+  const greeting = adminName && adminName.trim() ? `Здравствуйте, ${adminName.trim()}!` : 'Здравствуйте!'
+  const lead = isNew
+    ? `На платформе Enki.legal поступил новый вопрос №${id}.`
+    : `Вопрос №${id} на платформе Enki.legal всё ещё ожидает ответа.`
+  return `${greeting}
+
+${lead}
+
+Клиент: ${userName || '—'}
+Email клиента: ${userEmail || '—'}
+
+Открыть вопрос в админке: ${editUrl}
+Платформа: ${siteUrl}
+
+С уважением,
+Команда Enki.legal
+`
+}
+
+const buildNewRequestHtml = (
+  adminName: string, userName: string, userEmail: string, id: string, siteUrl: string, editUrl: string, isNew: boolean,
+): string => {
+  const greeting = adminName && adminName.trim() ? `Здравствуйте, ${escapeHtml(adminName.trim())}!` : 'Здравствуйте!'
+  const heading = isNew ? 'Новый вопрос' : 'Вопрос ожидает ответа'
+  const lead = isNew
+    ? `На платформе Enki.legal поступил новый вопрос №${escapeHtml(id)}.`
+    : `Вопрос №${escapeHtml(id)} на платформе Enki.legal всё ещё ожидает ответа.`
+  const safeUser = escapeHtml(userName) || '—'
+  const safeEmail = escapeHtml(userEmail) || '—'
+  const safeEdit = escapeHtml(editUrl)
+  const safeSite = escapeHtml(siteUrl)
+  return `<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>${escapeHtml(buildNewRequestSubject(isNew, id))}</title>
+  </head>
+  <body style="margin:0; padding:0; background:#F5F7FA; font-family: Arial, Helvetica, sans-serif; color:#0F1B2D;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F5F7FA; padding:32px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px; background:#FFFFFF; border-radius:16px; padding:40px;">
+            <tr>
+              <td>
+                <h1 style="margin:0 0 24px; font-size:22px; line-height:28px; color:#0F1B2D;">${heading}</h1>
+                <p style="margin:0 0 12px; font-size:15px; line-height:22px; color:#3a4452;">${greeting}</p>
+                <p style="margin:0 0 24px; font-size:15px; line-height:22px; color:#3a4452;">${lead}</p>
+
+                <div style="background:#EFE7D8; border-radius:12px; padding:20px; margin:0 0 24px;">
+                  <p style="margin:0 0 8px; font-size:15px; color:#0F1B2D;">Клиент: <strong>${safeUser}</strong></p>
+                  <p style="margin:0; font-size:15px; color:#0F1B2D;">Email клиента: <strong>${safeEmail}</strong></p>
+                </div>
+
+                <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:0 auto 28px;">
+                  <tr>
+                    <td style="background:#5A8FB5; border-radius:12px;">
+                      <a href="${safeEdit}" target="_blank" rel="noopener noreferrer" style="display:inline-block; padding:14px 32px; font-size:15px; font-weight:600; color:#FFFFFF; text-decoration:none;">Открыть вопрос</a>
+                    </td>
+                  </tr>
+                </table>
+
+                <hr style="border:none; border-top:1px solid #E6EBF0; margin:24px 0;" />
+                <p style="margin:0; font-size:13px; line-height:20px; color:#6B7280;">Платформа: <a href="${safeSite}" target="_blank" rel="noopener noreferrer" style="color:#5A8FB5;">${safeSite}</a></p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`
+}
+
+export async function sendNewRequestEmail(emailData: EmailDataNewRequestI, isNew: boolean = true): Promise<boolean | null> {
+  const msg = "EMAIL SEND sendNewRequestEmail - "
   if (!emailData.username) {
     logger.error(msg + "Missing required fields", emailData)
     return null;
   }
   const siteName = process.env.NEXTAUTH_URL ?? 'https://enki.legal'
-  const templateId = isNew ? (process.env.SENDGRID_API_TPL_NREQUEST ?? 'd-909ede094aa942d884651db0d12a9b65') :
-    (process.env.SENDGRID_API_TPL_LREQUEST ?? 'd-27af5327e4bc48cba0d58711277096a4')
-  const verifiedEmail = process.env.SENDGRID_API_EMAIL ?? 'anatoli.bahdanov@gmail.com'
   const questionEditUrl = siteName + '/en/admin#/requests/' + emailData.id
 
   const adminFilter: DBFilterAdministrators = {status: 1}
@@ -388,25 +403,16 @@ export async function SendSendGridEmailNewRequest(emailData: EmailDataNewRequest
 
   let allSuccess = true
   for (const admin of admins) {
-    const email = {
-      to: admin.email, // Recipient email address
-      from: verifiedEmail, // Your verified sender email address
-      templateId: templateId, // The ID of your SendGrid dynamic template
-      dynamicTemplateData: {
-        firstname: admin.username,
-        user_firstname: emailData.username,
-        user_email: emailData.email,
-        user_request_id: emailData.id,
-        lllms_url: siteName,
-        lllms_url_edit: questionEditUrl,
-      },
-    };
-
-    try {
-      await sgMail.send(email);
+    const ok = await sendEmail({
+      to: admin.email,
+      subject: buildNewRequestSubject(isNew, emailData.id),
+      text: buildNewRequestText(admin.username, emailData.username, emailData.email, emailData.id, siteName, questionEditUrl, isNew),
+      html: buildNewRequestHtml(admin.username, emailData.username, emailData.email, emailData.id, siteName, questionEditUrl, isNew),
+    })
+    if (ok) {
       logger.info(msg + "Email sent successfully", admin, emailData)
-    } catch (error) {
-      logger.error(msg + "Error in sending email", (error as Error).message, admin, emailData)
+    } else {
+      logger.error(msg + "Error in sending email", admin, emailData)
       allSuccess = false
     }
   }
@@ -414,7 +420,7 @@ export async function SendSendGridEmailNewRequest(emailData: EmailDataNewRequest
   return allSuccess
 }
 
-export async function sendEmailLowRating(emailData: EmailLawRatingDataI): Promise<boolean | null> {
+export async function sendLowRatingEmail(emailData: EmailLawRatingDataI): Promise<boolean | null> {
   const contactEmail = process.env.CONTACT_EMAIL
   const subject = "Low rating received from Enki.Legal"
   const userUrl = `<a href="${getAdminUserUrl(emailData.user_id)}" target="_blank" rel="noopener noreferrer">${emailData.user_name}</a>`;
@@ -422,13 +428,16 @@ export async function sendEmailLowRating(emailData: EmailLawRatingDataI): Promis
   const adminUrl = emailData.admin_id && emailData.user_name ? 
     `<a href="${getAdminAdminUrl(emailData.admin_id)}" target="_blank" rel="noopener noreferrer">${emailData.admin_name}</a>`: 
     'Нет Юриста назначенного на это дело';
-  let result = false
-  try {
-    const info = await transporter.sendMail({
-      from: `"Sender Name" <${process.env.SMTP_USER}>`,
-      to: contactEmail,
-      subject: subject,
-      html: `
+  const lawyerText = emailData.admin_id && emailData.user_name ? emailData.admin_name : 'Нет юриста, назначенного на это дело'
+  const text = `Получен новый низкий рейтинг ${emailData.question_rating} от пользователя ${emailData.user_name}.
+Дело №${emailData.question_id}, юрист: ${lawyerText}.
+Комментарий: ${emailData.question_rating_comment}
+Дата: ${format((new Date(emailData.created_at)), dFormat)}.`
+  const ok = await sendEmail({
+    to: contactEmail as string,
+    subject,
+    text,
+    html: `
           <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee;">
             <h1 style="color: #333;">Получен новый низкий рэйтинг <b>${emailData.question_rating}</b> от пользователя ${userUrl}</h1>
             <p>Низкий рэйтинг был выставлен делу с номером ${questionUrl}, которое ведет юрист ${adminUrl}</p>
@@ -438,31 +447,29 @@ export async function sendEmailLowRating(emailData: EmailLawRatingDataI): Promis
             <footer style="font-size: 0.8em; color: #777;">Отправлено от ENKI.LEGAL</footer>
           </div>
         `,
-    });
-    console.log("Result of sending sendEmailLowRating - ", info, emailData)
-    result = info.messageId ? true : false
-  } catch (error) {
-    console.error('Error sending email:', error);
-  }
-  
+  })
 
-  return result
+  return ok
 }
 
-export async function sendEmailContact(emailData: EmailContactDataI): Promise<boolean | null> {
+export async function sendContactEmail(emailData: EmailContactDataI): Promise<boolean | null> {
   const contactEmail = process.env.CONTACT_EMAIL
   const subject = "New contact request received from Enki.Legal"
   const userUrl = emailData.user_id && emailData.user_name ? 
     `<a href="${getAdminUserUrl(emailData.user_id)}" target="_blank" rel="noopener noreferrer">${emailData.user_name}</a>` :
     '';
   const contactUrl = `<a href="${getAdminContactUrl(emailData.id)}" target="_blank" rel="noopener noreferrer">№${emailData.id}</a>`;
-  let result = false
-  try {
-    const info = await transporter.sendMail({
-      from: `"Sender Name" <${process.env.SMTP_USER}>`,
-      to: contactEmail,
-      subject: subject,
-      html: `
+  const fromWho = emailData.user_id && emailData.user_name ? emailData.user_name : ('E-mail ' + emailData.email)
+  const text = `Получен новый запрос через контакт №${emailData.id} от пользователя ${fromWho}.
+Телефон: ${emailData.phone}
+E-mail: ${emailData.email}
+Сообщение: ${emailData.message}
+Дата: ${format((new Date(emailData.created_at)), dFormat)}.`
+  const ok = await sendEmail({
+    to: contactEmail as string,
+    subject,
+    text,
+    html: `
           <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee;">
             <h1 style="color: #333;">Получен новый запрос через контакт <b>${contactUrl}</b> от пользователя ${emailData.user_id ? userUrl : ('c E-mail ' + emailData.email)}</h1>
             <p>Телефон пользователя: <b>${emailData.phone}</b></p>
@@ -473,14 +480,9 @@ export async function sendEmailContact(emailData: EmailContactDataI): Promise<bo
             <footer style="font-size: 0.8em; color: #777;">Отправлено от ENKI.LEGAL</footer>
           </div>
         `,
-    });
-    console.log("Result of sending sendEmailContact - ", info, emailData)
-    result = info.messageId ? true : false
-  } catch (error) {
-    console.error('Error sending email:', error);
-  }
+  })
 
-  return result
+  return ok
 }
 
 /**
@@ -493,10 +495,10 @@ export async function sendEmailContact(emailData: EmailContactDataI): Promise<bo
  * Errors are logged via the shared winston logger; the caller decides how to
  * surface them to the end user.
  */
-export async function SendSendGridPdfAttachment(
+export async function sendPdfAttachmentEmail(
   emailData: EmailPdfAttachmentI,
 ): Promise<boolean> {
-  const msg = "SENDGRID SEND SendSendGridPdfAttachment - "
+  const msg = "EMAIL SEND sendPdfAttachmentEmail - "
   if (!emailData.recipient) {
     logger.error(msg + "Missing recipient", { question_id: emailData.question_id })
     return false
@@ -505,8 +507,6 @@ export async function SendSendGridPdfAttachment(
     logger.error(msg + "Empty PDF buffer", { question_id: emailData.question_id })
     return false
   }
-  const verifiedEmail = process.env.SENDGRID_API_EMAIL ?? 'anatoli.bahdanov@gmail.com'
-
   const subject = `Ответ юриста на ваш вопрос — Enki.legal`
   const textBody = [
     'Добрый день!',
@@ -531,9 +531,8 @@ export async function SendSendGridPdfAttachment(
     </div>
   `
 
-  const email = {
+  const ok = await sendEmail({
     to: emailData.recipient,
-    from: verifiedEmail,
     subject,
     text: textBody,
     html: htmlBody,
@@ -542,32 +541,44 @@ export async function SendSendGridPdfAttachment(
         content: Buffer.from(emailData.pdf).toString('base64'),
         filename: emailData.filename,
         type: 'application/pdf',
-        disposition: 'attachment' as const,
+        disposition: 'attachment',
       },
     ],
-  }
-
-  try {
-    await sgMail.send(email)
+  })
+  if (ok) {
     logger.info(msg + "sent", {
       recipient: emailData.recipient,
       question_id: emailData.question_id,
       bytes: emailData.pdf.byteLength,
     })
-    return true
-  } catch (error) {
+  } else {
     logger.error(msg + "send failed", {
       recipient: emailData.recipient,
       question_id: emailData.question_id,
-      error: (error as Error).message,
     })
-    return false
   }
+  return ok
 }
 
-const BRAND_EMAIL_LOGO = () => {
-  const base = (process.env.NEXT_PUBLIC_URL ?? process.env.NEXTAUTH_URL ?? 'https://enki.legal').replace(/\/+$/, '')
-  return base + '/site/logo_web.png'
+const LOGO_CID = 'enkilogo'
+let cachedLogoBase64: string | null | undefined
+const brandLogoAttachment = (): EmailAttachment | null => {
+  if (cachedLogoBase64 === undefined) {
+    try {
+      cachedLogoBase64 = readFileSync(join(process.cwd(), 'public', 'site', 'pdflogo.png')).toString('base64')
+    } catch (error) {
+      logger.error('EMAIL brand logo read failed', (error as Error).message)
+      cachedLogoBase64 = null
+    }
+  }
+  if (!cachedLogoBase64) return null
+  return {
+    content: cachedLogoBase64,
+    filename: 'enki-logo.png',
+    type: 'image/png',
+    disposition: 'inline',
+    contentId: LOGO_CID,
+  }
 }
 
 const buildBrandedEmailText = (emailData: EmailDataBrandedI): string => {
@@ -634,7 +645,7 @@ const buildBrandedEmailHtml = (emailData: EmailDataBrandedI): string => {
           <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px; background:#FFFFFF; border-radius:16px; padding:40px;">
             <tr>
               <td>
-                <img src="${BRAND_EMAIL_LOGO()}" alt="enki.legal" width="120" style="display:block; height:auto; margin:0 0 28px;" />
+                <img src="cid:${LOGO_CID}" alt="enki.legal" width="160" style="display:block; height:auto; margin:0 0 28px;" />
                 <h1 style="margin:0 0 24px; font-size:22px; line-height:28px; color:#0F1B2D;">${safeSubject}</h1>
                 ${bodyHtml}
                 ${button}
@@ -658,36 +669,32 @@ const buildBrandedEmailHtml = (emailData: EmailDataBrandedI): string => {
  * editable `email_template` rows. Returns `true` on success, `false` on any
  * SendGrid failure, `null` on missing required fields.
  */
-export async function SendSendGridBrandedEmail(emailData: EmailDataBrandedI): Promise<boolean | null> {
-  const msg = "SENDGRID SEND SendSendGridBrandedEmail - "
+export async function sendBrandedEmail(emailData: EmailDataBrandedI): Promise<boolean | null> {
+  const msg = "EMAIL SEND sendBrandedEmail - "
   if (!emailData.recipient || !emailData.subject || !emailData.bodyText) {
     logger.error(msg + "Missing required fields", { recipient: emailData.recipient })
     return null
   }
-  const verifiedEmail = process.env.SENDGRID_API_EMAIL ?? 'anatoli.bahdanov@gmail.com'
-
-  const email = {
+  const logo = brandLogoAttachment()
+  const ok = await sendEmail({
     to: emailData.recipient,
-    from: verifiedEmail,
     subject: emailData.subject,
     text: buildBrandedEmailText(emailData),
     html: buildBrandedEmailHtml(emailData),
-  }
-
-  try {
-    await sgMail.send(email)
+    ...(logo ? { attachments: [logo] } : {}),
+  })
+  if (ok) {
     logger.info(msg + "Email sent successfully", { recipient: emailData.recipient })
-    return true
-  } catch (error) {
-    logger.error(msg + "Error in sending email", (error as Error).message, { recipient: emailData.recipient })
-    return false
+  } else {
+    logger.error(msg + "Error in sending email", { recipient: emailData.recipient })
   }
+  return ok
 }
 
 /**
  * Balance top-up notification (success or failure). Thin wrapper over the
  * shared branded sender — kept as a named entry point for balanceNotify.
  */
-export async function SendSendGridBalanceEmail(emailData: EmailDataBalanceI): Promise<boolean | null> {
-  return SendSendGridBrandedEmail(emailData)
+export async function sendBalanceEmail(emailData: EmailDataBalanceI): Promise<boolean | null> {
+  return sendBrandedEmail(emailData)
 }

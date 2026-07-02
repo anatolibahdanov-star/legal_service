@@ -1,6 +1,6 @@
 import logger from "@/src/libs/logger"
 import { getEmailTemplateByCode } from "@/src/repositories/emailTemplates/repo"
-import { SendSendGridBrandedEmail } from "@/src/libs/sendgrid"
+import { sendBrandedEmail } from "@/src/libs/email/senders"
 import { isPhoneEmail } from "@/src/libs/phoneIdentity"
 
 const msgGlobal = "SERVICE QUESTION-ANSWER-NOTIFY "
@@ -71,14 +71,14 @@ export async function notifyQuestionAnswer(input: QuestionAnswerNotifyInput): Pr
             question_url: input.questionUrl,
         }
 
-        const sent = await SendSendGridBrandedEmail({
+        const sent = await sendBrandedEmail({
             recipient: input.recipient,
             subject: renderPlaceholders(subjectTpl, vars),
             bodyText: renderPlaceholders(bodyTpl, vars),
             buttonLabel,
             buttonUrl: input.questionUrl,
         })
-        // SendSendGridBrandedEmail returns null only on missing fields (treated
+        // sendBrandedEmail returns null only on missing fields (treated
         // as a real failure here) and false on a SendGrid error.
         return sent === true
     } catch (err) {

@@ -2,7 +2,7 @@ import { format } from "date-fns"
 import logger from "@/src/libs/logger"
 import { getUsersByIds } from "@/src/repositories/users/repo"
 import { getEmailTemplateByCode } from "@/src/repositories/emailTemplates/repo"
-import { SendSendGridBalanceEmail } from "@/src/libs/sendgrid"
+import { sendBalanceEmail } from "@/src/libs/email/senders"
 import { detectPaymentMethod } from "./paymentHistory"
 import { getQuestionPriceLK } from "./pricing"
 import { isPhoneEmail } from "@/src/libs/phoneIdentity"
@@ -109,7 +109,7 @@ async function notify(code: string, input: BalanceNotifyInput, success: boolean)
         const subjectRendered = renderPlaceholders(subject, vars)
         const bodyRendered = renderPlaceholders(bodyTpl, vars)
 
-        await SendSendGridBalanceEmail({
+        await sendBalanceEmail({
             recipient: user.email,
             subject: subjectRendered,
             bodyText: bodyRendered,

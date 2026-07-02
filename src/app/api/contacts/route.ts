@@ -4,7 +4,7 @@ import {DBContact} from "@/src/interfaces/db"
 import logger from "@/src/libs/logger"
 import { UserContactRequest } from '@/src/interfaces/api';
 import { EmailContactDataI } from '@/src/interfaces/email';
-import { sendEmailContact } from '@/src/libs/sendgrid';
+import { sendContactEmail } from '@/src/libs/email/senders';
 import { EmailStatusesE } from '@/src/interfaces/data';
 
 export const dynamic = 'force-dynamic'; // defaults to auto
@@ -89,7 +89,7 @@ export async function POST(request: Request) {
             phone: contact.phone,
             created_at: contact.created_at,
         }
-        const isSendEmail = await sendEmailContact(sendData)
+        const isSendEmail = await sendContactEmail(sendData)
         let email_status = EmailStatusesE.Sent
         if(!isSendEmail) {
             logger.error(msg + "email on new contact request event was not sent", sendData)

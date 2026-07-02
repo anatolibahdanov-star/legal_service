@@ -1,7 +1,7 @@
 import { EmailDataNewRequestI } from "../interfaces/email"
 import { getQuestions, updateInfoStatus } from "../repositories/requests/repo"
 import logger from "@/src/libs/logger"
-import { SendSendGridEmailNewRequest } from "../libs/sendgrid"
+import { sendNewRequestEmail } from "../libs/email/senders"
 import { QuestionInfoStatusesE } from "../interfaces/data"
 
 export const lostResponse = async (): Promise<boolean> => {
@@ -30,7 +30,7 @@ export const lostResponse = async (): Promise<boolean> => {
     //             username: question.username,
     //             email: question.email
     //         }
-    //         const isSendEmail = await SendSendGridEmailNewRequest(sendData, false)
+    //         const isSendEmail = await sendNewRequestEmail(sendData, false)
     //         let infoStatus = QuestionInfoStatusesE.Sent
     //         if(!isSendEmail) {
     //             logger.error(msg + "email on new request event was not sent", sendData)
