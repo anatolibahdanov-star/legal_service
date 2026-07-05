@@ -320,7 +320,7 @@ export const useInquirySection = () => {
   }
 
   const submitAnonymousRequest = async (token: string) => {
-    const responseData = await submitRequestFormAction(buildRequestPayload(), token)
+    const responseData = await submitRequestFormAction(buildRequestPayload(), token, 'light')
     if (!responseData.status) {
       throw new Error(responseData.error || 'Произошла ошибка при отправке. Попробуйте еще раз.')
     }
@@ -413,7 +413,7 @@ export const useInquirySection = () => {
 
     try {
       if (channel === 'phone') {
-        const result = await sendInquiryPhoneOtp(contactValue, token)
+        const result = await sendInquiryPhoneOtp(contactValue, token, 'light')
         setCaptchaToken(null)
 
         if (!result.ok) {
@@ -528,7 +528,7 @@ export const useInquirySection = () => {
     } catch {
       return { ok: false, message: 'Не удалось пройти проверку. Попробуйте позже.' }
     }
-    return resendInquiryPhoneOtp(normalizedPhone, token)
+    return resendInquiryPhoneOtp(normalizedPhone, token, 'light')
   }
 
   const confirmEmailModal = () => {

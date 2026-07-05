@@ -19,6 +19,7 @@ const GENERIC_PHONE_ERROR = 'Введите корректный номер те
 interface SendOtpBody {
   phone?: string;
   captchaToken?: string;
+  captchaVariant?: 'light' | 'dark';
 }
 
 /**
@@ -56,7 +57,8 @@ export async function POST(request: NextRequest) {
   }
 
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null;
-  const captcha = await verifyCaptcha(captchaToken, ip, { variant: 'dark' });
+  const captchaVariant = body.captchaVariant === 'light' ? 'light' : 'dark';
+  const captcha = await verifyCaptcha(captchaToken, ip, { variant: captchaVariant });
   if (!captcha.success) {
     logger.warn(msg + 'captcha failed', { reason: captcha.reason });
     return NextResponse.json(

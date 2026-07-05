@@ -76,7 +76,7 @@ export default function Home({
 
       <WhyUs />
 
-      <Services />
+      {/* <Services /> */}
     </main>
   )
 }

@@ -106,7 +106,7 @@ function Step2Panel({
         </div>
       )}
       
-      <div
+      {/* <div
         className="flex flex-col gap-3 cursor-pointer transition-all duration-200 hover:border-[#34347C]/60 hover:bg-[#f4f4ff] active:scale-[0.98]"
         style={{ padding: 16, background: '#F9F9F9', border: '1.5px dashed rgba(52,52,124,0.3)', borderRadius: 20 }}
         onClick={handleFileClick}
@@ -182,7 +182,7 @@ function Step2Panel({
           onChange={handleFileChange}
           className="hidden"
         />
-      </div>
+      </div> */}
     </div>
   )
 }

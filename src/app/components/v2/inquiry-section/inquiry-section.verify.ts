@@ -15,6 +15,7 @@ import {
 import type { OtpStepResult } from '@/src/app/components/forms/hooks/useOtpStep'
 
 export type VerificationModal = 'none' | 'otp' | 'email'
+type CaptchaVariant = 'light' | 'dark'
 
 export const validateTelegramUsername = (value: string): string | null => {
   const trimmed = value.trim()
@@ -51,11 +52,12 @@ async function finalizeWizardQuestion(problemText: string, isFirstQuestionFree: 
 export async function sendInquiryPhoneOtp(
   phone: string,
   captchaToken: string,
+  captchaVariant: CaptchaVariant = 'dark',
 ): Promise<
   | { ok: true; normalizedPhone: string; devCode?: string }
   | { ok: false; error: string; blockPayload?: { lockedUntil?: string | null; cooldownUntil?: string | null } }
 > {
-  const response = await wizardSendOtpAction({ phone, captchaToken })
+  const response = await wizardSendOtpAction({ phone, captchaToken, captchaVariant })
   if (!response.status) {
     const errData = response.data as
       | { lockedUntil?: string | null; cooldownUntil?: string | null }
@@ -74,8 +76,9 @@ export async function sendInquiryPhoneOtp(
 export async function resendInquiryPhoneOtp(
   normalizedPhone: string,
   captchaToken: string,
+  captchaVariant: CaptchaVariant = 'dark',
 ): Promise<OtpStepResult> {
-  const response = await wizardSendOtpAction({ phone: normalizedPhone, captchaToken })
+  const response = await wizardSendOtpAction({ phone: normalizedPhone, captchaToken, captchaVariant })
   if (!response.status) {
     const errData = response.data as
       | { cooldownUntil?: string | null; lockedUntil?: string | null }
