@@ -91,7 +91,7 @@ export const COMPLEXITY: ComplexityOption[] = [
   },
 ]
 
-export type ContactChannel = 'phone' | 'whatsapp' | 'telegram' | 'email'
+export type ContactChannel = 'phone' | 'email'
 
 export interface ChannelOption {
   id: ContactChannel
@@ -101,8 +101,6 @@ export interface ChannelOption {
 }
 
 export const CHANNEL_OPTIONS: ChannelOption[] = [
-  { id: 'phone',    label: 'Телефон',  placeholder: '+7 (___) ___-__-__', inputType: 'tel' },
-  { id: 'whatsapp', label: 'WhatsApp', placeholder: '+7 (___) ___-__-__', inputType: 'tel' },
-  { id: 'telegram', label: 'Telegram', placeholder: '@username',           inputType: 'text' },
   { id: 'email',    label: 'Email',    placeholder: 'example@mail.ru',    inputType: 'email' },
+  { id: 'phone',    label: 'Телефон',  placeholder: '+7 (___) ___-__-__', inputType: 'tel' },
 ]

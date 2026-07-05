@@ -79,63 +79,6 @@ export default function ContactInfo() {
                 </div>
               </div>
 
-              {/* Social networks */}
-              <div className="pt-6 border-t border-[#87b7ce]/20">
-                <p className="font-['Inter:Medium',sans-serif] font-medium text-[14px] text-[#87b7ce] mb-4">Мессенджеры</p>
-                <div className="flex gap-[10px]">
-                  <a 
-                    href="https://t.me/example" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="relative rounded-[33554400px] shrink-0 size-[40px] flex items-center justify-center hover:bg-gray-100 transition-colors"
-                    title="Telegram"
-                  >
-                    <div className="relative shrink-0 size-[30px]" data-name="Icon">
-                      <Image
-                        src="/design/telegram.svg"
-                        width={30}
-                        height={30}
-                        className="block size-full"
-                        alt="LLLMS Telegram"
-                      />
-                    </div>
-                  </a>
-                  <a 
-                    href="https://wa.me/79991234567" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="relative rounded-[33554400px] shrink-0 size-[40px] flex items-center justify-center hover:bg-gray-100 transition-colors"
-                    title="WhatsApp"
-                  >
-                    <div className="relative shrink-0 size-[30px]" data-name="Icon">
-                      <Image
-                        src="/design/whatsapp.svg"
-                        width={30}
-                        height={30}
-                        className="block size-full"
-                        alt="LLLMS Telegram"
-                      />
-                    </div>
-                  </a>
-                  <a 
-                    href="https://max.com/example" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="relative rounded-[33554400px] shrink-0 size-[40px] flex items-center justify-center hover:bg-gray-100 transition-colors"
-                    title="Max"
-                  >
-                    <div className="relative shrink-0 size-[34px]" data-name="Icon">
-                      <Image
-                        src="/design/facebook.png"
-                        width={34}
-                        height={34}
-                        className="block size-full"
-                        alt="LLLMS Max"
-                      />
-                    </div>
-                  </a>
-                </div>
-              </div>
             </div>
           </div>
 

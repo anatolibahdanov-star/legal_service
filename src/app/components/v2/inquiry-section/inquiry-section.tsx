@@ -19,6 +19,7 @@ import {
 } from "@/src/app/components/forms/validation/request"
 import { formatPhoneInput } from "@/src/libs/phoneMask"
 import { FormDataObjectT } from "@/src/interfaces/form"
+import { LEGAL_DOCUMENTS } from "@/src/app/components/legalDocuments"
 import { YandexSmartCaptcha } from "@/src/app/components/forms/YandexSmartCaptcha"
 import { useInquirySection } from './inquiry-section.hook'
 import { useFileUpload } from './file-upload.hook'
@@ -314,27 +315,6 @@ function ChannelIcon({ id, active }: { id: ContactChannel; active: boolean }) {
       <path d="M3 2h3l1.5 3.5-1.75 1.05A8.5 8.5 0 0 0 9.45 9.25L10.5 7.5 14 9v3a1 1 0 0 1-1 1A11 11 0 0 1 2 3a1 1 0 0 1 1-1z" stroke={color} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
   )
-  if (id === 'whatsapp') return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <path
-        d="M8 1.5a6.43 6.43 0 0 0-5.48 9.78L1.75 14.5l3.28-.75A6.43 6.43 0 1 0 8 1.5Z"
-        stroke={color}
-        strokeWidth="1.25"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M5.66 5.1c-.15.02-.32.06-.48.23-.16.17-.62.6-.62 1.45 0 .86.64 1.7.73 1.82.1.12 1.23 1.93 3.05 2.63 1.51.58 1.82.46 2.15.43.33-.03 1.06-.43 1.21-.85.15-.42.15-.78.1-.86-.04-.08-.16-.12-.34-.21-.18-.1-1.06-.53-1.23-.59-.16-.06-.29-.09-.41.09-.12.18-.47.58-.57.7-.1.12-.21.13-.39.04-.18-.09-.76-.28-1.45-.9-.53-.47-.9-1.06-1-1.24-.1-.18-.01-.28.08-.37.08-.08.18-.21.27-.31.09-.11.12-.18.18-.3.06-.12.03-.22-.02-.31-.04-.09-.4-.98-.56-1.34-.14-.34-.29-.34-.4-.35h-.3Z"
-        fill={color}
-      />
-    </svg>
-  )
-  if (id === 'telegram') return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <path d="M14 2L1 6.5l4 1.5 1.5 4.5 2-2.5 3.5 2.5L14 2z" stroke={color} strokeWidth="1.3" strokeLinejoin="round"/>
-      <path d="M5 8l2 1" stroke={color} strokeWidth="1.3" strokeLinecap="round"/>
-    </svg>
-  )
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
       <rect x="1.5" y="3.5" width="13" height="9" rx="1.5" stroke={color} strokeWidth="1.3"/>
@@ -351,7 +331,7 @@ function Step5Panel({
   errors,
   captchaToken,
   onCaptchaChange,
-  submitting
+  submitting,
 }: {
   channel: ContactChannel
   onChannelChange: (c: ContactChannel) => void
@@ -371,11 +351,9 @@ function Step5Panel({
           Введите контактные данные
         </h3>
         <p className="text-[14px] leading-5 text-[rgba(18,22,27,0.6)]">
-          {channel === 'telegram'
-            ? 'Введите Telegram, чтобы получить первую бесплатную консультацию'
-            : channel === 'email'
-              ? 'Введите email, чтобы получить первую бесплатную консультацию'
-              : 'Введите номер телефона, чтобы получить первую бесплатную консультацию'}
+          {channel === 'email'
+            ? 'Введите email, чтобы получить первую бесплатную консультацию'
+            : 'Введите номер телефона, чтобы получить первую бесплатную консультацию'}
         </p>
       </div>
 
@@ -422,14 +400,14 @@ function Step5Panel({
           onChange={e => {
             const newValue = e.target.value
             // Применяем форматирование только для телефонных полей
-            if (channel === 'phone' || channel === 'whatsapp') {
+            if (channel === 'phone') {
               onInputChange(formatPhoneInput(newValue))
             } else {
               onInputChange(newValue)
             }
           }}
           placeholder={current.placeholder}
-          maxLength={channel === 'phone' || channel === 'whatsapp' ? 18 : undefined}
+          maxLength={channel === 'phone' ? 18 : undefined}
           className={`w-full text-[14px] leading-5 placeholder:text-[rgba(18,22,27,0.35)] outline-none transition-all duration-200 focus:border-[#34347C] focus:bg-white hover:border-[rgba(18,22,27,0.25)] ${
             errors.email && channel === 'email' ? 'border-red-400 text-red-500' : 'text-[#12161B]'
           }`}
@@ -460,10 +438,17 @@ function Step5Panel({
           variant="light"
           fullWidth
         />
-        
+
         <p className="text-[12px] leading-[17px] text-[rgba(18,22,27,0.5)]">
           Нажимая «Оставить заявку», вы соглашаетесь с{' '}
-          <Link href="/privacy" className="underline hover:text-[#34347C] transition-colors">политикой конфиденциальности</Link>
+          <a
+            href={LEGAL_DOCUMENTS['privacy-policy'].src}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:text-[#34347C] transition-colors"
+          >
+            политикой конфиденциальности
+          </a>
         </p>
       </div>
     </div>
@@ -658,8 +643,8 @@ export function InquirySection() {
     channel,
     contactValue,
     errors,
-    captchaToken,
     submitting,
+    captchaToken,
     questionTouched,
     isLastStep,
     isAuthed,
@@ -815,9 +800,6 @@ export function InquirySection() {
                             inputValue={contactValue}
                             onInputChange={setContactValue}
                             errors={errors}
-                            captchaToken={captchaToken}
-                            onCaptchaChange={setCaptchaToken}
-                            submitting={submitting}
                           />
                         )}
                         */}
