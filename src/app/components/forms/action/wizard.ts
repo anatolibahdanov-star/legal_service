@@ -5,6 +5,7 @@ import { OrderTypeE } from '@/src/interfaces/payment';
 export interface WizardSendOtpPayload {
   phone: string;
   captchaToken: string;
+  captchaVariant?: 'light' | 'dark';
 }
 
 export interface WizardVerifyOtpPayload {

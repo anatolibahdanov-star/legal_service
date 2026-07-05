@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: Request) {
     const msg = "API QUESTIONS POST - "
     // logger.info(msg + "request", request)
-    const insertedQuestion: UserRequest & { captchaToken?: string } = await request.json();
+    const insertedQuestion: UserRequest & { captchaToken?: string; captchaVariant?: 'light' | 'dark' } = await request.json();
     logger.info(msg + "request json", insertedQuestion)
 
     const isFollowUp = insertedQuestion.parent != null && Number(insertedQuestion.parent) !== 0
@@ -100,7 +100,8 @@ export async function POST(request: Request) {
         }
     } else {
         const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null
-        const captcha = await verifyCaptcha(insertedQuestion.captchaToken, ip, { variant: 'dark' })
+        const captchaVariant = insertedQuestion.captchaVariant === 'light' ? 'light' : 'dark'
+        const captcha = await verifyCaptcha(insertedQuestion.captchaToken, ip, { variant: captchaVariant })
         if (!captcha.success) {
             logger.warn(msg + 'captcha rejected', { reason: captcha.reason })
             return NextResponse.json(
@@ -131,6 +132,7 @@ export async function POST(request: Request) {
 
     insertedQuestion.llm = ''
     delete insertedQuestion.captchaToken
+    delete insertedQuestion.captchaVariant
 
     let question: DBQuestion | null = null
     try {

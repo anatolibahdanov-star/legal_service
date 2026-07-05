@@ -5,12 +5,13 @@ import { CustomResponseDataI } from "@/src/interfaces/api"
 export async function submitRequestFormAction(
     data: RequestFormI,
     captchaToken?: string,
+    captchaVariant?: 'light' | 'dark',
 ): Promise<CustomResponseDataI> {
     const msg = "Action submitRequestFormAction - "
     const path = "/requests"
     // Follow-up questions are submitted without a captcha token; only attach it
     // when present (brand-new questions).
-    const request = captchaToken ? { ...data, captchaToken } : { ...data }
+    const request = captchaToken ? { ...data, captchaToken, captchaVariant } : { ...data }
 
     const response = await CustomRequest(path, request)
 
