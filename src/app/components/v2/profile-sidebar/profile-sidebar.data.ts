@@ -21,16 +21,8 @@ export const COMPLETION_ITEMS: CompletionItem[] = [
   },
   {
     key: 'photo',
-    step: '4',
     title: 'Фото профиля',
     description: 'Добавьте фото',
-    completed: false
-  },
-  {
-    key: 'documents',
-    step: '5',
-    title: 'Документы',
-    description: 'Паспорт / СНИЛС / ИНН',
     completed: false
   }
 ]

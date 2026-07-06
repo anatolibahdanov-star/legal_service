@@ -25,6 +25,11 @@ html {
   padding-top: var(--v2-header-offset);
 }
 
+.v2-header-bleed {
+  margin-top: calc(-1 * var(--v2-header-offset));
+  padding-top: var(--v2-header-offset);
+}
+
 /* :root {
   --background: #ffffff;
   --foreground: #171717;

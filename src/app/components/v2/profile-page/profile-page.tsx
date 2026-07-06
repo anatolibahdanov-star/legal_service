@@ -99,8 +99,8 @@ export function V2ProfilePage() {
 
   if (status === 'loading' || !user || isStaff) {
     return (
-      <main className="min-h-screen bg-[#F9F9F9] text-[#12161B]">
-        <section className="px-6 py-16 lg:px-[100px]">
+      <main className="v2-header-bleed min-h-screen bg-[#F9F9F9] text-[#12161B]">
+        <section className="mx-auto max-w-[1440px] px-6 py-16 md:px-8 lg:px-[100px]">
           <p className="text-[16px] text-[rgba(18,22,27,0.6)]">Загружается...</p>
         </section>
       </main>
@@ -108,8 +108,8 @@ export function V2ProfilePage() {
   }
 
   return (
-    <main id="profile-page" className="min-h-screen bg-[#F9F9F9] text-[#12161B]">
-      <section className="px-6 py-[46px] lg:px-[100px]">
+    <main id="profile-page" className="v2-header-bleed min-h-screen bg-[#F9F9F9] text-[#12161B]">
+      <section className="mx-auto max-w-[1440px] px-6 py-[46px] md:px-8 lg:px-[100px]">
         <div className="flex flex-col gap-12">
           <div className="flex flex-col gap-4">
             <h1
@@ -126,9 +126,9 @@ export function V2ProfilePage() {
                 key={tab.id}
                 type="button"
                 onClick={() => selectTab(tab.id)}
-                className={`flex items-center justify-center px-6 py-[13px] rounded-[14px] font-medium text-[18px] leading-[23px] tracking-[-0.01em] transition-colors ${
+                className={`flex items-center justify-center px-6 py-[13px] rounded-[14px] font-medium text-[18px] leading-[23px] tracking-[-0.01em] transition-all cursor-pointer active:scale-[0.98] ${
                   activeTab === tab.id
-                    ? 'bg-gradient-to-r from-[#34347C] to-[#34537C] text-white'
+                    ? 'bg-gradient-to-r from-[#34347C] to-[#34537C] text-white hover:opacity-95'
                     : 'text-[#12161B] hover:bg-black/5'
                 }`}
               >

@@ -129,48 +129,48 @@ export default function PayQuestionWindow({
 
   return (
     <div
-      className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
+      className="fixed inset-0 z-[1400] flex items-center justify-center bg-black/50 p-4"
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-[540px]"
+        className="relative w-full max-w-[480px]"
         onClick={(e) => e.stopPropagation()}
       >
-        <button
-          onClick={onClose}
-          className="absolute top-[20px] right-[20px] text-white/60 hover:text-white transition-colors z-10"
-          aria-label="Закрыть"
-        >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+        <div className="relative rounded-[28px] bg-white p-6 shadow-[0px_3px_48px_0px_rgba(0,0,0,0.16)]">
+          <button
+            onClick={onClose}
+            className="absolute top-5 right-5 z-10 text-[rgba(18,22,27,0.4)] transition-colors hover:text-[#12161B]"
+            aria-label="Закрыть"
+          >
+            <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
 
-        {loading ? (
-          <div className="bg-[#3d4b5e] rounded-2xl sm:rounded-3xl p-8 shadow-2xl text-center text-white/80">
-            Загружаем…
-          </div>
-        ) : loadError ? (
-          <div className="bg-[#3d4b5e] rounded-2xl sm:rounded-3xl p-8 shadow-2xl text-center text-red-300">
-            {loadError}
-          </div>
-        ) : paid ? (
-          <RequestStepSuccess
-            variant={paidWithFree ? "bonus" : "balance"}
-            amount={paidAmount}
-            onGoToProfile={onClose}
-          />
-        ) : (
-          <RequestStepPayment
-            price={price}
-            balance={balance}
-            freeQuestions={freeQuestions}
-            onPayCard={handlePayCard}
-            onPayBalance={handlePayBalance}
-            onPayLater={handlePayLater}
-            onTopUp={handleTopUp}
-          />
-        )}
+          {loading ? (
+            <div className="py-12 text-center text-[rgba(18,22,27,0.6)]">Загружаем…</div>
+          ) : loadError ? (
+            <div className="py-12 text-center text-red-500">{loadError}</div>
+          ) : paid ? (
+            <RequestStepSuccess
+              variant={paidWithFree ? "bonus" : "balance"}
+              design="v2"
+              amount={paidAmount}
+              onGoToProfile={onClose}
+            />
+          ) : (
+            <RequestStepPayment
+              variant="v2"
+              price={price}
+              balance={balance}
+              freeQuestions={freeQuestions}
+              onPayCard={handlePayCard}
+              onPayBalance={handlePayBalance}
+              onPayLater={handlePayLater}
+              onTopUp={handleTopUp}
+            />
+          )}
+        </div>
       </div>
     </div>
   );

@@ -11,6 +11,8 @@ export type SuccessVariant = "free" | "bonus" | "balance" | "card" | "later";
 interface RequestStepSuccessProps {
   /** Drives the icon / heading / subtitle / amount block. */
   variant: SuccessVariant;
+  /** Visual design. "v2" renders the light card used across the new UI. */
+  design?: "legacy" | "v2";
   /** Amount paid (rubles). Used for "balance" and "card" variants. */
   amount?: number;
   /** Called both on auto-redirect (after countdown) and on manual button click. */
@@ -81,6 +83,7 @@ const buildVariantCopy = (variant: SuccessVariant, amount: number): VariantCopy 
 
 export default function RequestStepSuccess({
   variant,
+  design = "legacy",
   amount = 0,
   onGoToProfile,
   redirectAfterSec = REDIRECT_SECONDS,
@@ -97,6 +100,41 @@ export default function RequestStepSuccess({
   }, [secondsLeft, onGoToProfile]);
 
   const { heading, paragraphs, icon: Icon } = buildVariantCopy(variant, amount);
+
+  if (design === "v2") {
+    return (
+      <div className="flex flex-col items-center justify-center text-center gap-6 py-4">
+        <div className="h-20 w-20 rounded-2xl flex items-center justify-center border-2 border-[rgba(52,52,124,0.3)] text-[#34347C]">
+          <Icon className="h-10 w-10" strokeWidth={1.5} />
+        </div>
+
+        <div className="space-y-3 max-w-md">
+          <h2 className="text-[24px] font-semibold leading-8 tracking-tight text-[#12161B]">{heading}</h2>
+          <div className="space-y-2">
+            {paragraphs.map((text, i) => (
+              <p key={i} className="text-sm leading-relaxed text-[rgba(18,22,27,0.6)]">
+                {text}
+              </p>
+            ))}
+          </div>
+        </div>
+
+        <div className="w-full max-w-xs space-y-3">
+          <button
+            type="button"
+            onClick={onGoToProfile}
+            className="w-full h-14 rounded-[35px] text-base font-semibold text-white transition-all hover:opacity-85 hover:shadow-lg"
+            style={{ background: "radial-gradient(circle at 50% 0%, #34347C 0%, #2D2D6C 100%)" }}
+          >
+            Перейти к моим вопросам
+          </button>
+          <p className="text-xs text-[rgba(18,22,27,0.45)] tabular-nums">
+            Автоматический переход через {secondsLeft} с
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-[#3d4b5e] rounded-2xl sm:rounded-3xl p-5 sm:p-8 lg:p-10 shadow-2xl">

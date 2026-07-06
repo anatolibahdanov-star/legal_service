@@ -632,7 +632,11 @@ function ProgressPanel({ step, direction }: { step: number; direction: number })
 
 // ─── main component ───────────────────────────────────────────────────────────
 
-export function InquirySection() {
+export function InquirySection({
+  variant = 'page',
+  onClose,
+}: { variant?: 'page' | 'inline'; onClose?: () => void } = {}) {
+  const isEmbedded = variant === 'inline'
   const {
     step,
     direction,
@@ -680,11 +684,15 @@ export function InquirySection() {
 
   return (
     <section
-      id="inquiry"
-      className="relative -mt-14 w-full"
-      style={{ background: '#F9F9F9', borderRadius: '52px 52px 0 0', padding: '80px 0 56px' }}
+      id={isEmbedded ? undefined : 'inquiry'}
+      className={isEmbedded ? 'relative w-full' : 'relative -mt-14 w-full'}
+      style={
+        isEmbedded
+          ? { background: 'transparent', padding: 0 }
+          : { background: '#F9F9F9', borderRadius: '52px 52px 0 0', padding: '80px 0 56px' }
+      }
     >
-      <div className="max-w-[1440px] mx-auto px-6 md:px-8 lg:px-[100px]">
+      <div className={isEmbedded ? 'w-full' : 'max-w-[1440px] mx-auto px-6 md:px-8 lg:px-[100px]'}>
         <div
           className="flex w-full"
         style={{
@@ -812,11 +820,11 @@ export function InquirySection() {
                 <div className="flex flex-col gap-4 mt-6" style={{ width: 656 }}>
                   <div className="flex items-center justify-between gap-4">
                   <button
-                    onClick={goBack}
+                    onClick={step > 1 ? goBack : (onClose ?? goBack)}
                     className="text-[18px] font-medium leading-[23px] tracking-tight text-[rgba(18,22,27,0.6)] transition-opacity hover:opacity-70 active:opacity-40 cursor-pointer"
-                    style={{ width: 120, paddingBlock: 17, visibility: step > 1 ? 'visible' : 'hidden' }}
+                    style={{ width: 120, paddingBlock: 17, visibility: step > 1 || onClose ? 'visible' : 'hidden' }}
                   >
-                    Назад
+                    {step > 1 ? 'Назад' : 'Закрыть'}
                   </button>
                   {isLastStep
                     ? <VioletBtn label={submitting ? "Подтверждаем..." : "Подтвердить"} onClick={handleSubmit} disabled={submitting || isSessionLoading} />

@@ -103,35 +103,72 @@ export default function RequestStepPayment({
   // Free question available → it's consumed first (server-side), no money charged.
   if (hasFree) {
     return (
-      <div className="bg-[#3d4b5e] rounded-2xl sm:rounded-3xl p-5 sm:p-8 lg:p-10 shadow-2xl">
-        <section className="text-center py-2 mb-6">
-          <p className="text-sm text-white/70">Стоимость вопроса</p>
-          <p className="mt-2 text-4xl sm:text-5xl font-bold tracking-tight text-emerald-300">
+      <div
+        className={cn(
+          isV2
+            ? "flex flex-col gap-6"
+            : "bg-[#3d4b5e] rounded-2xl sm:rounded-3xl p-5 sm:p-8 lg:p-10 shadow-2xl"
+        )}
+      >
+        <section
+          className={cn(
+            isV2
+              ? "rounded-[24px] bg-[#F7F6F9] border border-[rgba(18,22,27,0.06)] px-6 py-5 text-center"
+              : "text-center py-2 mb-6"
+          )}
+        >
+          <p className={cn(isV2 ? "text-[14px] font-medium leading-5 text-[rgba(18,22,27,0.55)]" : "text-sm text-white/70")}>
+            Стоимость вопроса
+          </p>
+          <p
+            className={cn(
+              isV2
+                ? "mt-2 text-[42px] font-semibold leading-none tracking-tight text-emerald-600"
+                : "mt-2 text-4xl sm:text-5xl font-bold tracking-tight text-emerald-300"
+            )}
+          >
             Бесплатно
           </p>
-          <p className="mt-2 text-xs text-white/60">
+          <p className={cn(isV2 ? "mt-2 text-[13px] leading-5 text-[rgba(18,22,27,0.5)]" : "mt-2 text-xs text-white/60")}>
             Будет использован бесплатный вопрос — деньги не спишутся
           </p>
         </section>
 
-        <div className="rounded-2xl border-2 border-emerald-300/60 bg-emerald-400/10 p-4 mb-4 flex items-start gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl shrink-0 bg-white/15 text-emerald-200">
+        <div
+          className={cn(
+            "rounded-2xl p-4 flex items-start gap-3",
+            isV2
+              ? "border-[1.5px] border-emerald-500/40 bg-emerald-50"
+              : "border-2 border-emerald-300/60 bg-emerald-400/10 mb-4"
+          )}
+        >
+          <div
+            className={cn(
+              "flex h-10 w-10 items-center justify-center rounded-xl shrink-0",
+              isV2 ? "bg-white text-emerald-600 border border-emerald-500/30" : "bg-white/15 text-emerald-200"
+            )}
+          >
             <Gift className="h-5 w-5" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-semibold text-white">Бесплатный вопрос</p>
-            <p className="text-sm text-white/70 mt-0.5">
+            <p className={cn("font-semibold", isV2 ? "text-[#12161B]" : "text-white")}>Бесплатный вопрос</p>
+            <p className={cn("text-sm mt-0.5", isV2 ? "text-[rgba(18,22,27,0.55)]" : "text-white/70")}>
               Доступно: {freeQuestions}. Один будет списан при отправке.
             </p>
           </div>
         </div>
 
         {error && (
-          <div className="rounded-xl border border-red-400/40 bg-red-500/15 p-3 flex items-start gap-2 mb-4">
-            <AlertCircle className="h-5 w-5 text-red-300 mt-0.5 shrink-0" />
+          <div
+            className={cn(
+              "rounded-xl p-3 flex items-start gap-2",
+              isV2 ? "border border-red-200 bg-red-50" : "border border-red-400/40 bg-red-500/15 mb-4"
+            )}
+          >
+            <AlertCircle className={cn("h-5 w-5 mt-0.5 shrink-0", isV2 ? "text-red-500" : "text-red-300")} />
             <div className="text-sm">
-              <p className="font-medium text-red-200">Не удалось отправить вопрос</p>
-              <p className="text-white/70 text-xs mt-0.5">{error}</p>
+              <p className={cn("font-medium", isV2 ? "text-red-600" : "text-red-200")}>Не удалось отправить вопрос</p>
+              <p className={cn("text-xs mt-0.5", isV2 ? "text-red-500" : "text-white/70")}>{error}</p>
             </div>
           </div>
         )}
@@ -141,12 +178,23 @@ export default function RequestStepPayment({
           onClick={handleUseFree}
           disabled={submitting !== null}
           className={cn(
-            "w-full font-medium py-4 px-6 rounded-2xl transition-colors text-lg flex items-center justify-center gap-2",
-            submitting !== null
-              ? "bg-[#8faaba]/50 text-white/70 cursor-not-allowed"
-              : "bg-[#8faaba] hover:bg-[#7a98a7] text-white"
+            "w-full font-medium px-6 text-lg flex items-center justify-center gap-2",
+            isV2
+              ? "h-14 rounded-[35px] text-white transition-all hover:opacity-85 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100"
+              : cn(
+                  "py-4 rounded-2xl transition-colors",
+                  submitting !== null
+                    ? "bg-[#8faaba]/50 text-white/70 cursor-not-allowed"
+                    : "bg-[#8faaba] hover:bg-[#7a98a7] text-white"
+                )
           )}
-          style={submitting === null ? { backgroundColor: BRAND } : undefined}
+          style={
+            isV2
+              ? { background: "radial-gradient(circle at 50% 0%, #34347C 0%, #2D2D6C 100%)" }
+              : submitting === null
+                ? { backgroundColor: BRAND }
+                : undefined
+          }
         >
           {submitting === "pay" ? (
             <>
@@ -162,7 +210,10 @@ export default function RequestStepPayment({
             type="button"
             onClick={handleLater}
             disabled={submitting !== null}
-            className="w-full text-sm text-white/70 hover:text-white transition-colors py-3 mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className={cn(
+              "w-full text-sm transition-colors py-3 disabled:opacity-50 disabled:cursor-not-allowed",
+              isV2 ? "text-[rgba(18,22,27,0.55)] hover:text-[#34347C]" : "text-white/70 hover:text-white mt-2"
+            )}
           >
             {submitting === "later" ? "Сохраняем…" : "Оплатить позже"}
           </button>

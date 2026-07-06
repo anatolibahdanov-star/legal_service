@@ -3,11 +3,17 @@
 import { useState } from 'react'
 import type { User } from 'next-auth'
 import Swal from 'sweetalert2'
+import { toast } from 'sonner'
+import { AlertCircle, Check } from 'lucide-react'
 
 import type { DBUser } from '@/src/interfaces/db'
 import { isPhoneEmail } from '@/src/libs/phoneIdentity'
 import { CustomRequest } from '@/src/libs/request'
+import { ChangePhoneWindow } from '@/src/app/components/popups/ChangePhoneWindow'
 import { PASSWORD_FIELDS, type ProfileField } from './profile-content.data'
+
+type ProfileFieldKey = 'firstName' | 'lastName' | 'email' | 'phone'
+type ProfileFieldWithKey = ProfileField & { key: ProfileFieldKey }
 
 interface ProfileContentProps {
   data?: DBUser | null
@@ -17,8 +23,8 @@ interface ProfileContentProps {
 
 const emptyValue = 'Не указано'
 type ProfileDraft = {
-  name: string
-  username: string
+  firstName: string
+  lastName: string
   email: string
   phone: string
 }
@@ -28,6 +34,7 @@ export function ProfileContent({ data = null, user = null, setData }: ProfileCon
   const [savingProfile, setSavingProfile] = useState(false)
   const [editingPassword, setEditingPassword] = useState(false)
   const [savingPassword, setSavingPassword] = useState(false)
+  const [changePhoneOpen, setChangePhoneOpen] = useState(false)
   const [formData, setFormData] = useState<ProfileDraft | null>(null)
   const [passwordData, setPasswordData] = useState({
     new_password: '',
@@ -38,40 +45,59 @@ export function ProfileContent({ data = null, user = null, setData }: ProfileCon
   const email = rawEmail && !isPhoneEmail(rawEmail) ? rawEmail : ''
   const fullName = data?.name ?? user?.name ?? ''
   const [firstName, ...lastNameParts] = fullName.trim().split(/\s+/).filter(Boolean)
+  const lastName = lastNameParts.join(' ')
   const profileDefaults: ProfileDraft = {
-    name: data?.name ?? user?.name ?? '',
-    username: data?.username ?? '',
+    firstName: firstName ?? '',
+    lastName,
     email,
     phone: data?.phone ?? '',
   }
   const profileDraft = formData ?? profileDefaults
 
-  const personalInfoFields: ProfileField[] = [
+  const phoneValue = data?.phone ?? ''
+  const hasRealEmail = !!email && !isPhoneEmail(rawEmail)
+  const emailVerified = data?.email_verified === 1
+
+  const personalInfoFields: ProfileFieldWithKey[] = [
     {
+      key: 'firstName',
       label: 'ИМЯ',
-      value: editingProfile ? profileDraft.name : firstName || fullName || emptyValue,
+      value: editingProfile ? profileDraft.firstName : firstName || fullName || emptyValue,
     },
     {
+      key: 'lastName',
       label: 'ФАМИЛИЯ',
-      value: editingProfile ? profileDraft.username : data?.username || lastNameParts.join(' ') || emptyValue,
+      value: editingProfile ? profileDraft.lastName : lastName || emptyValue,
     },
     {
+      key: 'email',
       label: 'EMAIL',
       value: editingProfile ? profileDraft.email : email || emptyValue,
     },
     {
+      key: 'phone',
       label: 'ТЕЛЕФОН',
-      value: editingProfile ? profileDraft.phone : data?.phone || emptyValue,
+      value: phoneValue || emptyValue,
     },
   ]
+
+  const handlePhoneChanged = (newPhone: string) => {
+    if (data) setData?.({ ...data, phone: newPhone })
+    setFormData((prev) => (prev ? { ...prev, phone: newPhone } : prev))
+    setChangePhoneOpen(false)
+    toast.success('Номер телефона успешно изменён.')
+  }
 
   const handleProfileSave = async () => {
     if (!user?.id || !data) return
     setSavingProfile(true)
+    const combinedName = [profileDraft.firstName, profileDraft.lastName]
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .join(' ')
     const response = await CustomRequest(`/users/${user.id}`, {
       ...data,
-      name: profileDraft.name,
-      username: profileDraft.username,
+      name: combinedName,
       email: profileDraft.email,
       phone: profileDraft.phone,
       status: data.status,
@@ -121,13 +147,6 @@ export function ProfileContent({ data = null, user = null, setData }: ProfileCon
     await Swal.fire({ title: 'Пароль изменён', icon: 'success' })
   }
 
-  const profileFieldName = (label: string): keyof ProfileDraft => {
-    if (label === 'ИМЯ') return 'name'
-    if (label === 'ФАМИЛИЯ') return 'username'
-    if (label === 'EMAIL') return 'email'
-    return 'phone'
-  }
-
   return (
     <div className="flex-1 flex flex-col gap-12">
       <div className="bg-white border border-[rgba(18,22,27,0.05)] rounded-[28px] shadow-[0px_3px_36px_0px_rgba(0,0,0,0.04),_0px_-102px_250px_0px_rgba(0,0,0,0.07)] p-8">
@@ -148,7 +167,7 @@ export function ProfileContent({ data = null, user = null, setData }: ProfileCon
                 setEditingProfile(true)
               }}
               disabled={savingProfile}
-              className="flex items-center gap-2 px-4 py-[11px] bg-[rgba(18,22,27,0.05)] rounded-[12px] text-[rgba(18,22,27,0.6)] font-medium text-[14px] leading-[18px] text-center hover:bg-[rgba(18,22,27,0.08)] active:bg-[rgba(18,22,27,0.12)] transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-[11px] bg-[rgba(18,22,27,0.05)] rounded-[12px] text-[rgba(18,22,27,0.6)] font-medium text-[14px] leading-[18px] text-center cursor-pointer hover:bg-[rgba(18,22,27,0.08)] active:bg-[rgba(18,22,27,0.12)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <div className="w-4 h-4">
                 <svg viewBox="0 0 16 16" fill="currentColor">
@@ -161,20 +180,33 @@ export function ProfileContent({ data = null, user = null, setData }: ProfileCon
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            {personalInfoFields.map((field, index) => (
+            {personalInfoFields.map((field) => (
               <div
-                key={index}
+                key={field.key}
                 className="flex flex-col gap-1 p-4 bg-[#F7F6F9] border border-[rgba(18,22,27,0.05)] rounded-[16px]"
               >
                 <label className="text-[rgba(18,22,27,0.35)] font-medium text-[12px] leading-[17px] uppercase">
                   {field.label}
                 </label>
-                {editingProfile ? (
+
+                {field.key === 'phone' ? (
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-[#12161B] font-semibold text-[14px] leading-[20px]">
+                      {field.value}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setChangePhoneOpen(true)}
+                      className="shrink-0 rounded-[10px] border border-[rgba(52,52,124,0.3)] px-3 py-1.5 text-[12px] font-medium text-[#34347C] transition-colors cursor-pointer hover:bg-[rgba(52,52,124,0.06)] active:bg-[rgba(52,52,124,0.12)]"
+                    >
+                      Сменить номер
+                    </button>
+                  </div>
+                ) : editingProfile ? (
                   <input
                     value={field.value === emptyValue ? '' : field.value}
                     onChange={(event) => {
-                      const key = profileFieldName(field.label)
-                      setFormData((prev) => ({ ...(prev ?? profileDefaults), [key]: event.target.value }))
+                      setFormData((prev) => ({ ...(prev ?? profileDefaults), [field.key]: event.target.value }))
                     }}
                     className="bg-transparent text-[#12161B] font-semibold text-[14px] leading-[20px] outline-none"
                   />
@@ -182,6 +214,20 @@ export function ProfileContent({ data = null, user = null, setData }: ProfileCon
                   <div className="text-[#12161B] font-semibold text-[14px] leading-[20px]">
                     {field.value}
                   </div>
+                )}
+
+                {field.key === 'email' && !editingProfile && hasRealEmail && (
+                  emailVerified ? (
+                    <span className="mt-1 inline-flex w-fit items-center gap-1.5 rounded-full border border-[#10b981]/30 bg-[#10b981]/10 px-2.5 py-1 text-[11px] font-medium text-[#059669]">
+                      <Check className="h-3.5 w-3.5 shrink-0" />
+                      Почта подтверждена
+                    </span>
+                  ) : (
+                    <span className="mt-1 inline-flex w-fit items-start gap-1.5 rounded-lg border border-[#f59e0b]/30 bg-[#f59e0b]/10 px-2.5 py-1.5 text-[11px] font-medium text-[#b45309]">
+                      <AlertCircle className="mt-px h-3.5 w-3.5 shrink-0" />
+                      <span>Ожидает подтверждения. Письмо отправлено на {email}</span>
+                    </span>
+                  )
                 )}
               </div>
             ))}
@@ -204,7 +250,7 @@ export function ProfileContent({ data = null, user = null, setData }: ProfileCon
               type="button"
               onClick={editingPassword ? handlePasswordSave : () => setEditingPassword(true)}
               disabled={savingPassword}
-              className="flex items-center gap-2 px-4 py-[11px] bg-[rgba(18,22,27,0.05)] rounded-[12px] text-[rgba(18,22,27,0.6)] font-medium text-[14px] leading-[18px] text-center hover:bg-[rgba(18,22,27,0.08)] active:bg-[rgba(18,22,27,0.12)] transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-[11px] bg-[rgba(18,22,27,0.05)] rounded-[12px] text-[rgba(18,22,27,0.6)] font-medium text-[14px] leading-[18px] text-center cursor-pointer hover:bg-[rgba(18,22,27,0.08)] active:bg-[rgba(18,22,27,0.12)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <div className="w-4 h-4">
                 <svg viewBox="0 0 16 16" fill="currentColor">
@@ -246,6 +292,13 @@ export function ProfileContent({ data = null, user = null, setData }: ProfileCon
           </div>
         </div>
       </div>
+
+      <ChangePhoneWindow
+        isOpen={changePhoneOpen}
+        currentPhone={phoneValue}
+        onClose={() => setChangePhoneOpen(false)}
+        onChanged={handlePhoneChanged}
+      />
     </div>
   )
 }

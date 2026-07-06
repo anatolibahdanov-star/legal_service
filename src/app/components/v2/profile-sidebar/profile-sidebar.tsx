@@ -1,5 +1,6 @@
 'use client'
 
+import { useRef, useState } from 'react'
 import { signOut } from 'next-auth/react'
 import type { User } from 'next-auth'
 
@@ -32,6 +33,17 @@ const formatClientSince = (value?: string | Date | null) => {
 }
 
 export function ProfileSidebar({ data = null, user = null, documentsComplete = false }: ProfileSidebarProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+
+  const handleAvatarSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onloadend = () => setAvatarUrl(reader.result as string)
+    reader.readAsDataURL(file)
+  }
+
   const createdAt = (data as (DBUser & { created_at?: string | Date }) | null)?.created_at
   const rawEmail = data?.email ?? user?.email ?? ''
   const email = rawEmail && !isPhoneEmail(rawEmail) ? rawEmail : ''
@@ -51,13 +63,6 @@ export function ProfileSidebar({ data = null, user = null, documentsComplete = f
         ...item,
         description: phone || 'Добавьте телефон',
         completed: !!phone,
-      }
-    }
-    if (item.key === 'documents') {
-      return {
-        ...item,
-        description: documentsComplete ? 'Паспорт / СНИЛС / ИНН загружены' : item.description,
-        completed: documentsComplete,
       }
     }
     return item
@@ -92,10 +97,15 @@ export function ProfileSidebar({ data = null, user = null, documentsComplete = f
           <div className="flex items-end justify-between mb-4">
             <div className="relative">
               <div 
-                className="w-[72px] h-[72px] flex items-center justify-center rounded-[20px] bg-gradient-to-r from-[#2654C0] to-[#34347C] text-white font-bold text-[22px] leading-[33px] tracking-[-0.0114em]"
+                className="w-[72px] h-[72px] flex items-center justify-center overflow-hidden rounded-[20px] bg-gradient-to-r from-[#2654C0] to-[#34347C] text-white font-bold text-[22px] leading-[33px] tracking-[-0.0114em]"
                 style={{ boxShadow: '0px 0px 0px 4px rgba(255, 255, 255, 1)' }}
               >
-                {initials}
+                {avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={avatarUrl} alt="Аватар" className="h-full w-full object-cover" />
+                ) : (
+                  initials
+                )}
               </div>
               <div className="absolute bottom-0 right-0 w-5 h-5 bg-[#00BC7D] rounded-full flex items-center justify-center">
                 <div className="w-4 h-4 text-white">
@@ -121,15 +131,26 @@ export function ProfileSidebar({ data = null, user = null, documentsComplete = f
                 <span>{formatClientSince(createdAt)}</span>
               </div>
             </div>
-            <button className="flex items-center gap-2 px-4 py-[7px] bg-gradient-to-r from-[#34347C] to-[#34537C] border border-[rgba(255,255,255,0.15)] rounded-[12px] text-white text-[14px] leading-[20px] hover:opacity-90 active:opacity-80 transition-opacity">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center gap-2 px-4 py-[7px] bg-gradient-to-r from-[#34347C] to-[#34537C] border border-[rgba(255,255,255,0.15)] rounded-[12px] text-white text-[14px] leading-[20px] cursor-pointer hover:opacity-90 active:opacity-80 transition-opacity"
+            >
               <div className="w-4 h-4">
                 <svg viewBox="0 0 16 16" fill="currentColor">
                   <path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/>
                   <path fillRule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5v11z"/>
                 </svg>
               </div>
-              <span>Изменить фото</span>
+              <span>{avatarUrl ? 'Заменить фото' : 'Изменить фото'}</span>
             </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleAvatarSelect}
+              className="hidden"
+            />
           </div>
         </div>
 
@@ -209,7 +230,7 @@ export function ProfileSidebar({ data = null, user = null, documentsComplete = f
 
                 {!item.completed && (
                   <div className="flex items-center justify-center">
-                    <button className="px-3 py-[7px] bg-gradient-to-r from-[rgba(153,153,202,0.15)] to-[rgba(165,165,221,0.15)] rounded-full text-[#34347C] font-medium text-[12px] leading-[17px] text-center hover:opacity-80 active:opacity-60 transition-opacity">
+                    <button className="px-3 py-[7px] bg-gradient-to-r from-[rgba(153,153,202,0.15)] to-[rgba(165,165,221,0.15)] rounded-full text-[#34347C] font-medium text-[12px] leading-[17px] text-center cursor-pointer hover:opacity-80 active:opacity-60 transition-opacity">
                       Добавить
                     </button>
                   </div>
@@ -223,7 +244,7 @@ export function ProfileSidebar({ data = null, user = null, documentsComplete = f
           <button
             type="button"
             onClick={() => signOut({ callbackUrl: '/' })}
-            className="w-full px-4 py-[13px] rounded-[24px] text-[#FB2C36] font-medium text-[14px] leading-[18px] text-center hover:bg-red-50 active:bg-red-100 transition-colors"
+            className="w-full px-4 py-[13px] rounded-[24px] text-[#FB2C36] font-medium text-[14px] leading-[18px] text-center cursor-pointer hover:bg-red-50 active:bg-red-100 transition-colors"
           >
             Выйти из аккаунта
           </button>
