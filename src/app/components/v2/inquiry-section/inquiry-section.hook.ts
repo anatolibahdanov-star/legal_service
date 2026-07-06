@@ -28,6 +28,7 @@ import type { CompleteProfileResult } from "@/src/app/components/forms/RequestSt
 import type { SuccessVariant } from "@/src/app/components/forms/RequestStepSuccess"
 import { emitBalanceRefresh } from "@/src/libs/balanceEvents"
 import { isPhoneEmail, needsProfileCompletion, phoneToDefaultName } from "@/src/libs/phoneIdentity"
+import { locales } from '@/i18n.config'
 import { TOTAL_VISIBLE_STEPS, type ContactChannel } from './inquiry-section.data'
 import {
   type VerificationModal,
@@ -605,20 +606,23 @@ export const useInquirySection = () => {
     return { ok: true }
   }
 
+  const buildProfileUrl = (tab: 'cases' | 'balance') => {
+    const segments = window.location.pathname.split('/').filter(Boolean)
+    const localePrefix =
+      segments[0] && (locales as readonly string[]).includes(segments[0])
+        ? `/${segments[0]}`
+        : ''
+    return `${localePrefix}/profile?tab=${tab}`
+  }
+
   const goToMyQuestions = () => {
     if (typeof window === 'undefined') return
-    const path = window.location.pathname.replace(/\/$/, '') || ''
-    const localeMatch = path.match(/^(\/[^/]+)/)
-    const target = localeMatch ? `${localeMatch[1]}/profile` : '/profile'
-    window.location.assign(`${target}?tab=cases`)
+    window.location.assign(buildProfileUrl('cases'))
   }
 
   const goToBalance = () => {
     if (typeof window === 'undefined') return
-    const path = window.location.pathname.replace(/\/$/, '') || ''
-    const localeMatch = path.match(/^(\/[^/]+)/)
-    const target = localeMatch ? `${localeMatch[1]}/profile` : '/profile'
-    window.location.assign(`${target}?tab=balance`)
+    window.location.assign(buildProfileUrl('balance'))
   }
 
   const isLastStep = step === TOTAL_VISIBLE_STEPS

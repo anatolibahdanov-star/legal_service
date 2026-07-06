@@ -7,8 +7,8 @@ export default function ProfilePage() {
   return (
     <Suspense
       fallback={
-        <main className="min-h-screen bg-[#F9F9F9] text-[#12161B]">
-          <section className="px-6 py-16 lg:px-[100px]">
+        <main className="v2-header-bleed min-h-screen bg-[#F9F9F9] text-[#12161B]">
+          <section className="mx-auto max-w-[1440px] px-6 py-16 md:px-8 lg:px-[100px]">
             <p className="text-[16px] text-[rgba(18,22,27,0.6)]">Загружается...</p>
           </section>
         </main>

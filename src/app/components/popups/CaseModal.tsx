@@ -230,10 +230,10 @@ export function CaseModal({ caseItem, isOpen, onClose, openRatingSection, user, 
   return (
     <>
       {/* Overlay */}
-      <div className="fixed inset-0 bg-black/50 z-40 transition-opacity" onClick={onClose}/>
+      <div className="fixed inset-0 bg-black/50 z-[1400] transition-opacity" onClick={onClose}/>
 
       {/* Modal window */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+      <div className="fixed inset-0 z-[1401] flex items-center justify-center p-4 pointer-events-none">
         <div
           className="bg-white rounded-2xl shadow-2xl w-full max-w-[900px] max-h-[90vh] overflow-hidden pointer-events-auto flex flex-col"
           onClick={(e) => e.stopPropagation()}
