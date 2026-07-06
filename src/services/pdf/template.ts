@@ -127,7 +127,7 @@ export function buildQuarkdownSource(input: QuarkdownTemplateInput): string {
     `    - headings: none`,
     `.docname {Ответ юриста #${root.id}}`,
     `.pageformat size:{A4} margin:{3cm}`,
-    `.font {GoogleFonts:Inter} heading:{GoogleFonts:Inter} size:{11pt}`,
+    `.font {Helvetica} heading:{Helvetica} size:{11pt}`,
     ``,
     `.pagemargin {topleft}`,
     `    .container width:{16cm}`,

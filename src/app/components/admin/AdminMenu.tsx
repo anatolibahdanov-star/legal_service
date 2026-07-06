@@ -9,7 +9,7 @@ export const AdminMenu = (props: MenuProps) => {
         <Menu {...props} sx={{
             display: 'flex',
             flexDirection: 'column',
-            height: 'calc(100vh - 140px)', // Adjust based on AppBar height
+            height: 'calc(100vh - var(--v2-header-offset) - var(--v2-admin-appbar-height))',
         }}>
             {/* Standard Top Items */}
             <Menu.ResourceItem name="requests" />

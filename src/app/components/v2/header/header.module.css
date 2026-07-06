@@ -1,5 +1,5 @@
 .header {
-    z-index: 100;
+    z-index: 1300;
 
     margin: 0 auto;
     max-width: 1408px;
@@ -29,6 +29,10 @@
     position: relative;
     top: auto;
     margin-top: 16px;
+}
+
+.underAppBar {
+    z-index: 50;
 }
 
 .container {

@@ -33,7 +33,6 @@ import {
   type VerificationModal,
   sendInquiryPhoneOtp,
   resendInquiryPhoneOtp,
-  validateTelegramUsername,
 } from './inquiry-section.verify'
 
 type InquiryPanel = 'quiz' | 'profile' | 'payment' | 'success'
@@ -61,7 +60,7 @@ export const useInquirySection = () => {
   // Form data
   const [problemText, setProblemText] = useState('')
   const [attachedFiles, setAttachedFiles] = useState<File[]>([])
-  const [channel, setChannel] = useState<ContactChannel>('phone')
+  const [channel, setChannel] = useState<ContactChannel>('email')
   const [contactValue, setContactValue] = useState('')
 
   // Verification modals
@@ -99,7 +98,7 @@ export const useInquirySection = () => {
     setIsComplete(false)
     setProblemText('')
     setAttachedFiles([])
-    setChannel('phone')
+    setChannel('email')
     setContactValue('')
     setVerificationModal('none')
     setNormalizedPhone('')
@@ -245,13 +244,9 @@ export const useInquirySection = () => {
 
     if (channel === 'email') {
       email = contact
-    } else if (channel === 'phone' || channel === 'whatsapp') {
+    } else {
       name = contact
       email = `${contact.replace(/\D/g, '')}@phone.enki.local`
-    } else {
-      const username = contact.replace(/^@/, '')
-      name = `@${username}`
-      email = `${username}@telegram.enki.local`
     }
 
     return {
@@ -275,12 +270,10 @@ export const useInquirySection = () => {
     }
 
     if (!contactValue.trim()) {
-      if (channel === 'phone' || channel === 'whatsapp') {
+      if (channel === 'phone') {
         newErrors.common = "Пожалуйста, введите номер телефона"
-      } else if (channel === 'email') {
+      } else {
         newErrors.common = "Пожалуйста, введите email"
-      } else if (channel === 'telegram') {
-        newErrors.common = "Пожалуйста, введите Telegram username"
       }
       return newErrors
     }
@@ -291,17 +284,9 @@ export const useInquirySection = () => {
       return newErrors
     }
 
-    if ((channel === 'phone' || channel === 'whatsapp') && !isPhoneComplete(contactValue)) {
+    if (channel === 'phone' && !isPhoneComplete(contactValue)) {
       newErrors.common = "Пожалуйста, введите корректный номер телефона"
       return newErrors
-    }
-
-    if (channel === 'telegram') {
-      const telegramError = validateTelegramUsername(contactValue)
-      if (telegramError) {
-        newErrors.common = telegramError
-        return newErrors
-      }
     }
 
     if (!captchaToken) {
@@ -407,9 +392,10 @@ export const useInquirySection = () => {
       return
     }
 
-    const token = captchaToken!
     setSubmitting(true)
     setErrors(emptyErrors())
+
+    const token = captchaToken!
 
     try {
       if (channel === 'phone') {
@@ -691,6 +677,7 @@ export const useInquirySection = () => {
     setChannel: (next: ContactChannel) => {
       setChannel(next)
       setContactValue('')
+      setCaptchaToken(null)
       setErrors(emptyErrors())
     },
     setContactValue,

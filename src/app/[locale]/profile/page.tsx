@@ -1,9 +1,22 @@
 'use client';
 
+import { Suspense } from 'react';
 import { V2ProfilePage } from '@/src/app/components/v2/profile-page/profile-page';
 
 export default function ProfilePage() {
-  return <V2ProfilePage />;
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen bg-[#F9F9F9] text-[#12161B]">
+          <section className="px-6 py-16 lg:px-[100px]">
+            <p className="text-[16px] text-[rgba(18,22,27,0.6)]">Загружается...</p>
+          </section>
+        </main>
+      }
+    >
+      <V2ProfilePage />
+    </Suspense>
+  );
 }
 
 /*

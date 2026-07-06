@@ -32,56 +32,8 @@ export function Header() {
             <Link href="/about" className="text-[#29282b] hover:text-[#8faaba] transition-colors cursor-pointer">О нас</Link>
           </nav>
 
-          {/* Social icons and button */}
+          {/* Auth */}
           <div className="flex items-start gap-4">
-            {/* Telegram */}
-            <a
-              href="https://t.me/your_telegram"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center w-8 h-8 transition-colors"
-              aria-label="Telegram"
-            >
-              <Image
-                src="/design/telegram.svg"
-                width="10"
-                height="10"
-                className="w-6 h-6 text-white"
-                alt="LLLMS logo"
-              />
-            </a>
-
-            {/* WhatsApp */}
-            <a
-              href="https://wa.me/your_whatsapp"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-center w-8 h-8 transition-colors"
-              aria-label="WhatsApp"
-            >
-              <Image
-                src="/design/whatsapp.svg"
-                width="10"
-                height="10"
-                className="w-6 h-6 text-white"
-                alt="LLLMS logo"
-              />
-            </a>
-
-            {/* Phone */}
-            <a
-              href="tel:+1234567890"
-              className="flex items-center justify-center w-8 h-8 transition-colors"
-              aria-label="Позвонить"
-            >
-              <Image
-                src="/design/phone.svg"
-                width="10"
-                height="10"
-                className="w-6 h-6 text-white"
-                alt="LLLMS logo"
-              />
-            </a>
             <SignInComponent />
           </div>
         </div>

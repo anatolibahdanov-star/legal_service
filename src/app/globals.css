@@ -1,9 +1,14 @@
-@import url('https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 
+:root {
+  --font-sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  /* fixed header: top 16px + bar ~68px + gap 16px */
+  --v2-header-offset: 100px;
+}
+
 #main-landing-page {
-  font-family: 'Golos Text', sans-serif;
+  font-family: var(--font-sans);
 }
 
 /* body {
@@ -12,7 +17,12 @@
 
 html {
   scroll-behavior: smooth;
-  scroll-padding-top: 100px; /* Account for fixed header height + margin */
+  scroll-padding-top: var(--v2-header-offset);
+}
+
+/* Push page content below the fixed v2 header (all pages except home). */
+.v2-header-content-offset {
+  padding-top: var(--v2-header-offset);
 }
 
 /* :root {

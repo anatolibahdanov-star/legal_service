@@ -1,22 +1,21 @@
 "use client";
 import React from "react";
-import Image from "next/image";
 import Link from "next/link";
 import styles from "./header.module.css";
 
-import logo from "@/public/design/v2-main-page/icons/header-logo.svg";
-import { NAV_LINKS /* , SOCIAL_LINKS */ } from "./header.data";
+import { NAV_LINKS } from "./header.data";
 import { useHeader } from "./header.hook";
 import { AuthFormWindow } from "@/src/app/components/popups/AuthFormWindow";
 import { RegisterFormWindow } from "@/src/app/components/popups/RegisterFormWindow";
 import { ResetPasswordFormWindow } from "@/src/app/components/popups/ResetPasswordFormWindow";
-import HeaderBalance from "@/src/app/components/HeaderBalance";
 
 interface HeaderProps {
   isAuthenticated?: boolean
   userName?: string
   userInitials?: string
   mode?: 'fixed' | 'sticky' | 'static'
+  hideNav?: boolean
+  underAppBar?: boolean
 }
 
 export const Header: React.FC<HeaderProps> = ({ 
@@ -24,6 +23,8 @@ export const Header: React.FC<HeaderProps> = ({
   userName = "Иван Иванов",
   userInitials = "ИИ",
   mode = 'sticky',
+  hideNav = false,
+  underAppBar = false,
 }) => {
   const {
     isAuthenticated: actuallyAuthenticated,
@@ -43,19 +44,18 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <>
     {/* Header */}
-    <header id="header" className={`${styles.header} ${styles[mode]}`}>
+    <header id="header" className={`${styles.header} ${styles[mode]} ${underAppBar ? styles.underAppBar : ''}`}>
         <div id="container" className={styles.container}>
 
             <Link
               href="/"
               id="logo"
-              className="flex items-center gap-2 text-[#12161B] font-semibold text-[18px] transition-opacity duration-200 hover:opacity-70 active:opacity-50"
+              className="text-[#12161B] font-semibold text-[28px] leading-none tracking-tight transition-opacity duration-200 hover:opacity-70 active:opacity-50"
             >
-                <Image src={logo} alt="ENKI logo" width={31.45} height={36} />
-                {/* TODO: i18n need to be here */}
-                <span>ЭНКИ</span>
+              ЭНКИ
             </Link>
 
+            {!hideNav && (
             <nav id="navigation" className={`${styles.navigation} flex items-center gap-4`}>
                 <ul className="flex items-center gap-1">
                     {NAV_LINKS.map(({ label, href }) => (
@@ -71,27 +71,10 @@ export const Header: React.FC<HeaderProps> = ({
                     ))}
                 </ul>
             </nav>
-
-            {/* Social icons — temporarily hidden
-            <nav className="flex items-center gap-1 ml-auto">
-                <ul className="flex items-center gap-1">
-                    {SOCIAL_LINKS.map(({ src, alt, href }) => (
-                      <li key={alt}>
-                        <Link
-                          href={href}
-                          className="flex items-center justify-center w-12 h-12 rounded-full transition-all duration-200 hover:bg-black/5 active:bg-black/10 active:scale-95"
-                        >
-                          <Image src={src} alt={alt} width={24} height={24} />
-                        </Link>
-                      </li>
-                    ))}
-                </ul>
-            </nav>
-            */}
+            )}
 
             {actuallyAuthenticated ? (
-              <div className="flex flex-col items-end gap-1.5">
-                <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2">
                   {session?.user?.role === 'user' ? (
                     <Link 
                       href="/profile/"
@@ -128,8 +111,6 @@ export const Header: React.FC<HeaderProps> = ({
                   >
                     Выйти
                   </button>
-                </div>
-                <HeaderBalance />
               </div>
             ) : (
               <button

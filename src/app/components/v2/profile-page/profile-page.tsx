@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import Swal from 'sweetalert2'
 
@@ -27,13 +27,23 @@ const isProfileTab = (value: string | null): value is ProfileTab =>
 
 export function V2ProfilePage() {
   const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const { data: session, status } = useSession()
-  const [activeTab, setActiveTab] = useState<ProfileTab>(() => {
-    if (typeof window === 'undefined') return 'account'
-    const tab = new URLSearchParams(window.location.search).get('tab')
-    return isProfileTab(tab) ? tab : 'account'
-  })
+  const tabParam = searchParams.get('tab')
+  const activeTab: ProfileTab = isProfileTab(tabParam) ? tabParam : 'account'
   const [data, setData] = useState<DBUser | null>(null)
+
+  const selectTab = (tab: ProfileTab) => {
+    const params = new URLSearchParams(searchParams.toString())
+    if (tab === 'account') {
+      params.delete('tab')
+    } else {
+      params.set('tab', tab)
+    }
+    const qs = params.toString()
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+  }
 
   const user = session?.user
   const userId = user?.id
@@ -89,7 +99,7 @@ export function V2ProfilePage() {
 
   if (status === 'loading' || !user || isStaff) {
     return (
-      <main className="min-h-screen bg-[#F9F9F9] text-[#12161B]" style={{ fontFamily: "'Golos Text', sans-serif" }}>
+      <main className="min-h-screen bg-[#F9F9F9] text-[#12161B]">
         <section className="px-6 py-16 lg:px-[100px]">
           <p className="text-[16px] text-[rgba(18,22,27,0.6)]">Загружается...</p>
         </section>
@@ -98,7 +108,7 @@ export function V2ProfilePage() {
   }
 
   return (
-    <main id="profile-page" className="min-h-screen bg-[#F9F9F9] text-[#12161B]" style={{ fontFamily: "'Golos Text', sans-serif" }}>
+    <main id="profile-page" className="min-h-screen bg-[#F9F9F9] text-[#12161B]">
       <section className="px-6 py-[46px] lg:px-[100px]">
         <div className="flex flex-col gap-12">
           <div className="flex flex-col gap-4">
@@ -115,7 +125,7 @@ export function V2ProfilePage() {
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => selectTab(tab.id)}
                 className={`flex items-center justify-center px-6 py-[13px] rounded-[14px] font-medium text-[18px] leading-[23px] tracking-[-0.01em] transition-colors ${
                   activeTab === tab.id
                     ? 'bg-gradient-to-r from-[#34347C] to-[#34537C] text-white'

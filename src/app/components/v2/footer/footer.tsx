@@ -76,13 +76,15 @@ export const Footer = () => {
                 </div>
                 <div className="flex flex-col gap-3">
                   {DOCUMENTS.map((doc) => (
-                    <Link
+                    <a
                       key={doc.label}
                       href={doc.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="text-[12px] leading-[16px] text-white/75 hover:text-white active:text-white/60 transition-colors"
                     >
                       {doc.label}
-                    </Link>
+                    </a>
                   ))}
                 </div>
               </div>
