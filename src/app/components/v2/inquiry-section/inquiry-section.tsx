@@ -34,9 +34,9 @@ const VioletBtn = ({ label, onClick, disabled }: { label: string; onClick: () =>
     type="button"
     onClick={onClick}
     disabled={disabled}
-    className="flex items-center justify-center text-white text-[18px] font-medium leading-[23px] tracking-tight transition-all duration-150 hover:opacity-85 hover:shadow-lg hover:scale-105 active:scale-95 active:opacity-70 active:shadow-md shrink-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-none"
+    className="flex items-center justify-center text-white text-[18px] font-medium leading-[23px] tracking-tight transition-all duration-150 hover:opacity-85 hover:shadow-lg hover:scale-105 active:scale-95 active:opacity-70 active:shadow-md flex-1 lg:flex-none lg:w-[348px] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-none"
     style={{
-      width: 348, height: 56,
+      height: 56,
       background: 'radial-gradient(circle at 50% 0%, #34347C 0%, #2D2D6C 100%)',
       border: '0.5px solid rgba(255,255,255,0.5)',
       borderRadius: 35,
@@ -574,7 +574,7 @@ function ProgressPanel({ step, direction }: { step: number; direction: number })
   const isLastStep = step === TOTAL_VISIBLE_STEPS
 
   return (
-    <div className="flex flex-col gap-8 flex-1 overflow-hidden" style={{ padding: '24px 64px' }}>
+    <div className="hidden lg:flex flex-col gap-8 flex-1 overflow-hidden" style={{ padding: '24px 64px' }}>
       <div className="flex flex-col gap-2 pb-2">
         <h3 className="text-[28px] font-semibold leading-8 tracking-tight text-[#12161B]">
           {isLastStep ? 'Уже готовим ответ' : 'Ваше дело собирается'}
@@ -723,10 +723,10 @@ export function InquirySection({
               <FinalScreen onAskAnother={resetForm} />
             </motion.div>
           ) : (
-            <motion.div key="quiz" className="flex w-full min-h-full" initial={false}>
+            <motion.div key="quiz" className="flex flex-col lg:flex-row w-full min-h-full" initial={false}>
               <div
-                className="flex flex-col justify-between shrink-0"
-                style={{ width: 720, background: '#fff', padding: '24px 32px', borderRadius: 24 }}
+                className="flex flex-col justify-between w-full lg:w-[720px] lg:shrink-0"
+                style={{ background: '#fff', padding: '24px 32px', borderRadius: 24 }}
               >
                 <div className="flex flex-col gap-12">
                   <div className="flex flex-col gap-6">
@@ -817,7 +817,7 @@ export function InquirySection({
                 </div>
 
                 {panel === 'quiz' && (
-                <div className="flex flex-col gap-4 mt-6" style={{ width: 656 }}>
+                <div className="flex flex-col gap-4 mt-6 w-full lg:w-[656px]">
                   <div className="flex items-center justify-between gap-4">
                   <button
                     onClick={step > 1 ? goBack : (onClose ?? goBack)}

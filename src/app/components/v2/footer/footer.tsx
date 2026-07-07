@@ -11,21 +11,17 @@ export const Footer = () => {
   return (
     <footer
       id="footer"
-      className="relative w-full overflow-hidden"
-      style={{
-        background: '#0E493D',
-        padding: '90px 0 280px',
-      }}
+      className="relative w-full overflow-hidden bg-[#0E493D] pt-[60px] md:pt-[90px] pb-[120px] md:pb-[280px]"
     >
       <div className="max-w-[1440px] mx-auto px-6 md:px-8 lg:px-[100px]">
-        <div className="flex items-start justify-between relative z-10">
-        <div className="flex gap-[80px]">
-          <div className="flex flex-col gap-[10px]" style={{ width: 220 }}>
-            <Image src={footerLogo} alt="ЭНКИ" width={220} height={65} />
+        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-10 relative z-10">
+        <div className="flex flex-col lg:flex-row gap-10 lg:gap-[80px]">
+          <div className="flex flex-col gap-[10px] w-[180px] md:w-[220px]">
+            <Image src={footerLogo} alt="ЭНКИ" width={220} height={65} className="h-auto w-full" />
           </div>
 
-          <div className="flex gap-[100px]">
-            <div className="flex flex-col gap-8" style={{ width: 320 }}>
+          <div className="flex flex-col gap-10 lg:flex-row lg:flex-wrap lg:gap-[100px]">
+            <div className="flex flex-col gap-8 w-full sm:w-[320px]">
               <p className="text-[16px] leading-[22px] tracking-tight text-white">
                 {COMPANY_INFO.description}
               </p>
@@ -49,7 +45,7 @@ export const Footer = () => {
               </div>
             </div>
 
-            <div className="flex flex-col justify-between" style={{ width: 160, height: 300 }}>
+            <div className="flex flex-col justify-between gap-6 w-full lg:w-[160px] lg:h-[300px]">
               <div className="flex flex-col">
                 {QUICK_LINKS.map((link) => (
                   <div key={link.label} className="flex items-center h-8">
@@ -68,7 +64,7 @@ export const Footer = () => {
               </p>
             </div>
 
-            <div className="flex flex-col" style={{ width: 220 }}>
+            <div className="flex flex-col w-full lg:w-[220px]">
               <div className="flex flex-col gap-4">
                 <div className="flex flex-col gap-3">
                   <span className="text-[16px] leading-[22px] text-white">Документы</span>
@@ -107,17 +103,13 @@ export const Footer = () => {
       </div>
 
       <div
-        className="absolute bottom-16 left-0 right-0 flex items-center justify-between px-20 pointer-events-none select-none"
+        className="absolute bottom-8 md:bottom-16 left-0 right-0 flex items-center justify-between px-6 md:px-20 pointer-events-none select-none"
       >
         {['Э', 'Н', 'К', 'И'].map((letter) => (
           <span
             key={letter}
-            className="font-bold"
-            style={{
-              fontSize: 180,
-              lineHeight: '180px',
-              color: 'rgba(255,255,255,0.02)',
-            }}
+            className="font-bold text-[64px] leading-[64px] lg:text-[180px] lg:leading-[180px]"
+            style={{ color: 'rgba(255,255,255,0.02)' }}
           >
             {letter}
           </span>
