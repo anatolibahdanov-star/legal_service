@@ -13,16 +13,16 @@ export function WhyUs() {
       <div className="max-w-[1440px] mx-auto px-6 md:px-8 lg:px-[100px]">
         <div className="flex items-start gap-4">
         <div className="flex flex-col gap-4 flex-1">
-          <h2 className="text-[48px] font-semibold leading-[56px] tracking-tight text-[#12161B]">
+          <h2 className="text-[32px] leading-[38px] md:text-[48px] md:leading-[56px] font-semibold tracking-tight text-[#12161B]">
             Почему мы?
           </h2>
-          <p className="text-[22px] leading-[28px] tracking-tight text-[#12161B] mb-[56px]">
+          <p className="text-[18px] leading-[24px] md:text-[22px] md:leading-[28px] tracking-tight text-[#12161B] mb-8 md:mb-[56px]">
           Опытная команда штатных юристов онлайн 24/7 . Вы получите полноценную юридическую консультацию онлайн без звонков и визитов в офис.  Ответственность за результат застрахована
           </p>
         </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {CARDS.map((card, i) => (
           <div
             key={i}

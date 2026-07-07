@@ -46,3 +46,9 @@
     margin-right: auto;
     margin-left: auto;
 }
+
+@media (max-width: 767px) {
+    .container {
+        padding: 8px 8px 8px 16px;
+    }
+}

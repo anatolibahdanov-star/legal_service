@@ -39,6 +39,7 @@ import { InquirySection } from '@/src/app/components/v2/inquiry-section/inquiry-
 import { HowItWorks } from '@/src/app/components/v2/how-it-works/how-it-works'
 import { WhyUs } from '@/src/app/components/v2/why-us/why-us'
 import { Services } from '@/src/app/components/v2/services/services'
+import { MobileLanding } from '@/src/app/components/v2/mobile-landing/mobile-landing'
 
 export default function Home({
   params: _params,
@@ -47,7 +48,12 @@ export default function Home({
 }) {
   return (
     <main id="main-landing-page" className="min-h-screen bg-[#F9F9F9] text-[#12161B]">
-      <section id="hero" className="relative w-full overflow-hidden" style={{ height: 780 }}>
+      {/* Mobile + tablet (< lg) */}
+      <MobileLanding />
+
+      {/* Desktop (>= lg) */}
+      <div className="hidden lg:block">
+      <section id="hero" className="relative w-full overflow-hidden h-[780px]">
         <div className="absolute inset-0 z-0">
           <Image
             src={heroImage}
@@ -57,14 +63,11 @@ export default function Home({
             sizes="100vw"
             className="object-cover object-center"
           />
-          <div className="absolute inset-0 bg-black/30 z-10 md:hidden" />
+          <div className="absolute inset-0 bg-black/30 z-10 lg:hidden" />
         </div>
 
         <div className="relative z-10 w-full h-full max-w-[1440px] mx-auto px-[100px] flex items-end pb-[120px]">
-          <h1
-            className="text-white font-medium leading-[70px] tracking-[-0.01em] max-w-[615px]"
-            style={{ fontSize: 64 }}
-          >
+          <h1 className="text-white font-medium text-[64px] leading-[70px] tracking-[-0.01em] max-w-[615px]">
             Задавайте вопросы опытным юристам онлайн
           </h1>
         </div>
@@ -77,6 +80,7 @@ export default function Home({
       <WhyUs />
 
       {/* <Services /> */}
+      </div>
     </main>
   )
 }

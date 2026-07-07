@@ -9,28 +9,27 @@ export function HowItWorks() {
   return (
     <section
       id="how-it-works"
-      className="w-full flex flex-col gap-16"
-      style={{ background: '#F9F9F9', padding: '46px 0', minHeight: 779 }}
+      className="w-full flex flex-col gap-8 md:gap-16 bg-[#F9F9F9] py-[46px] md:min-h-[779px]"
     >
       <div className="max-w-[1440px] mx-auto px-6 md:px-8 lg:px-[100px]">
         <div className="flex flex-col gap-8">
         <div className="flex flex-col gap-4">
-          <h2 className="text-[48px] font-semibold leading-[56px] tracking-tight text-[#12161B]">
+          <h2 className="text-[32px] leading-[38px] md:text-[48px] md:leading-[56px] font-semibold tracking-tight text-[#12161B]">
             Как мы работаем
           </h2>
-          <p className="text-[22px] leading-[28px] tracking-tight text-[#12161B]">
+          <p className="text-[18px] leading-[24px] md:text-[22px] md:leading-[28px] tracking-tight text-[#12161B]">
             Профессиональный правовой аудит{' '}
             <span className="font-semibold text-[#34347C]">без лишних звонков</span>
           </p>
         </div>
-        <div className="flex items-center gap-0 bg-[#E8E8E8] rounded-[14px] w-fit mb-[64px]">
+        <div className="flex items-center gap-0 bg-[#E8E8E8] rounded-[14px] w-fit max-w-full overflow-x-auto mb-8 md:mb-[64px]">
           {TABS.map((tab, index) => {
             const isActive = index === 0 // Только первый таб активен (по дизайну)
             
             return (
               <div 
                 key={index} 
-                className="relative flex items-center justify-center"
+                className="relative flex items-center justify-center shrink-0"
               >
                 {isActive ? (
                   <div className="relative flex items-center justify-center">
@@ -68,14 +67,13 @@ export function HowItWorks() {
         </div>
       </div>
 
-      <div className="flex gap-8 flex-1">
+      <div className="flex flex-col md:flex-row gap-8 flex-1 lg:flex-row">
         <div className="flex flex-col gap-[30px] flex-1">
           {STEPS.map((step) => (
             <div key={step.num} className="flex items-start gap-4">
               <span
-                className="font-semibold leading-[84px] shrink-0 select-none"
+                className="font-semibold text-[48px] leading-[60px] md:text-[72px] md:leading-[84px] shrink-0 select-none"
                 style={{
-                  fontSize: 72,
                   letterSpacing: '-0.01em',
                   color: 'rgba(18,22,27,0.15)',
                   opacity: 0.8,
@@ -97,8 +95,8 @@ export function HowItWorks() {
         </div>
 
         <div
-          className="relative shrink-0 rounded-3xl overflow-hidden"
-          style={{ width: 560, alignSelf: 'stretch' }}
+          className="relative shrink-0 rounded-3xl overflow-hidden w-full md:h-[360px] lg:w-[560px] lg:h-auto"
+          style={{ alignSelf: 'stretch' }}
         >
           <Image
             src={illustration}
