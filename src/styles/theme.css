@@ -126,7 +126,7 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-family: var(--font-sans);
     font-weight: 400; /* Normal */
   }
 
@@ -137,68 +137,68 @@
 
   html {
     font-size: var(--font-size);
-    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-family: var(--font-sans);
   }
 
   h1 {
     font-size: var(--text-2xl);
     font-weight: 700; /* Bold */
     line-height: 1.5;
-    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-family: var(--font-sans);
   }
 
   h2 {
     font-size: var(--text-xl);
     font-weight: 700; /* Bold */
     line-height: 1.5;
-    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-family: var(--font-sans);
   }
 
   h3 {
     font-size: var(--text-lg);
     font-weight: 700; /* Bold */
     line-height: 1.5;
-    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-family: var(--font-sans);
   }
 
   h4 {
     font-size: var(--text-base);
     font-weight: 700; /* Bold */
     line-height: 1.5;
-    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-family: var(--font-sans);
   }
 
   label {
     font-size: var(--text-base);
     font-weight: 400; /* Normal */
     line-height: 1.5;
-    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-family: var(--font-sans);
   }
 
   button {
     font-size: var(--text-base);
     font-weight: 400; /* Normal */
     line-height: 1.5;
-    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-family: var(--font-sans);
   }
 
   input {
     font-size: var(--text-base);
     font-weight: 400; /* Normal */
     line-height: 1.5;
-    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-family: var(--font-sans);
   }
 
   p {
-    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-family: var(--font-sans);
     font-weight: 400; /* Normal */
   }
 
   div {
-    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-family: var(--font-sans);
   }
 
   span {
-    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-family: var(--font-sans);
   }
 }

@@ -1,0 +1,294 @@
+.whyUs {
+  display: flex;
+  flex-direction: column;
+  gap: 56px;
+  width: 100%;
+  background: #f9f9f9;
+  padding-block: 46px;
+}
+
+/* ─── Desktop / Mobile HTML toggle ──────────────────────────────────────── */
+.desktopBlock {
+  display: block;
+}
+
+.mobileBlock {
+  display: none;
+}
+
+@media (max-width: 1023px) {
+  .whyUs {
+    gap: 0;
+    padding-block: 32px;
+  }
+
+  .desktopBlock {
+    display: none;
+  }
+
+  .mobileBlock {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+    width: 100%;
+    max-width: 834px;
+    margin-inline: auto;
+    padding-inline: 16px;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .mobileBlock {
+    gap: 40px;
+    padding-inline: 32px;
+  }
+}
+
+.whyUsContainer {
+  width: 100%;
+  max-width: 1440px;
+  margin-inline: auto;
+  padding-inline: 100px;
+}
+
+.whyUsHeaderRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.whyUsHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex: 1;
+}
+
+.whyUsIntro {
+  margin-bottom: 56px;
+}
+
+.sectionTitleLg {
+  font-size: 48px;
+  line-height: 56px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: #12161b;
+}
+
+.sectionSubtitleLg {
+  font-size: 22px;
+  line-height: 28px;
+  letter-spacing: -0.01em;
+  color: #12161b;
+}
+
+.whyUsGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+}
+
+@media (min-width: 640px) {
+  .whyUsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .whyUsGrid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.whyUsCard {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 350px;
+  padding: 12px;
+  border-radius: 21.32px;
+  border: 0.38px solid rgba(18, 22, 27, 0.1);
+  box-shadow: 0 2px 6px 0 rgba(30, 47, 72, 0.06);
+  background: var(--card-bg);
+}
+
+.whyUsCardIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 80px;
+  height: 80px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: var(--card-icon-bg);
+}
+
+.whyUsCardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex: 1;
+}
+
+.whyUsCardTitle {
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 28px;
+  letter-spacing: -0.01em;
+  color: var(--card-text);
+}
+
+.whyUsCardDesc {
+  flex: 1;
+  font-size: 16px;
+  line-height: 22px;
+  letter-spacing: -0.01em;
+  color: var(--card-text);
+}
+
+/* ─── Mobile block (<1024px) ────────────────────────────────────────────── */
+.mobileHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mobileTitle {
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 30px;
+  letter-spacing: -0.01em;
+  color: #12161b;
+}
+
+.mobileSubtitle {
+  font-size: 16px;
+  line-height: 22px;
+  letter-spacing: -0.01em;
+  color: #12161b;
+}
+
+.mobileCardsScroll {
+  display: none;
+}
+
+.mobileCarouselWrap {
+  display: block;
+}
+
+.tabletGrid {
+  display: none;
+}
+
+.emblaViewport {
+  overflow: hidden;
+  margin-inline: -16px;
+}
+
+.emblaContainer {
+  display: flex;
+  gap: 12px;
+  margin-left: 16px;
+}
+
+.emblaSlide {
+  flex: 0 0 250px;
+  min-width: 0;
+}
+
+.mobileCard {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  flex-shrink: 0;
+  width: 250px;
+  height: 100%;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 24px;
+  box-shadow: 0 2px 6px 0 rgba(30, 47, 72, 0.06);
+  background: var(--card-bg);
+}
+
+.mobileCardIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  background: var(--card-icon-bg);
+}
+
+.mobileCardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.mobileCardTitle {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 20px;
+  color: var(--card-text);
+}
+
+.mobileCardDesc {
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--card-text);
+}
+
+.dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: rgba(18, 22, 27, 0.15);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.dotActive {
+  width: 16px;
+  background: #34347c;
+}
+
+/* Tablet: 2-column grid instead of carousel, no dots */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .mobileTitle {
+    font-size: 28px;
+    line-height: 32px;
+  }
+
+  .mobileSubtitle {
+    font-size: 18px;
+    line-height: 24px;
+  }
+
+  .mobileCarouselWrap {
+    display: none;
+  }
+
+  .tabletGrid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+
+  .tabletGrid .mobileCard {
+    width: auto;
+    padding: 16px;
+  }
+}

@@ -59,10 +59,64 @@ export const Header: React.FC<HeaderProps> = ({
     setMobileMenuOpen(false);
   };
 
+  const closeMobileMenu = () => setMobileMenuOpen(false);
+
+  const renderAuthActions = (placement: 'header' | 'menu') => {
+    const isMenu = placement === 'menu';
+    const className = isMenu ? styles.menuAuthBtn : styles.navBtn;
+
+    if (actuallyAuthenticated) {
+      return (
+        <>
+          {session?.user?.role === 'user' ? (
+            <Link
+              href="/profile/?tab=cases"
+              onClick={isMenu ? closeMobileMenu : undefined}
+              className={className}
+            >
+              Личный кабинет
+            </Link>
+          ) : (
+            <Link
+              href="/admin/"
+              onClick={isMenu ? closeMobileMenu : undefined}
+              className={className}
+            >
+              Кабинет
+            </Link>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              handleLogout();
+              if (isMenu) closeMobileMenu();
+            }}
+            className={className}
+          >
+            Выйти
+          </button>
+        </>
+      );
+    }
+
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          handleAuthClick();
+          if (isMenu) closeMobileMenu();
+        }}
+        className={className}
+      >
+        Войти
+      </button>
+    );
+  };
+
   return (
     <>
     {/* Header */}
-    <header id="header" className={`${styles.header} ${styles[mode]} ${underAppBar ? styles.underAppBar : ''}`}>
+    <header id="header" className={`${styles.header} ${styles[mode]} ${underAppBar ? styles.underAppBar : ''} ${hideNav ? styles.hideNav : ''}`}>
         <div id="container" className={styles.container}>
 
             <Link
@@ -91,90 +145,47 @@ export const Header: React.FC<HeaderProps> = ({
             </nav>
             )}
 
-            <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setMobileMenuOpen((v) => !v)}
-              aria-label="Меню"
-              aria-expanded={mobileMenuOpen}
-              className="lg:hidden flex h-10 w-10 shrink-0 items-center justify-center rounded-3xl bg-[rgba(18,22,27,0.05)] text-[#12161B] transition-colors hover:bg-[rgba(18,22,27,0.1)] active:bg-[rgba(18,22,27,0.15)] cursor-pointer"
-            >
-              {mobileMenuOpen ? (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
-              ) : (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
-              )}
-            </button>
-            {actuallyAuthenticated ? (
-              <div className="flex items-center gap-2">
-                  {session?.user?.role === 'user' ? (
-                    <Link 
-                      href="/profile/"
-                      className="flex items-center justify-center px-4 md:px-6 h-10 md:h-12 rounded-3xl text-[14px] md:text-[18px] font-medium leading-[23px] tracking-tight text-white whitespace-nowrap transition-all duration-150 hover:opacity-85 hover:scale-105 active:scale-90 active:opacity-60 active:brightness-75 cursor-pointer"
-                      style={{
-                        background: '#12161B',
-                        border: '0.5px solid rgba(255,255,255,0.5)',
-                        boxShadow: '0px 2px 8px 0px rgba(30,47,72,0.06)',
-                      }}
-                    >
-                      Личный кабинет
-                    </Link>
-                  ) : (
-                    <Link 
-                      href="/admin/"
-                      className="flex items-center justify-center px-4 md:px-6 h-10 md:h-12 rounded-3xl text-[14px] md:text-[18px] font-medium leading-[23px] tracking-tight text-white whitespace-nowrap transition-all duration-150 hover:opacity-85 hover:scale-105 active:scale-90 active:opacity-60 active:brightness-75 cursor-pointer"
-                      style={{
-                        background: '#12161B',
-                        border: '0.5px solid rgba(255,255,255,0.5)',
-                        boxShadow: '0px 2px 8px 0px rgba(30,47,72,0.06)',
-                      }}
-                    >
-                      Кабинет
-                    </Link>
-                  )}
-                  <button 
-                    onClick={handleLogout}
-                    className="flex items-center justify-center px-4 md:px-6 h-10 md:h-12 rounded-3xl text-[14px] md:text-[18px] font-medium leading-[23px] tracking-tight text-white whitespace-nowrap transition-all duration-150 hover:opacity-85 hover:scale-105 active:scale-90 active:opacity-60 active:brightness-75 cursor-pointer"
-                    style={{
-                      background: '#12161B',
-                      border: '0.5px solid rgba(255,255,255,0.5)',
-                      boxShadow: '0px 2px 8px 0px rgba(30,47,72,0.06)',
-                    }}
-                  >
-                    Выйти
-                  </button>
+            <div className={styles.actions}>
+              <div className={styles.headerAuthBtns}>
+                {renderAuthActions('header')}
               </div>
-            ) : (
+
               <button
-                onClick={handleAuthClick}
-                className="flex items-center justify-center px-4 md:px-6 h-10 md:h-12 rounded-3xl text-[14px] md:text-[18px] font-medium leading-[23px] tracking-tight text-white whitespace-nowrap transition-all duration-150 hover:opacity-85 hover:scale-105 active:scale-90 active:opacity-60 active:brightness-75 cursor-pointer"
-                style={{
-                  background: '#12161B',
-                  border: '0.5px solid rgba(255,255,255,0.5)',
-                  boxShadow: '0px 2px 8px 0px rgba(30,47,72,0.06)',
-                }}
+                type="button"
+                onClick={() => setMobileMenuOpen((v) => !v)}
+                aria-label="Меню"
+                aria-expanded={mobileMenuOpen}
+                className={styles.burger}
               >
-                {/* TODO: i18n need to be here */}
-                Войти
+                {mobileMenuOpen ? (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+                ) : (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+                )}
               </button>
-            )}
             </div>
         </div>
 
-        {mobileMenuOpen && !hideNav && (
-          <div className="lg:hidden absolute left-0 right-0 top-full mt-2 rounded-3xl border border-[rgba(18,22,27,0.1)] bg-white/95 p-2 shadow-[0_2px_72px_0_rgba(21,22,25,0.2)] backdrop-blur-md">
-            <nav className="flex flex-col">
-              {NAV_LINKS.map(({ label, href }) => (
-                <a
-                  key={label}
-                  href={href}
-                  onClick={(e) => handleMobileNavClick(e, href)}
-                  className="rounded-2xl px-4 py-3 text-[16px] font-medium text-[#12161B] transition-colors hover:bg-black/5 active:bg-black/10"
-                >
-                  {label}
-                </a>
-              ))}
-            </nav>
+        {mobileMenuOpen && (
+          <div className={styles.mobileMenu}>
+            {!hideNav && (
+              <nav className={styles.mobileMenuNav}>
+                {NAV_LINKS.map(({ label, href }) => (
+                  <a
+                    key={label}
+                    href={href}
+                    onClick={(e) => handleMobileNavClick(e, href)}
+                    className={styles.mobileMenuLink}
+                  >
+                    {label}
+                  </a>
+                ))}
+              </nav>
+            )}
+
+            <div className={`${styles.mobileMenuAuth} ${hideNav ? styles.mobileMenuAuthOnly : ''}`}>
+              {renderAuthActions('menu')}
+            </div>
           </div>
         )}
     </header>

@@ -1,12 +1,9 @@
-// Single source of truth for the three legal documents referenced from the
-// Footer, the cookie banner, the contact form and the registration form.
-// Adding a fourth document — wire it here and it shows up everywhere.
-
 export type LegalDocumentKey =
   | "privacy-policy"
   | "personal-data-consent"
   | "public-offer"
-  | "recommendation-technologies";
+  | "recommendation-technologies"
+  | "insurance-policy";
 
 export interface LegalDocument {
   key: LegalDocumentKey;
@@ -34,5 +31,10 @@ export const LEGAL_DOCUMENTS: Record<LegalDocumentKey, LegalDocument> = {
     key: "recommendation-technologies",
     title: "Рекомендательные технологии",
     src: "/docs/recommendation-technologies.pdf",
+  },
+  "insurance-policy": {
+    key: "insurance-policy",
+    title: "Полис страхования ЭНКИ",
+    src: "/docs/insurance-policy.pdf",
   },
 };

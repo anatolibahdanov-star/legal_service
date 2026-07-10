@@ -3,14 +3,18 @@
 import { useRef, useState } from 'react'
 import { signOut } from 'next-auth/react'
 import type { User } from 'next-auth'
+import { toast } from 'sonner'
 
 import type { DBUser } from '@/src/interfaces/db'
 import { isPhoneEmail } from '@/src/libs/phoneIdentity'
+import { ChangePhoneWindow } from '@/src/app/components/popups/ChangePhoneWindow'
 import { COMPLETION_ITEMS } from './profile-sidebar.data'
+import styles from './profile-sidebar.module.css'
 
 interface ProfileSidebarProps {
   data?: DBUser | null
   user?: User | null
+  setData?: (data: DBUser) => void
   documentsComplete?: boolean
 }
 
@@ -32,16 +36,37 @@ const formatClientSince = (value?: string | Date | null) => {
   return `Клиент с ${date.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })}`
 }
 
-export function ProfileSidebar({ data = null, user = null, documentsComplete = false }: ProfileSidebarProps) {
+export function ProfileSidebar({ data = null, user = null, setData, documentsComplete = false }: ProfileSidebarProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const [changePhoneOpen, setChangePhoneOpen] = useState(false)
 
   const handleAvatarSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
     const reader = new FileReader()
-    reader.onloadend = () => setAvatarUrl(reader.result as string)
+    reader.onloadend = () => {
+      setAvatarUrl(reader.result as string)
+      toast.success('Фото профиля добавлено')
+    }
     reader.readAsDataURL(file)
+    event.target.value = ''
+  }
+
+  const handlePhoneChanged = (newPhone: string) => {
+    if (data) setData?.({ ...data, phone: newPhone })
+    setChangePhoneOpen(false)
+    toast.success('Номер телефона успешно изменён.')
+  }
+
+  const handleCompletionAction = (key?: 'email' | 'phone' | 'photo' | 'documents') => {
+    if (key === 'phone') {
+      setChangePhoneOpen(true)
+      return
+    }
+    if (key === 'photo') {
+      fileInputRef.current?.click()
+    }
   }
 
   const createdAt = (data as (DBUser & { created_at?: string | Date }) | null)?.created_at
@@ -65,6 +90,13 @@ export function ProfileSidebar({ data = null, user = null, documentsComplete = f
         completed: !!phone,
       }
     }
+    if (item.key === 'photo') {
+      return {
+        ...item,
+        description: avatarUrl ? 'Фото добавлено' : 'Добавьте фото',
+        completed: !!avatarUrl,
+      }
+    }
     return item
   })
   const completionPercent = Math.round(
@@ -73,42 +105,27 @@ export function ProfileSidebar({ data = null, user = null, documentsComplete = f
   const showCompletion = !documentsComplete
 
   return (
-    <div className="w-[420px] shrink-0 flex flex-col">
-      <div className="overflow-hidden bg-white border border-[rgba(18,22,27,0.05)] rounded-[28px] shadow-[0px_3px_36px_0px_rgba(0,0,0,0.04),_0px_-102px_250px_0px_rgba(0,0,0,0.07)]">
-        <div 
-          className="relative h-[100px] rounded-t-[28px]"
-          style={{
-            background: 'linear-gradient(135deg, rgba(237, 233, 254, 1) 0%, rgba(238, 235, 254, 1) 13%, rgba(240, 236, 255, 1) 25%, rgba(241, 238, 255, 1) 38%, rgba(243, 240, 255, 1) 50%, rgba(240, 240, 255, 1) 57%, rgba(238, 241, 255, 1) 64%, rgba(235, 241, 255, 1) 71%, rgba(232, 241, 254, 1) 79%, rgba(230, 241, 254, 1) 86%, rgba(227, 242, 254, 1) 93%, rgba(224, 242, 254, 1) 100%)'
-          }}
-        >
-          <div className="absolute inset-0 opacity-40">
-            <div 
-              className="w-full h-full opacity-10 bg-repeat"
-              style={{
-                backgroundImage: 'url("/design/v2-main-page/hero-image.jpg")',
-                backgroundSize: '189%',
-                backgroundPosition: 'left top'
-              }}
-            />
+    <div className={styles.root}>
+      <div className={styles.card}>
+        <div className={styles.banner}>
+          <div className={styles.bannerOverlay}>
+            <div className={styles.bannerPattern} />
           </div>
         </div>
 
-        <div className="relative -mt-10 px-8">
-          <div className="flex items-end justify-between mb-4">
-            <div className="relative">
-              <div 
-                className="w-[72px] h-[72px] flex items-center justify-center overflow-hidden rounded-[20px] bg-gradient-to-r from-[#2654C0] to-[#34347C] text-white font-bold text-[22px] leading-[33px] tracking-[-0.0114em]"
-                style={{ boxShadow: '0px 0px 0px 4px rgba(255, 255, 255, 1)' }}
-              >
+        <div className={styles.avatarSection}>
+          <div className={styles.avatarRow}>
+            <div className={styles.avatarWrap}>
+              <div className={styles.avatar}>
                 {avatarUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={avatarUrl} alt="Аватар" className="h-full w-full object-cover" />
+                  <img src={avatarUrl} alt="Аватар" className={styles.avatarImg} />
                 ) : (
                   initials
                 )}
               </div>
-              <div className="absolute bottom-0 right-0 w-5 h-5 bg-[#00BC7D] rounded-full flex items-center justify-center">
-                <div className="w-4 h-4 text-white">
+              <div className={styles.avatarBadge}>
+                <div className={styles.avatarBadgeIcon}>
                   <svg viewBox="0 0 16 16" fill="currentColor">
                     <path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z"/>
                   </svg>
@@ -117,13 +134,11 @@ export function ProfileSidebar({ data = null, user = null, documentsComplete = f
             </div>
           </div>
 
-          <div className="flex items-center justify-between pb-8">
-            <div className="flex-1">
-              <h3 className="text-[#12161B] font-semibold text-[20px] leading-[24px] tracking-[-0.01em] mb-1">
-                {displayName}
-              </h3>
-              <div className="flex items-center gap-2 text-[rgba(18,22,27,0.5)] text-[14px] leading-[20px]">
-                <div className="w-4 h-4">
+          <div className={styles.nameRow}>
+            <div className={styles.nameCol}>
+              <h3 className={styles.name}>{displayName}</h3>
+              <div className={styles.clientSince}>
+                <div className={styles.clientSinceIcon}>
                   <svg viewBox="0 0 16 16" fill="currentColor">
                     <path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z"/>
                   </svg>
@@ -134,9 +149,9 @@ export function ProfileSidebar({ data = null, user = null, documentsComplete = f
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-2 px-4 py-[7px] bg-gradient-to-r from-[#34347C] to-[#34537C] border border-[rgba(255,255,255,0.15)] rounded-[12px] text-white text-[14px] leading-[20px] cursor-pointer hover:opacity-90 active:opacity-80 transition-opacity"
+              className={styles.editPhotoBtn}
             >
-              <div className="w-4 h-4">
+              <div className={styles.editPhotoIcon}>
                 <svg viewBox="0 0 16 16" fill="currentColor">
                   <path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/>
                   <path fillRule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5v11z"/>
@@ -149,108 +164,93 @@ export function ProfileSidebar({ data = null, user = null, documentsComplete = f
               type="file"
               accept="image/*"
               onChange={handleAvatarSelect}
-              className="hidden"
+              className={styles.hiddenInput}
             />
           </div>
         </div>
 
-        <div className={`p-8 ${showCompletion ? 'pt-12' : 'pt-6'}`}>
-        <div className="flex flex-col gap-8">
-          {showCompletion && (
-            <>
-          <div className="flex flex-col gap-2">
-            <h4 className="text-[#12161B] font-semibold text-[16px] leading-[20px]">
-              Готовность профиля
-            </h4>
-            <p className="text-[rgba(18,22,27,0.5)] text-[12px] leading-[17px] font-normal">
-              Завершите настройку для доступа ко всем функциям
-            </p>
+        <div className={`${styles.body} ${showCompletion ? styles.bodyWithCompletion : ''}`}>
+          <div className={styles.bodyInner}>
+            {showCompletion && (
+              <>
+                <div className={styles.completionHeader}>
+                  <h4 className={styles.completionTitle}>Готовность профиля</h4>
+                  <p className={styles.completionSubtitle}>
+                    Завершите настройку для доступа ко всем функциям
+                  </p>
 
-            <div className="flex items-center gap-6 mt-2">
-              <div 
-                className="text-[32px] leading-[35px] font-semibold tracking-[-0.02em]"
-                style={{ 
-                  background: 'radial-gradient(circle at 50% 0%, rgba(52, 52, 124, 1) 0%, rgba(45, 45, 108, 1) 100%)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent'
-                }}
-              >
-                {completionPercent}%
-              </div>
-              <div className="flex-1">
-                <div className="w-full h-2 bg-[rgba(18,22,27,0.05)] rounded-full">
-                  <div 
-                    className="h-2 bg-gradient-to-r from-[#2654C0] to-[#34347C] rounded-full"
-                    style={{ 
-                      width: `${completionPercent}%`,
-                      boxShadow: '0px 0px 12px 0px rgba(92, 122, 240, 0.4)'
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-[10px]">
-            {completionItems.map((item, index) => (
-              <div
-                key={index}
-                className={`flex items-center gap-3 px-4 py-[10px] border rounded-[16px] ${
-                  item.completed
-                    ? 'bg-[rgba(22,163,74,0.04)] border-[rgba(22,163,74,0.12)]'
-                    : 'bg-[#F9F9F9] border-[rgba(18,22,27,0.1)]'
-                }`}
-              >
-                <div
-                  className={`w-6 h-6 rounded-full flex items-center justify-center ${
-                    item.completed
-                      ? 'bg-[#16A34A] text-white'
-                      : 'bg-[rgba(18,22,27,0.05)] text-[rgba(18,22,27,0.6)]'
-                  }`}
-                >
-                  {item.completed ? (
-                    <div className="w-4 h-4">
-                      <svg viewBox="0 0 16 16" fill="currentColor">
-                        <path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z"/>
-                      </svg>
+                  <div className={styles.completionProgressRow}>
+                    <div className={styles.completionPercent}>{completionPercent}%</div>
+                    <div className={styles.completionBarWrap}>
+                      <div className={styles.completionBarTrack}>
+                        <div
+                          className={styles.completionBarFill}
+                          style={{ width: `${completionPercent}%` }}
+                        />
+                      </div>
                     </div>
-                  ) : (
-                    <span className="text-[12px] font-bold leading-[15px]">{item.step}</span>
-                  )}
-                </div>
-                
-                <div className="flex-1">
-                  <div className="text-[#12161B] font-semibold text-[14px] leading-[20px]">
-                    {item.title}
-                  </div>
-                  <div className="text-[rgba(18,22,27,0.5)] text-[12px] leading-[17px] font-normal">
-                    {item.description}
                   </div>
                 </div>
 
-                {!item.completed && (
-                  <div className="flex items-center justify-center">
-                    <button className="px-3 py-[7px] bg-gradient-to-r from-[rgba(153,153,202,0.15)] to-[rgba(165,165,221,0.15)] rounded-full text-[#34347C] font-medium text-[12px] leading-[17px] text-center cursor-pointer hover:opacity-80 active:opacity-60 transition-opacity">
-                      Добавить
-                    </button>
-                  </div>
-                )}
-              </div>
-            ))}
+                <div className={styles.itemsList}>
+                  {completionItems.map((item, index) => (
+                    <div
+                      key={index}
+                      className={`${styles.item} ${item.completed ? styles.itemCompleted : ''}`}
+                    >
+                      <div
+                        className={`${styles.itemBadge} ${item.completed ? styles.itemBadgeCompleted : ''}`}
+                      >
+                        {item.completed ? (
+                          <div className={styles.itemBadgeIcon}>
+                            <svg viewBox="0 0 16 16" fill="currentColor">
+                              <path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z"/>
+                            </svg>
+                          </div>
+                        ) : (
+                          <span className={styles.itemBadgeStep}>{item.step}</span>
+                        )}
+                      </div>
+
+                      <div className={styles.itemBody}>
+                        <div className={styles.itemTitle}>{item.title}</div>
+                        <div className={styles.itemDescription}>{item.description}</div>
+                      </div>
+
+                      {!item.completed && (
+                        <div className={styles.itemAction}>
+                          <button
+                            type="button"
+                            className={styles.itemAddBtn}
+                            onClick={() => handleCompletionAction(item.key)}
+                          >
+                            Добавить
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            <button
+              type="button"
+              onClick={() => signOut({ callbackUrl: '/' })}
+              className={styles.signOutBtn}
+            >
+              Выйти из аккаунта
+            </button>
           </div>
-            </>
-          )}
-
-          <button
-            type="button"
-            onClick={() => signOut({ callbackUrl: '/' })}
-            className="w-full px-4 py-[13px] rounded-[24px] text-[#FB2C36] font-medium text-[14px] leading-[18px] text-center cursor-pointer hover:bg-red-50 active:bg-red-100 transition-colors"
-          >
-            Выйти из аккаунта
-          </button>
         </div>
       </div>
-      </div>
+
+      <ChangePhoneWindow
+        isOpen={changePhoneOpen}
+        currentPhone={phone}
+        onClose={() => setChangePhoneOpen(false)}
+        onChanged={handlePhoneChanged}
+      />
     </div>
   )
 }

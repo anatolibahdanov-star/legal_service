@@ -23,6 +23,7 @@ import {
 } from './storage';
 
 const LOGO_PUBLIC_PATH = 'public/site/pdflogo.png';
+const FONT_PUBLIC_PATH = 'public/fonts/Helvetica/helvetica_regular.otf';
 
 // Coalesce concurrent generation requests for the same question into a single
 // Quarkdown invocation — multiple users hitting "preview"+"download" at once
@@ -118,8 +119,10 @@ async function generateAndStore(args: GenerateArgs): Promise<PdfResult> {
 
   const logoPath = path.join(process.cwd(), LOGO_PUBLIC_PATH);
   await assertFileExists(logoPath);
+  const fontPath = path.join(process.cwd(), FONT_PUBLIC_PATH);
+  await assertFileExists(fontPath);
 
-  const source = buildQuarkdownSource({ root, thread, logoPath });
+  const source = buildQuarkdownSource({ root, thread, logoPath, fontPath });
   const contentHash = sha256(source);
   const storageKey = buildStorageKey(questionId, uuid);
 
@@ -296,8 +299,10 @@ export async function generateDraftPdf(
 
   const logoPath = path.join(process.cwd(), LOGO_PUBLIC_PATH);
   await assertFileExists(logoPath);
+  const fontPath = path.join(process.cwd(), FONT_PUBLIC_PATH);
+  await assertFileExists(fontPath);
 
-  const source = buildQuarkdownSource({ root, thread: patchedThread, logoPath });
+  const source = buildQuarkdownSource({ root, thread: patchedThread, logoPath, fontPath });
   const contentHash = sha256(source);
   const storageKey = buildDraftStorageKey(questionId);
 

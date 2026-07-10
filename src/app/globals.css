@@ -2,7 +2,7 @@
 @import "tw-animate-css";
 
 :root {
-  --font-sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-sans: Helvetica, "Helvetica Neue", Arial, sans-serif;
   /* fixed header: top 16px + bar ~68px + gap 16px */
   --v2-header-offset: 100px;
 }

@@ -1,0 +1,502 @@
+.root {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 48px;
+}
+
+.topRow {
+  display: flex;
+  align-items: stretch;
+  gap: 48px;
+}
+
+/* ─── Balance card ──────────────────────────────────────────────────────── */
+.balanceCard {
+  position: relative;
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  padding: 32px;
+  background: #fff;
+  border: 1px solid rgba(18, 22, 27, 0.05);
+  border-radius: 28px;
+  box-shadow:
+    0 3px 36px 0 rgba(0, 0, 0, 0.04),
+    0 -102px 250px 0 rgba(0, 0, 0, 0.07);
+}
+
+.balanceInner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 40px;
+}
+
+.balanceTop {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.balanceStatus {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.statusDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #00bc7d;
+}
+
+.statusLabel {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  color: rgba(18, 22, 27, 0.5);
+}
+
+.balanceAmountWrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.balanceAmountRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.balanceAmount {
+  font-size: 64px;
+  font-weight: 700;
+  line-height: 70px;
+  color: #12161b;
+}
+
+.balanceCurrency {
+  padding-bottom: 6px;
+  font-size: 32px;
+  font-weight: 600;
+  line-height: 35px;
+  letter-spacing: -0.02em;
+  color: rgba(18, 22, 27, 0.5);
+}
+
+.balanceHint {
+  font-size: 12px;
+  line-height: 17px;
+  color: rgba(18, 22, 27, 0.5);
+}
+
+.topupBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  height: 56px;
+  padding: 0 28px 0 22px;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 21px;
+  background: radial-gradient(circle at 50% 0%, #34347c 0%, #2d2d6c 100%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 35px;
+  box-shadow: 0 4px 20px 0 rgba(47, 47, 113, 0.15);
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.topupBtn:hover {
+  opacity: 0.9;
+}
+
+.topupBtn:active {
+  opacity: 0.8;
+}
+
+.topupBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.topupIcon {
+  width: 24px;
+  height: 24px;
+}
+
+.balanceBlur {
+  position: absolute;
+  left: -48px;
+  top: 101px;
+  width: 256px;
+  height: 256px;
+  border-radius: 999px;
+  background: rgba(10, 2, 255, 0.06);
+  filter: blur(64px);
+}
+
+/* ─── History preview card ──────────────────────────────────────────────── */
+.historyCard {
+  display: flex;
+  width: 600px;
+  flex-shrink: 0;
+  flex-direction: column;
+  gap: 24px;
+  padding: 28px 32px;
+  background: #fff;
+  border: 1px solid rgba(18, 22, 27, 0.05);
+  border-radius: 28px;
+  box-shadow:
+    0 3px 36px 0 rgba(0, 0, 0, 0.04),
+    0 -102px 250px 0 rgba(0, 0, 0, 0.07);
+}
+
+.historyHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.historyTitleWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.historyTitle {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 24px;
+  letter-spacing: -0.01em;
+  color: #12161b;
+}
+
+.historyMonth {
+  font-size: 12px;
+  line-height: 17px;
+  color: rgba(18, 22, 27, 0.5);
+}
+
+.historyToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #34347c;
+  font-size: 14px;
+  font-weight: 500;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.historyToggle:hover {
+  opacity: 0.8;
+}
+
+.historyToggle:active {
+  opacity: 0.6;
+}
+
+.toggleIcon {
+  width: 16px;
+  height: 16px;
+}
+
+.historyList {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.historyEmpty {
+  padding-block: 24px;
+  text-align: center;
+  font-size: 14px;
+  color: rgba(18, 22, 27, 0.5);
+}
+
+.opRow {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-block: 12px;
+  border-bottom: 1px solid rgba(18, 22, 27, 0.05);
+}
+
+.opRow:last-child {
+  border-bottom: 0;
+}
+
+.opIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+}
+
+.opIconCredit {
+  background: rgba(22, 163, 74, 0.12);
+  color: #16a34a;
+}
+
+.opIconDebit {
+  background: rgba(18, 22, 27, 0.04);
+  color: rgba(18, 22, 27, 0.6);
+}
+
+.opIconSvg {
+  width: 20px;
+  height: 20px;
+}
+
+.opBody {
+  min-width: 0;
+  flex: 1;
+}
+
+.opTitle {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 20px;
+  color: #12161b;
+}
+
+.opSubtitle {
+  display: flex;
+  max-width: 100%;
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 17px;
+  color: rgba(18, 22, 27, 0.5);
+}
+
+.subtitleLink {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #34347c;
+  transition: opacity 0.15s;
+}
+
+.subtitleLink:hover {
+  opacity: 0.8;
+}
+
+.subtitleText {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.opRight {
+  text-align: right;
+}
+
+.opValue {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 20px;
+  color: #12161b;
+}
+
+.opValueCredit {
+  color: #16a34a;
+}
+
+.opDate {
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 17px;
+  color: rgba(18, 22, 27, 0.35);
+}
+
+/* ─── Stat cards ────────────────────────────────────────────────────────── */
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 48px;
+}
+
+.statCard {
+  padding: 24px 32px;
+  background: #fff;
+  border: 1px solid rgba(18, 22, 27, 0.05);
+  border-radius: 28px;
+  box-shadow:
+    0 3px 36px 0 rgba(0, 0, 0, 0.04),
+    0 -102px 250px 0 rgba(0, 0, 0, 0.07);
+}
+
+.statLabel {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 17px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: rgba(18, 22, 27, 0.4);
+}
+
+.statValue {
+  margin-top: 12px;
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 35px;
+  color: #12161b;
+}
+
+.statNumber {
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 35px;
+  color: #12161b;
+}
+
+.statRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.statBadge {
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: 4px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #16a34a;
+  background: rgba(22, 163, 74, 0.12);
+  border-radius: 999px;
+}
+
+/* ─── Topup order block ─────────────────────────────────────────────────── */
+.orderCard {
+  padding: 32px;
+  background: #fff;
+  border: 1px solid rgba(18, 22, 27, 0.05);
+  border-radius: 28px;
+  box-shadow:
+    0 3px 36px 0 rgba(0, 0, 0, 0.04),
+    0 -102px 250px 0 rgba(0, 0, 0, 0.07);
+}
+
+.orderRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 32px;
+}
+
+.orderTitle {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 24px;
+  letter-spacing: -0.01em;
+  color: #12161b;
+}
+
+.orderSubtitle {
+  margin-top: 8px;
+  font-size: 14px;
+  line-height: 20px;
+  color: rgba(18, 22, 27, 0.55);
+}
+
+.orderPayBtn {
+  margin-top: 24px;
+  padding: 12px 24px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  background: #12161b;
+  border: none;
+  border-radius: 18px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.orderPayBtn:hover {
+  opacity: 0.9;
+}
+
+.orderPayBtn:active {
+  opacity: 0.8;
+}
+
+.qrWrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: #fff;
+  border-radius: 24px;
+}
+
+/* ─── Tablet / Mobile ───────────────────────────────────────────────────── */
+@media (max-width: 1023px) {
+  .topRow {
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .historyCard {
+    width: 100%;
+  }
+}
+
+@media (max-width: 767px) {
+  .root {
+    gap: 24px;
+  }
+
+  .balanceCard {
+    padding: 24px;
+  }
+
+  .balanceAmount {
+    font-size: 48px;
+    line-height: 52px;
+  }
+
+  .balanceCurrency {
+    font-size: 24px;
+    line-height: 28px;
+  }
+
+  .historyCard {
+    padding: 24px 20px;
+  }
+
+  .statsGrid {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .statCard {
+    padding: 20px;
+  }
+
+  .orderCard {
+    padding: 24px;
+  }
+
+  .orderRow {
+    flex-direction: column;
+    gap: 24px;
+  }
+}

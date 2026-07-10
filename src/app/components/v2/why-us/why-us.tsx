@@ -1,71 +1,168 @@
 'use client'
 
+import { useCallback, useEffect, useState } from 'react'
 import Image from 'next/image'
+import useEmblaCarousel from 'embla-carousel-react'
+import styles from './why-us.module.css'
 import { CARDS } from './why-us.data'
 
-export function WhyUs() {
+function WhyUsMobileCarousel() {
+  const [emblaRef, emblaApi] = useEmblaCarousel({
+    align: 'start',
+    containScroll: 'trimSnaps',
+    dragFree: false,
+  })
+  const [selectedIndex, setSelectedIndex] = useState(0)
+
+  const onSelect = useCallback(() => {
+    if (!emblaApi) return
+    setSelectedIndex(emblaApi.selectedScrollSnap())
+  }, [emblaApi])
+
+  useEffect(() => {
+    if (!emblaApi) return
+    onSelect()
+    emblaApi.on('select', onSelect)
+    emblaApi.on('reInit', onSelect)
+    return () => {
+      emblaApi.off('select', onSelect)
+      emblaApi.off('reInit', onSelect)
+    }
+  }, [emblaApi, onSelect])
+
+  const scrollTo = useCallback(
+    (index: number) => {
+      emblaApi?.scrollTo(index)
+    },
+    [emblaApi],
+  )
+
   return (
-    <section
-      id="why-us"
-      className="w-full flex flex-col gap-14"
-      style={{ background: '#F9F9F9', padding: '46px 0' }}
-    >
-      <div className="max-w-[1440px] mx-auto px-6 md:px-8 lg:px-[100px]">
-        <div className="flex items-start gap-4">
-        <div className="flex flex-col gap-4 flex-1">
-          <h2 className="text-[32px] leading-[38px] md:text-[48px] md:leading-[56px] font-semibold tracking-tight text-[#12161B]">
-            Почему мы?
-          </h2>
-          <p className="text-[18px] leading-[24px] md:text-[22px] md:leading-[28px] tracking-tight text-[#12161B] mb-8 md:mb-[56px]">
-          Опытная команда штатных юристов онлайн 24/7 . Вы получите полноценную юридическую консультацию онлайн без звонков и визитов в офис.  Ответственность за результат застрахована
-          </p>
+    <>
+      <div className={styles.emblaViewport} ref={emblaRef}>
+        <div className={styles.emblaContainer}>
+          {CARDS.map((card) => (
+            <div key={card.title} className={styles.emblaSlide}>
+              <div
+                className={styles.mobileCard}
+                style={
+                  {
+                    '--card-bg': card.bg,
+                    '--card-icon-bg': card.iconBg,
+                    '--card-text': card.textColor,
+                  } as React.CSSProperties
+                }
+              >
+                <div className={styles.mobileCardIcon}>
+                  <Image src={card.icon} alt="" width={48} height={48} />
+                </div>
+                <div className={styles.mobileCardBody}>
+                  <p className={styles.mobileCardTitle}>{card.title}</p>
+                  <p className={styles.mobileCardDesc}>{card.desc}</p>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className={styles.dots} role="tablist" aria-label="Карточки">
         {CARDS.map((card, i) => (
-          <div
-            key={i}
-            className="flex flex-col gap-3"
-            style={{
-              padding: 12,
-              borderRadius: 21.32,
-              background: card.bg,
-              border: '0.38px solid rgba(18,22,27,0.1)',
-              boxShadow: '0px 2px 6px 0px rgba(30,47,72,0.06)',
-              minHeight: 350,
-            }}
-          >
-            <div
-              className="flex items-center justify-center shrink-0"
-              style={{
-                width: 80,
-                height: 80,
-                borderRadius: 10,
-                background: card.iconBg,
-                border: '1px solid rgba(255,255,255,0.15)',
-              }}
-            >
-              <Image src={card.icon} alt={card.title} width={48} height={48} />
-            </div>
+          <button
+            key={card.title}
+            type="button"
+            role="tab"
+            aria-selected={i === selectedIndex}
+            aria-label={`Слайд ${i + 1}`}
+            className={`${styles.dot} ${i === selectedIndex ? styles.dotActive : ''}`}
+            onClick={() => scrollTo(i)}
+          />
+        ))}
+      </div>
+    </>
+  )
+}
 
-            <div className="flex flex-col gap-4 flex-1">
-              <p
-                className="text-[22px] font-semibold leading-7 tracking-tight"
-                style={{ color: card.textColor }}
-              >
-                {card.title}
-              </p>
-              <p
-                className="text-[16px] leading-[22px] tracking-tight flex-1"
-                style={{ color: card.textColor }}
-              >
-                {card.desc}
+export function WhyUs() {
+  return (
+    <section id="why-us" className={styles.whyUs}>
+      <div className={styles.desktopBlock}>
+        <div className={styles.whyUsContainer}>
+          <div className={styles.whyUsHeaderRow}>
+            <div className={styles.whyUsHeader}>
+              <h2 className={styles.sectionTitleLg}>Почему мы?</h2>
+              <p className={`${styles.sectionSubtitleLg} ${styles.whyUsIntro}`}>
+                Опытная команда штатных юристов онлайн 24/7 . Вы получите полноценную
+                юридическую консультацию онлайн без звонков и визитов в офис.
+                Ответственность за результат застрахована
               </p>
             </div>
           </div>
-        ))}
+
+          <div className={styles.whyUsGrid}>
+            {CARDS.map((card, i) => (
+              <div
+                key={i}
+                className={styles.whyUsCard}
+                style={
+                  {
+                    '--card-bg': card.bg,
+                    '--card-icon-bg': card.iconBg,
+                    '--card-text': card.textColor,
+                  } as React.CSSProperties
+                }
+              >
+                <div className={styles.whyUsCardIcon}>
+                  <Image src={card.icon} alt={card.title} width={48} height={48} />
+                </div>
+
+                <div className={styles.whyUsCardBody}>
+                  <p className={styles.whyUsCardTitle}>{card.title}</p>
+                  <p className={styles.whyUsCardDesc}>{card.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
+
+      <div className={styles.mobileBlock}>
+        <div className={styles.mobileHeader}>
+          <h2 className={styles.mobileTitle}>Почему мы?</h2>
+          <p className={styles.mobileSubtitle}>
+            Опытная команда штатных юристов онлайн 24/7 . Вы получите полноценную
+            юридическую консультацию онлайн без звонков и визитов в офис.
+            Ответственность за результат застрахована
+          </p>
+        </div>
+
+        <div className={styles.mobileCarouselWrap}>
+          <WhyUsMobileCarousel />
+        </div>
+
+        <div className={styles.tabletGrid}>
+          {CARDS.map((card) => (
+            <div
+              key={card.title}
+              className={styles.mobileCard}
+              style={
+                {
+                  '--card-bg': card.bg,
+                  '--card-icon-bg': card.iconBg,
+                  '--card-text': card.textColor,
+                } as React.CSSProperties
+              }
+            >
+              <div className={styles.mobileCardIcon}>
+                <Image src={card.icon} alt="" width={48} height={48} />
+              </div>
+              <div className={styles.mobileCardBody}>
+                <p className={styles.mobileCardTitle}>{card.title}</p>
+                <p className={styles.mobileCardDesc}>{card.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   )

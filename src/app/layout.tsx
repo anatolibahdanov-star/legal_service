@@ -1,4 +1,5 @@
 import "./globals.css";
+import "./fonts.css";
 import '@/src/styles/index.css';
 import "./enki.css";
 import { AppShell } from "@/src/app/components/AppShell";

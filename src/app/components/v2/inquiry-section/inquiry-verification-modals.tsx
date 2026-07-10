@@ -2,6 +2,7 @@
 
 import { X } from 'lucide-react'
 import OtpCodeStep, { type OtpStepResult } from '@/src/app/components/forms/OtpCodeStep'
+import styles from './inquiry-verification-modals.module.css'
 
 type ModalShellProps = {
   isOpen: boolean
@@ -14,12 +15,9 @@ function ModalShell({ isOpen, onClose, title, children }: ModalShellProps) {
   if (!isOpen) return null
 
   return (
-    <div
-      className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-[200]"
-      onClick={onClose}
-    >
+    <div className={styles.modalOverlay} onClick={onClose}>
       <div
-        className="bg-white rounded-[24px] p-8 w-full max-w-[520px] relative max-h-[92vh] overflow-y-auto shadow-2xl"
+        className={styles.modalBox}
         onClick={e => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -28,16 +26,13 @@ function ModalShell({ isOpen, onClose, title, children }: ModalShellProps) {
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-4 right-4 w-9 h-9 rounded-full flex items-center justify-center text-[rgba(18,22,27,0.6)] hover:text-[#12161B] hover:bg-[#F7F6F9] transition-colors"
+          className={styles.modalClose}
           aria-label="Закрыть"
         >
-          <X className="w-5 h-5" />
+          <X className={styles.icon20} />
         </button>
 
-        <h2
-          id="inquiry-modal-title"
-          className="text-[26px] font-semibold leading-8 tracking-tight text-[#12161B] mb-2 pr-8"
-        >
+        <h2 id="inquiry-modal-title" className={styles.modalTitle}>
           {title}
         </h2>
 
@@ -65,12 +60,9 @@ export function InquiryOtpModal({
   if (!isOpen) return null
 
   return (
-    <div
-      className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-[200]"
-      onClick={onClose}
-    >
+    <div className={styles.modalOverlay} onClick={onClose}>
       <div
-        className="bg-white rounded-[24px] p-8 w-full max-w-[520px] relative max-h-[92vh] overflow-y-auto shadow-2xl"
+        className={styles.modalBox}
         onClick={e => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -79,10 +71,10 @@ export function InquiryOtpModal({
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-4 right-4 w-9 h-9 rounded-full flex items-center justify-center text-[rgba(18,22,27,0.6)] hover:text-[#12161B] hover:bg-[#F7F6F9] transition-colors"
+          className={styles.modalClose}
           aria-label="Закрыть"
         >
-          <X className="w-5 h-5" />
+          <X className={styles.icon20} />
         </button>
 
         <OtpCodeStep
@@ -105,19 +97,13 @@ type InquiryEmailModalProps = {
 export function InquiryEmailModal({ isOpen, email, onConfirm }: InquiryEmailModalProps) {
   return (
     <ModalShell isOpen={isOpen} onClose={onConfirm} title="Проверьте почту">
-      <p className="text-[14px] leading-[22px] text-[rgba(18,22,27,0.6)] mb-6">
+      <p className={styles.modalText}>
         Мы отправили заявку и письмо на{' '}
-        <span className="font-semibold text-[#12161B]">{email}</span>.
-        {' '}Перейдите по ссылке в письме, чтобы подтвердить email и получить ответ в личном кабинете.
+        <span className={styles.modalTextStrong}>{email}</span>.
+        {' '}В письме — ваше имя, временный пароль и ссылка для подтверждения email.
+        После подтверждения вы сможете войти в личный кабинет и получить ответ юриста.
       </p>
-      <button
-        type="button"
-        onClick={onConfirm}
-        className="w-full h-[52px] rounded-[35px] text-[16px] font-medium text-white transition-opacity hover:opacity-90"
-        style={{
-          background: 'radial-gradient(circle at 50% 0%, #34347C 0%, #2D2D6C 100%)',
-        }}
-      >
+      <button type="button" onClick={onConfirm} className={styles.modalConfirmBtn}>
         Понятно
       </button>
     </ModalShell>

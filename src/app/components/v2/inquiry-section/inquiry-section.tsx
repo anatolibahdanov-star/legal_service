@@ -1,10 +1,13 @@
 'use client'
 
+import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'motion/react'
+import { Clock, FileText, Globe } from 'lucide-react'
 
 import finalCubeImg from '@/public/design/v2-main-page/progress-step4.png'
+import inquiryCubeImg from '@/public/design/v2-main-page/inquiry-cube-mobile.png'
 
 import {
   STEPS,
@@ -19,28 +22,35 @@ import {
 } from "@/src/app/components/forms/validation/request"
 import { formatPhoneInput } from "@/src/libs/phoneMask"
 import { FormDataObjectT } from "@/src/interfaces/form"
-import { LEGAL_DOCUMENTS } from "@/src/app/components/legalDocuments"
+import {
+  LegalConsents,
+  allConsentsAccepted,
+  emptyLegalConsents,
+  type LegalConsentsValue,
+} from '@/src/app/components/LegalConsents'
 import { YandexSmartCaptcha } from "@/src/app/components/forms/YandexSmartCaptcha"
 import { useInquirySection } from './inquiry-section.hook'
 import { useFileUpload } from './file-upload.hook'
 import { InquiryEmailModal, InquiryOtpModal } from './inquiry-verification-modals'
 import RequestStepProfile from '@/src/app/components/forms/RequestStepProfile'
 import RequestStepPayment from '@/src/app/components/forms/RequestStepPayment'
+import type { SuccessVariant } from '@/src/app/components/forms/RequestStepSuccess'
+import styles from './inquiry-section.module.css'
 
 // ─── shared sub-components ────────────────────────────────────────────────────
+
+const PILLS = [
+  { icon: FileText, label: '5 шагов' },
+  { icon: Clock, label: '2 минуты' },
+  { icon: Globe, label: 'Онлайн' },
+]
 
 const VioletBtn = ({ label, onClick, disabled }: { label: string; onClick: () => void; disabled?: boolean }) => (
   <button
     type="button"
     onClick={onClick}
     disabled={disabled}
-    className="flex items-center justify-center text-white text-[18px] font-medium leading-[23px] tracking-tight transition-all duration-150 hover:opacity-85 hover:shadow-lg hover:scale-105 active:scale-95 active:opacity-70 active:shadow-md flex-1 lg:flex-none lg:w-[348px] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-none"
-    style={{
-      height: 56,
-      background: 'radial-gradient(circle at 50% 0%, #34347C 0%, #2D2D6C 100%)',
-      border: '0.5px solid rgba(255,255,255,0.5)',
-      borderRadius: 35,
-    }}
+    className={styles.violetBtn}
   >
     {label}
   </button>
@@ -77,8 +87,8 @@ function Step2Panel({
   } = useFileUpload(files, onFilesChange)
 
   return (
-    <div className="flex flex-col gap-6">
-      <h3 className="text-[20px] font-semibold leading-6 tracking-tight text-[#12161B]">
+    <div className={styles.colGap6}>
+      <h3 className={styles.stepHeading}>
         Кратко опишите суть проблемы
       </h3>
       <textarea
@@ -86,28 +96,19 @@ function Step2Panel({
         onChange={e => onChange(e.target.value)}
         onBlur={onBlur}
         placeholder="Например: трудовой спор, вопрос по наследству, жалоба на действия организации"
-        className={`w-full resize-none text-[14px] leading-5 placeholder:text-[rgba(18,22,27,0.35)] outline-none transition-all duration-200 focus:border-[#34347C] focus:bg-white ${
-          touched && questionError ? 'text-red-500 border-red-400' : 'text-[#12161B]'
-        }`}
-        style={{ 
-          height: 110, 
-          padding: '12px 16px', 
-          background: '#F7F6F9', 
-          border: touched && questionError ? '1.5px solid rgba(239, 68, 68, 0.5)' : '1.5px solid rgba(18,22,27,0.1)', 
-          borderRadius: 20 
-        }}
+        className={`${styles.textarea} ${touched && questionError ? styles.textareaError : ''}`}
         maxLength={QUESTION_MAX_LENGTH}
       />
       
       {touched && questionError && (
-        <div className="text-[11px] mt-1 px-1">
-          <span className="text-red-400">
+        <div className={styles.fieldErrorWrap}>
+          <span className={styles.errorText}>
             {questionError}
           </span>
         </div>
       )}
       
-      {/* <div
+      <div
         className="flex flex-col gap-3 cursor-pointer transition-all duration-200 hover:border-[#34347C]/60 hover:bg-[#f4f4ff] active:scale-[0.98]"
         style={{ padding: 16, background: '#F9F9F9', border: '1.5px dashed rgba(52,52,124,0.3)', borderRadius: 20 }}
         onClick={handleFileClick}
@@ -183,7 +184,7 @@ function Step2Panel({
           onChange={handleFileChange}
           className="hidden"
         />
-      </div> */}
+      </div>
     </div>
   )
 }
@@ -326,8 +327,13 @@ function ChannelIcon({ id, active }: { id: ContactChannel; active: boolean }) {
 function Step5Panel({ 
   channel, 
   onChannelChange, 
+  nameValue,
+  onNameChange,
   inputValue, 
   onInputChange,
+  consents,
+  onConsentsChange,
+  consentErrors,
   errors,
   captchaToken,
   onCaptchaChange,
@@ -335,8 +341,13 @@ function Step5Panel({
 }: {
   channel: ContactChannel
   onChannelChange: (c: ContactChannel) => void
+  nameValue: string
+  onNameChange: (v: string) => void
   inputValue: string
   onInputChange: (v: string) => void
+  consents: LegalConsentsValue
+  onConsentsChange: (v: LegalConsentsValue) => void
+  consentErrors: Partial<Record<keyof LegalConsentsValue, string>>
   errors: FormDataObjectT
   captchaToken: string | null
   onCaptchaChange: (token: string | null) => void
@@ -345,29 +356,26 @@ function Step5Panel({
   const current = CHANNEL_OPTIONS.find(c => c.id === channel)!
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-1">
-        <h3 className="text-[20px] font-semibold leading-6 tracking-tight text-[#12161B]">
+    <div className={styles.colGap6}>
+      <div className={styles.colGap1}>
+        <h3 className={styles.stepHeading}>
           Введите контактные данные
         </h3>
-        <p className="text-[14px] leading-5 text-[rgba(18,22,27,0.6)]">
+        <p className={styles.stepSubtext}>
           {channel === 'email'
-            ? 'Введите email, чтобы получить первую бесплатную консультацию'
+            ? 'Введите имя и email, чтобы получить первую бесплатную консультацию'
             : 'Введите номер телефона, чтобы получить первую бесплатную консультацию'}
         </p>
       </div>
 
-      <div
-        className="flex items-center gap-1 p-1"
-        style={{ background: '#F7F6F9', border: '1px solid rgba(18,22,27,0.05)', borderRadius: 999, width: 'max-content' }}
-      >
+      <div className={styles.channelToggle}>
         {CHANNEL_OPTIONS.map(opt => {
           const isActive = opt.id === channel
           return (
             <button
               key={opt.id}
               onClick={() => onChannelChange(opt.id)}
-              className="flex items-center justify-center gap-1.5 px-4 h-10 rounded-full text-[14px] font-medium leading-5 tracking-tight transition-all duration-150 hover:opacity-85 active:scale-95 active:opacity-70 cursor-pointer whitespace-nowrap"
+              className={styles.channelBtn}
               style={
                 isActive
                   ? { 
@@ -389,8 +397,24 @@ function Step5Panel({
         })}
       </div>
 
-      <div className="flex flex-col gap-1.5">
-        <label className="text-[14px] font-semibold leading-5 text-[rgba(18,22,27,0.6)]">
+      {channel === 'email' && (
+        <div className={styles.colGap1_5}>
+          <label className={styles.fieldLabel}>Имя</label>
+          <input
+            type="text"
+            value={nameValue}
+            onChange={e => onNameChange(e.target.value)}
+            placeholder="Как к вам обращаться"
+            className={`${styles.textInput} ${errors.name ? styles.textInputError : ''}`}
+          />
+          {errors.name && (
+            <span className={styles.fieldErrorInline}>{errors.name}</span>
+          )}
+        </div>
+      )}
+
+      <div className={styles.colGap1_5}>
+        <label className={styles.fieldLabel}>
           {current.label}
         </label>
         <input
@@ -408,29 +432,20 @@ function Step5Panel({
           }}
           placeholder={current.placeholder}
           maxLength={channel === 'phone' ? 18 : undefined}
-          className={`w-full text-[14px] leading-5 placeholder:text-[rgba(18,22,27,0.35)] outline-none transition-all duration-200 focus:border-[#34347C] focus:bg-white hover:border-[rgba(18,22,27,0.25)] ${
-            errors.email && channel === 'email' ? 'border-red-400 text-red-500' : 'text-[#12161B]'
-          }`}
-          style={{ 
-            height: 48, 
-            padding: '12px 16px', 
-            background: '#F7F6F9', 
-            border: errors.email && channel === 'email' ? '1.5px solid rgba(239, 68, 68, 0.5)' : '1.5px solid rgba(18,22,27,0.1)', 
-            borderRadius: 16 
-          }}
+          className={`${styles.textInput} ${errors.email && channel === 'email' ? styles.textInputError : ''}`}
         />
         {errors.email && channel === 'email' && (
-          <span className="text-[12px] text-red-400 px-1">{errors.email}</span>
+          <span className={styles.fieldErrorInline}>{errors.email}</span>
         )}
       </div>
 
       {errors.common && (
-        <div className="p-3 bg-red-50 border border-red-200 rounded-xl">
-          <p className="text-[12px] text-red-600">{errors.common}</p>
+        <div className={styles.errorBox}>
+          <p className={styles.errorBoxText}>{errors.common}</p>
         </div>
       )}
 
-      <div className="flex flex-col gap-3">
+      <div className={styles.colGap3}>
         <YandexSmartCaptcha
           token={captchaToken}
           onChange={onCaptchaChange}
@@ -439,17 +454,13 @@ function Step5Panel({
           fullWidth
         />
 
-        <p className="text-[12px] leading-[17px] text-[rgba(18,22,27,0.5)]">
-          Нажимая «Оставить заявку», вы соглашаетесь с{' '}
-          <a
-            href={LEGAL_DOCUMENTS['privacy-policy'].src}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline hover:text-[#34347C] transition-colors"
-          >
-            политикой конфиденциальности
-          </a>
-        </p>
+        <LegalConsents
+          value={consents}
+          onChange={onConsentsChange}
+          tone="light"
+          errors={consentErrors}
+          idPrefix="inquiry-consent"
+        />
       </div>
     </div>
   )
@@ -457,47 +468,44 @@ function Step5Panel({
 
 // ─── final screen ─────────────────────────────────────────────────────────────
 
-function FinalScreen({ onAskAnother }: { onAskAnother: () => void }) {
+function FinalScreen({ onAskAnother, kind = 'free' }: { onAskAnother: () => void; kind?: SuccessVariant }) {
+  const isPayLater = kind === 'later'
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.97 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.5, ease: [0.32, 0, 0.67, 0] }}
-      className="relative flex flex-col items-center justify-center w-full min-h-[662px] gap-12 text-center overflow-hidden"
-      style={{
-        padding: '48px 32px',
-        background: 'linear-gradient(225deg, #F0F9F3 0%, #F7F6F9 100%)',
-        borderRadius: 24,
-      }}
+      className={styles.finalScreen}
     >
-      <div
-        aria-hidden
-        className="pointer-events-none absolute rounded-full"
-        style={{
-          width: 411,
-          height: 411,
-          left: -79,
-          top: 225,
-          background: 'rgba(76, 172, 97, 0.2)',
-          filter: 'blur(64px)',
-        }}
-      />
+      <div aria-hidden className={styles.finalBlur} />
 
-      <div className="relative flex flex-col items-center gap-[11px] max-w-md">
-        <h2 className="text-[28px] font-semibold leading-8 tracking-tight text-[#12161B]">
-          Мы работаем над вашим запросом
+      <div className={styles.finalInner}>
+        <h2 className={styles.title28}>
+          {isPayLater ? 'Ваш вопрос сохранён' : 'Мы работаем над вашим запросом'}
         </h2>
-        <p className="text-[16px] leading-[22px] tracking-tight text-[rgba(18,22,27,0.6)]">
-          Мы уже занимаемся вашим делом. Получите ответ в{' '}
-          <Link href="/profile/" className="underline text-[#34347C] hover:opacity-80 transition-opacity">
-            личном кабинете
-          </Link>
-          {' '}или дождитесь уведомления о готовности
+        <p className={styles.text16}>
+          {isPayLater ? (
+            <>
+              Вопрос сохранён, но пока не оплачен. Оплатите его в{' '}
+              <Link href="/profile/?tab=cases" className={styles.finalLink}>
+                личном кабинете
+              </Link>
+              {' '}в разделе «Ваши заявки», чтобы юрист приступил к работе
+            </>
+          ) : (
+            <>
+              Мы уже занимаемся вашим делом. Получите ответ в{' '}
+              <Link href="/profile/?tab=cases" className={styles.finalLink}>
+                личном кабинете
+              </Link>
+              {' '}или дождитесь уведомления о готовности
+            </>
+          )}
         </p>
         <button
           type="button"
           onClick={onAskAnother}
-          className="text-[16px] leading-[22px] tracking-tight text-[#34347C] underline underline-offset-2 transition-opacity hover:opacity-80 active:opacity-60 cursor-pointer"
+          className={styles.finalAskBtn}
         >
           Хотите задать ещё один вопрос?
         </button>
@@ -507,14 +515,13 @@ function FinalScreen({ onAskAnother }: { onAskAnother: () => void }) {
         initial={{ y: -40, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.6, delay: 0.2, type: 'spring', bounce: 0.4 }}
-        className="relative z-[1]"
-        style={{ width: 264, height: 248 }}
+        className={styles.finalImageWrap}
       >
         <Image
           src={finalCubeImg}
           alt="Запрос принят"
           fill
-          className="object-contain"
+          className={styles.containImage}
         />
       </motion.div>
     </motion.div>
@@ -525,8 +532,8 @@ function FinalScreen({ onAskAnother }: { onAskAnother: () => void }) {
 
 function StepIndicator({ current }: { current: number }) {
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center w-full">
+    <div className={styles.colGap4}>
+      <div className={styles.stepIndicatorRow}>
         {Array.from({ length: TOTAL_VISIBLE_STEPS }).map((_, i) => {
           const stepNum = i + 1
           const completed = stepNum < current
@@ -534,9 +541,9 @@ function StepIndicator({ current }: { current: number }) {
           const isLast = i === TOTAL_VISIBLE_STEPS - 1
           
           return (
-            <div key={stepNum} className={`flex items-center ${isLast ? '' : 'flex-1'}`}>
+            <div key={stepNum} className={`${styles.stepIndicatorItem} ${isLast ? '' : styles.flex1}`}>
               <div
-                className="w-10 h-10 flex items-center justify-center rounded-full text-[18px] font-medium shrink-0 transition-all duration-300"
+                className={styles.stepCircle}
                 style={
                   completed || active
                     ? { background: 'radial-gradient(circle at 50% 0%, #34347C 0%, #2D2D6C 100%)', border: '0.5px solid rgba(255,255,255,0.15)', color: '#fff', boxShadow: active ? '0 0 0 4px rgba(123,92,240,0.12)' : undefined }
@@ -550,7 +557,7 @@ function StepIndicator({ current }: { current: number }) {
               </div>
               {!isLast && (
                 <div
-                  className="h-0.5 rounded-full transition-all duration-500 flex-1 ml-2 mr-2"
+                  className={styles.stepConnector}
                   style={{ background: completed ? 'linear-gradient(135deg, #34347C 0%, #34537C 100%)' : 'rgba(18,22,27,0.15)' }}
                 />
               )}
@@ -558,9 +565,9 @@ function StepIndicator({ current }: { current: number }) {
           )
         })}
       </div>
-      <div className="flex items-center gap-1">
-        <span className="text-[14px] font-semibold leading-5 text-[#34347C]">Шаг {current} из {TOTAL_VISIBLE_STEPS}</span>
-        <span className="text-[14px] leading-5 text-[rgba(48,48,115,0.75)]">· {STEPS[current - 1]?.label}</span>
+      <div className={styles.rowGap1}>
+        <span className={styles.stepLabelActive}>Шаг {current} из {TOTAL_VISIBLE_STEPS}</span>
+        <span className={styles.stepLabelMuted}>· {STEPS[current - 1]?.label}</span>
       </div>
     </div>
   )
@@ -574,17 +581,17 @@ function ProgressPanel({ step, direction }: { step: number; direction: number })
   const isLastStep = step === TOTAL_VISIBLE_STEPS
 
   return (
-    <div className="hidden lg:flex flex-col gap-8 flex-1 overflow-hidden" style={{ padding: '24px 64px' }}>
-      <div className="flex flex-col gap-2 pb-2">
-        <h3 className="text-[28px] font-semibold leading-8 tracking-tight text-[#12161B]">
+    <div className={styles.progressPanel}>
+      <div className={styles.progressHeader}>
+        <h3 className={styles.title28}>
           {isLastStep ? 'Уже готовим ответ' : 'Ваше дело собирается'}
         </h3>
-        <p className="text-[16px] leading-[22px] tracking-tight text-[rgba(18,22,27,0.6)]">
+        <p className={styles.text16}>
           {isLastStep ? 'Мы уже получили ваш вопрос' : 'Мы подготовим предварительные рекомендации'}
         </p>
       </div>
 
-      <div className="relative flex-1 min-h-0 overflow-hidden rounded-2xl">
+      <div className={styles.progressImageBox}>
         <AnimatePresence mode="wait" custom={direction}>
           <motion.div
             key={step}
@@ -593,34 +600,32 @@ function ProgressPanel({ step, direction }: { step: number; direction: number })
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: direction > 0 ? 60 : -60, opacity: 0 }}
             transition={{ duration: 0.4, ease: [0.32, 0, 0.67, 0] }}
-            className="absolute inset-0"
+            className={styles.absoluteInset}
           >
-            <Image src={meta.image} alt={`Step ${step} illustration`} fill className="object-contain object-center" />
+            <Image src={meta.image} alt={`Step ${step} illustration`} fill className={styles.containImageCenter} />
           </motion.div>
         </AnimatePresence>
       </div>
 
-      <div className="flex flex-col gap-2">
-        <p className="text-[16px] leading-[22px] tracking-tight text-[rgba(18,22,27,0.6)]">Готовность анализа</p>
-        <div className="flex items-center justify-between">
+      <div className={styles.colGap2}>
+        <p className={styles.text16}>Готовность анализа</p>
+        <div className={styles.rowBetween}>
           <motion.span
             key={`pct-${step}`}
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.1 }}
-            className="text-[48px] font-semibold leading-[56px] tracking-tight"
-            style={{ background: 'radial-gradient(circle at 50% 0%, #34347C 0%, #2D2D6C 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}
+            className={styles.progressPct}
           >
             {displayProgress}%
           </motion.span>
-          <div style={{ width: 280 }}>
-            <div className="w-full rounded-full overflow-hidden" style={{ height: 8, background: 'rgba(18,22,27,0.05)' }}>
+          <div className={styles.progressBarWrap}>
+            <div className={styles.progressBarTrack}>
               <motion.div
-                className="h-full rounded-full"
+                className={styles.progressBarFill}
                 initial={false}
                 animate={{ width: `${displayProgress}%` }}
                 transition={{ duration: 0.5, ease: 'easeInOut' }}
-                style={{ background: 'linear-gradient(90deg, #2654C0 0%, #34347C 100%)', boxShadow: '0px 0px 12px 0px rgba(92,122,240,0.4)' }}
               />
             </div>
           </div>
@@ -637,6 +642,7 @@ export function InquirySection({
   onClose,
 }: { variant?: 'page' | 'inline'; onClose?: () => void } = {}) {
   const isEmbedded = variant === 'inline'
+  const [showQuizMobile, setShowQuizMobile] = useState(false)
   const {
     step,
     direction,
@@ -646,6 +652,9 @@ export function InquirySection({
     attachedFiles,
     channel,
     contactValue,
+    guestName,
+    consents,
+    consentErrors,
     errors,
     submitting,
     captchaToken,
@@ -659,6 +668,8 @@ export function InquirySection({
     profileInitialEmail,
     questionPrice,
     userBalance,
+    freeQuestions,
+    successKind,
     goNext,
     goBack,
     handleSubmit,
@@ -677,69 +688,51 @@ export function InquirySection({
     setAttachedFiles,
     setChannel,
     setContactValue,
+    setGuestName,
+    setConsents,
     setCaptchaToken,
     setQuestionTouched,
     validateQuestionText,
-  } = useInquirySection()
+  } = useInquirySection({ isProfile: isEmbedded })
 
-  return (
-    <section
-      id={isEmbedded ? undefined : 'inquiry'}
-      className={isEmbedded ? 'relative w-full' : 'relative -mt-14 w-full'}
-      style={
-        isEmbedded
-          ? { background: 'transparent', padding: 0 }
-          : { background: '#F9F9F9', borderRadius: '52px 52px 0 0', padding: '80px 0 56px' }
-      }
-    >
-      <div className={isEmbedded ? 'w-full' : 'max-w-[1440px] mx-auto px-6 md:px-8 lg:px-[100px]'}>
-        <div
-          className="flex w-full"
-        style={{
-          minHeight: 662,
-          background: '#F7F6F9',
-          border: '1px solid rgba(18,22,27,0.05)',
-          borderRadius: 24,
-          boxShadow: '0px 3px 36px 0px rgba(0,0,0,0.04), 0px -102px 250px 0px rgba(0,0,0,0.07)',
-        }}
-      >
+  const effectiveClose = isEmbedded ? onClose : () => setShowQuizMobile(false)
+
+  const wizardCard = (
+    <div className={styles.inquiryCard}>
         <AnimatePresence mode="wait">
           {isComplete ? (
             <motion.div
               key="final"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="w-full min-h-[662px] flex"
+              className={styles.wizardFinalWrap}
             >
-              <FinalScreen onAskAnother={resetForm} />
+              <FinalScreen onAskAnother={resetForm} kind={successKind} />
             </motion.div>
           ) : panel === 'success' ? (
             <motion.div
               key="wizard-success"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="w-full min-h-[662px] flex"
+              className={styles.wizardFinalWrap}
             >
-              <FinalScreen onAskAnother={resetForm} />
+              <FinalScreen onAskAnother={resetForm} kind={successKind} />
             </motion.div>
           ) : (
-            <motion.div key="quiz" className="flex flex-col lg:flex-row w-full min-h-full" initial={false}>
-              <div
-                className="flex flex-col justify-between w-full lg:w-[720px] lg:shrink-0"
-                style={{ background: '#fff', padding: '24px 32px', borderRadius: 24 }}
-              >
-                <div className="flex flex-col gap-12">
-                  <div className="flex flex-col gap-6">
-                    <div className="flex flex-col gap-3">
-                      <h2 className="text-[28px] font-semibold leading-8 tracking-tight text-[#12161B]">Получите  юридическое заключение бесплатно</h2>
-                      <p className="text-[16px] leading-[22px] tracking-tight text-[rgba(18,22,27,0.6)]">
+            <motion.div key="quiz" className={styles.wizardQuiz} initial={false}>
+              <div className={styles.wizardLeft}>
+                <div className={styles.colGap12}>
+                  <div className={styles.colGap6}>
+                    <div className={styles.colGap3}>
+                      <h2 className={styles.title28}>Получите  юридическое заключение бесплатно</h2>
+                      <p className={styles.text16}>
                         Опишите вашу ситуацию и мы подготовим ответ в течение 3 часов
                       </p>
                     </div>
                     <StepIndicator current={step} />
                   </div>
 
-                  <div className="relative" style={{ minHeight: step === 1 ? 320 : 260 }}>
+                  <div className={`${styles.relativeBox} ${styles.panelBox} ${step === 1 ? styles.panelBoxStep1 : ''}`}>
                     <AnimatePresence mode="wait" custom={direction}>
                       <motion.div
                         key={step}
@@ -763,6 +756,7 @@ export function InquirySection({
                             variant="v2"
                             price={questionPrice}
                             balance={userBalance}
+                            freeQuestions={freeQuestions}
                             onPayCard={handlePayCard}
                             onPayBalance={handlePayBalance}
                             onPayLater={handlePayLater}
@@ -785,8 +779,13 @@ export function InquirySection({
                           <Step5Panel
                             channel={channel}
                             onChannelChange={setChannel}
+                            nameValue={guestName}
+                            onNameChange={setGuestName}
                             inputValue={contactValue}
                             onInputChange={setContactValue}
+                            consents={consents}
+                            onConsentsChange={setConsents}
+                            consentErrors={consentErrors}
                             errors={errors}
                             captchaToken={captchaToken}
                             onCaptchaChange={setCaptchaToken}
@@ -817,12 +816,16 @@ export function InquirySection({
                 </div>
 
                 {panel === 'quiz' && (
-                <div className="flex flex-col gap-4 mt-6 w-full lg:w-[656px]">
-                  <div className="flex items-center justify-between gap-4">
+                <div className={styles.wizardNav}>
+                  <div className={styles.wizardNavRow}>
                   <button
-                    onClick={step > 1 ? goBack : (onClose ?? goBack)}
-                    className="text-[18px] font-medium leading-[23px] tracking-tight text-[rgba(18,22,27,0.6)] transition-opacity hover:opacity-70 active:opacity-40 cursor-pointer"
-                    style={{ width: 120, paddingBlock: 17, visibility: step > 1 || onClose ? 'visible' : 'hidden' }}
+                    onClick={step > 1 ? goBack : (effectiveClose ?? goBack)}
+                    className={`${styles.backBtn} ${!isEmbedded && step === 1 ? styles.closeDesktopHidden : ''}`}
+                    style={
+                      isEmbedded
+                        ? { width: 120, paddingBlock: 17, visibility: step > 1 || onClose ? 'visible' : 'hidden' }
+                        : { width: 120, paddingBlock: 17 }
+                    }
                   >
                     {step > 1 ? 'Назад' : 'Закрыть'}
                   </button>
@@ -843,9 +846,11 @@ export function InquirySection({
             </motion.div>
           )}
         </AnimatePresence>
-        </div>
-      </div>
+    </div>
+  )
 
+  const modals = (
+    <>
       <InquiryOtpModal
         isOpen={verificationModal === 'otp'}
         phone={contactValue}
@@ -859,6 +864,70 @@ export function InquirySection({
         email={pendingEmail}
         onConfirm={confirmEmailModal}
       />
+    </>
+  )
+
+  if (isEmbedded) {
+    return (
+      <section className={styles.inquirySectionEmbedded}>
+        <div className={styles.inquiryContainerEmbedded}>{wizardCard}</div>
+        {modals}
+      </section>
+    )
+  }
+
+  return (
+    <section id="inquiry" className={styles.inquirySection}>
+      <div className={styles.inquiryContainer}>
+        {!showQuizMobile && (
+          <div className={styles.ctaMobile}>
+            <div className={styles.ctaCard}>
+              <div className={styles.ctaContent}>
+                <h2 className={styles.ctaTitle}>Получите юридическое заключение бесплатно</h2>
+                <div className={styles.ctaDetails}>
+                  <div className={styles.ctaSteps}>
+                    <p className={styles.ctaText}>
+                      Опишите вашу ситуацию и мы подготовим ответ в течение 3 часов
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setShowQuizMobile(true)}
+                      className={styles.ctaBtn}
+                    >
+                      Начать консультацию
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div className={styles.ctaCubeWrap} aria-hidden>
+                <Image
+                  src={inquiryCubeImg}
+                  alt=""
+                  width={140}
+                  height={172}
+                  priority
+                  unoptimized
+                  className={styles.ctaCube}
+                />
+              </div>
+            </div>
+
+            <div className={styles.pills}>
+              {PILLS.map(({ icon: Icon, label }) => (
+                <div key={label} className={styles.pill}>
+                  <Icon className={styles.pillIcon} strokeWidth={1.6} />
+                  <span className={styles.pillLabel}>{label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className={showQuizMobile ? styles.wizardShown : styles.wizardDesktopOnly}>
+          {wizardCard}
+        </div>
+      </div>
+      {modals}
     </section>
   )
 }

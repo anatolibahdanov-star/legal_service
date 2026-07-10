@@ -16,7 +16,7 @@ export interface ChatMessagePropsI {
   /** Admin view: highlight AI-edited {{...}} spans in red instead of stripping them. */
   isAdmin?: boolean;
   isLastLawyerMessage?: boolean;
-  onAskClarification?: (questionOrId: string, files?: File[]) => void;
+  onAskClarification?: (questionOrId: string, files?: File[]) => void | Promise<boolean>;
   showClarificationForm?: boolean;
   /** When true, render attachments under the question. Never set on the public page. */
   showAttachments?: boolean;
@@ -24,6 +24,7 @@ export interface ChatMessagePropsI {
   attachments?: AttachmentDTO[];
   /** When true, the follow-up form offers a file uploader. */
   allowAttachments?: boolean;
+  variant?: 'legacy' | 'v2';
 }
 
 export interface profileDataQuestionsI {

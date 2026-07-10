@@ -11,8 +11,8 @@ import { join } from 'path';
 
 const FORGOT_EMAIL_SUBJECT = 'Новый временный пароль — Enki.legal';
 
-const escapeHtml = (s: string): string =>
-  s.replace(/[&<>"']/g, (c) =>
+const escapeHtml = (s: unknown): string =>
+  String(s ?? '').replace(/[&<>"']/g, (c) =>
     c === '&' ? '&amp;' :
     c === '<' ? '&lt;' :
     c === '>' ? '&gt;' :

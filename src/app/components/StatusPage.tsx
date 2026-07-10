@@ -140,24 +140,24 @@ export function StatusPage({ slug }: StatusPagePropsI) {
           <div className="flex items-center gap-3 mb-3">
             <div className="relative shrink-0">
               <div className="bg-clip-padding border-0 border-[transparent] border-solid content-stretch flex items-start relative">
-                <p className="font-['Inter:Medium',sans-serif] font-medium leading-[32px] not-italic relative shrink-0 text-[24px] text-white whitespace-nowrap">
+                <p className="font-medium leading-[32px] not-italic relative shrink-0 text-[24px] text-white whitespace-nowrap">
                   Дело #{caseId}
                 </p>
               </div>
             </div>
             {statusColor && (<div className={`bg-[${statusColor.color}] relative rounded-full shrink-0 px-4 py-1.5`}>
-              <p className="font-['Inter:Medium',sans-serif] font-medium leading-[16px] text-[13px] text-white whitespace-nowrap">
+              <p className="font-medium leading-[16px] text-[13px] text-white whitespace-nowrap">
                 {statusColor.name}
               </p>
             </div>)}
           </div>
-          {createdAt && (<p className="font-['Inter:Regular',sans-serif] font-normal leading-[20px] text-[14px] text-[rgba(255,255,255,0.7)] mb-4">
+          {createdAt && (<p className="font-normal leading-[20px] text-[14px] text-[rgba(255,255,255,0.7)] mb-4">
             Дата обращения: {createdAt}
           </p>)}
-          {lawyer && (<p className="font-['Inter:Regular',sans-serif] font-normal leading-[20px] text-[14px] text-[rgba(255,255,255,0.7)] mb-4">
+          {lawyer && (<p className="font-normal leading-[20px] text-[14px] text-[rgba(255,255,255,0.7)] mb-4">
             {lawyer}
           </p>)}
-          {userQuestion && (<p className="font-['Inter:Regular',sans-serif] font-normal leading-[24px] text-[16px] text-white">
+          {userQuestion && (<p className="font-normal leading-[24px] text-[16px] text-white">
             {userQuestion}
           </p>)}
         </div>
@@ -166,7 +166,7 @@ export function StatusPage({ slug }: StatusPagePropsI) {
       {/* Replies */}
       <div className="max-w-5xl mx-auto bg-white">
         <div className="max-w-[1200px] mx-auto px-6 py-6">
-          <h2 className="font-['Inter:Medium',sans-serif] font-medium leading-[28px] text-[18px] text-[#29282b] mb-6">Ход вашего дела #{caseId}</h2>
+          <h2 className="font-medium leading-[28px] text-[18px] text-[#29282b] mb-6">Ход вашего дела #{caseId}</h2>
           {messages && (<div className="max-h-[500px] overflow-y-auto space-y-0 pr-2" style={{scrollbarWidth: 'thin', scrollbarColor: '#8faaba #f1f1f1'}}>
             <style>{`
               div::-webkit-scrollbar {
@@ -199,14 +199,14 @@ export function StatusPage({ slug }: StatusPagePropsI) {
       {/* Bottom buttons */}
       <div className="max-w-5xl mx-auto bg-white flex flex-col items-center gap-4 mt-8 pb-8">
         <div className="flex gap-4 w-full max-w-[800px]">
-          <button className="bg-[#323c54] hover:bg-[#3f4b66] text-white font-['Inter:Medium',sans-serif] font-medium leading-[20px] text-[16px] px-8 py-4 rounded-[12px] transition-colors flex-1">
+          <button className="bg-[#323c54] hover:bg-[#3f4b66] text-white font-medium leading-[20px] text-[16px] px-8 py-4 rounded-[12px] transition-colors flex-1">
             Задать свой вопрос юристу
           </button>
-          <button className="bg-[#87B7CE] hover:bg-[#72a3b8] text-white font-['Inter:Medium',sans-serif] font-medium leading-[20px] text-[16px] px-8 py-4 rounded-[12px] transition-colors flex-1">
+          <button className="bg-[#87B7CE] hover:bg-[#72a3b8] text-white font-medium leading-[20px] text-[16px] px-8 py-4 rounded-[12px] transition-colors flex-1">
             Зарегистрироваться бесплатно
           </button>
         </div>
-        <p className="font-['Inter:Regular',sans-serif] font-normal leading-[24px] text-[14px] text-[rgba(41,40,43,0.5)] text-center mt-2">
+        <p className="font-normal leading-[24px] text-[14px] text-[rgba(41,40,43,0.5)] text-center mt-2">
           Уже более 12 450 человек получили консультацию за последние 30 дней
         </p>
       </div>

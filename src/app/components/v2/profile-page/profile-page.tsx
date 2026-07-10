@@ -13,13 +13,14 @@ import { ProfilePaymentHistory } from '@/src/app/components/screen/profile/Profi
 import { CustomGetRequest } from '@/src/libs/request'
 import { emitBalanceRefresh } from '@/src/libs/balanceEvents'
 import type { DBUser } from '@/src/interfaces/db'
+import styles from './profile-page.module.css'
 
 type ProfileTab = 'account' | 'balance' | 'cases' | 'payments'
 
 const TABS: Array<{ id: ProfileTab; label: string }> = [
-  { id: 'account', label: 'Аккаунт' },
-  { id: 'balance', label: 'Баланс' },
   { id: 'cases', label: 'Ваши заявки' },
+  { id: 'balance', label: 'Баланс' },
+  { id: 'account', label: 'Аккаунт' },
 ]
 
 const isProfileTab = (value: string | null): value is ProfileTab =>
@@ -31,12 +32,12 @@ export function V2ProfilePage() {
   const searchParams = useSearchParams()
   const { data: session, status } = useSession()
   const tabParam = searchParams.get('tab')
-  const activeTab: ProfileTab = isProfileTab(tabParam) ? tabParam : 'account'
+  const activeTab: ProfileTab = isProfileTab(tabParam) ? tabParam : 'cases'
   const [data, setData] = useState<DBUser | null>(null)
 
   const selectTab = (tab: ProfileTab) => {
     const params = new URLSearchParams(searchParams.toString())
-    if (tab === 'account') {
+    if (tab === 'cases') {
       params.delete('tab')
     } else {
       params.set('tab', tab)
@@ -99,57 +100,48 @@ export function V2ProfilePage() {
 
   if (status === 'loading' || !user || isStaff) {
     return (
-      <main className="v2-header-bleed min-h-screen bg-[#F9F9F9] text-[#12161B]">
-        <section className="mx-auto max-w-[1440px] px-6 py-16 md:px-8 lg:px-[100px]">
-          <p className="text-[16px] text-[rgba(18,22,27,0.6)]">Загружается...</p>
+      <main className={`v2-header-bleed ${styles.page}`}>
+        <section className={styles.container}>
+          <p className={styles.loadingText}>Загружается...</p>
         </section>
       </main>
     )
   }
 
   return (
-    <main id="profile-page" className="v2-header-bleed min-h-screen bg-[#F9F9F9] text-[#12161B]">
-      <section className="mx-auto max-w-[1440px] px-6 py-[46px] md:px-8 lg:px-[100px]">
-        <div className="flex flex-col gap-12">
-          <div className="flex flex-col gap-4">
-            <h1
-              className="text-[#12161B] font-semibold leading-[56px] tracking-[-0.01em]"
-              style={{ fontSize: 48 }}
-            >
-              Личный кабинет
-            </h1>
+    <main id="profile-page" className={`v2-header-bleed ${styles.page}`}>
+      <section className={styles.container}>
+        <div className={styles.inner}>
+          <div className={styles.header}>
+            <h1 className={styles.title}>Личный кабинет</h1>
           </div>
 
-          <div className="flex w-fit p-1 bg-gradient-to-br from-[rgba(153,153,202,0.06)] to-[rgba(165,165,221,0.06)] border border-[rgba(18,22,27,0.05)] rounded-[18px]">
+          <div className={styles.tabs}>
             {TABS.map((tab) => (
               <button
                 key={tab.id}
                 type="button"
                 onClick={() => selectTab(tab.id)}
-                className={`flex items-center justify-center px-6 py-[13px] rounded-[14px] font-medium text-[18px] leading-[23px] tracking-[-0.01em] transition-all cursor-pointer active:scale-[0.98] ${
-                  activeTab === tab.id
-                    ? 'bg-gradient-to-r from-[#34347C] to-[#34537C] text-white hover:opacity-95'
-                    : 'text-[#12161B] hover:bg-black/5'
-                }`}
+                className={`${styles.tab} ${activeTab === tab.id ? styles.tabActive : ''}`}
               >
                 {tab.label}
               </button>
             ))}
           </div>
 
-          <div className="flex items-start gap-12">
-            {showSidebar && <ProfileSidebar data={data} user={user} />}
+          <div className={styles.body}>
+            {showSidebar && <ProfileSidebar data={data} user={user} setData={setData} />}
 
             {activeTab === 'account' ? (
-              <div className="min-w-0 flex-1">
+              <div className={styles.contentCol}>
                 <ProfileContent data={data} user={user} setData={setData} />
               </div>
             ) : activeTab === 'balance' ? (
-              <div className="w-full">
+              <div className={styles.fullCol}>
                 <V2ProfileBalance data={data} setUserBalance={setUserBalance} />
               </div>
             ) : activeTab === 'payments' ? (
-              <div className="flex-1">
+              <div className={styles.contentCol}>
                 <ProfilePaymentHistory />
               </div>
             ) : (

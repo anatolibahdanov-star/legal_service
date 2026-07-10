@@ -7,15 +7,15 @@ export function Yandex() {
             <div className="flex flex-wrap justify-center gap-8 mb-12 text-[#29282b]">
               <div className="flex items-center gap-3">
                 <MapPin className="w-5 h-5 text-[#87b7ce]" />
-                <span className="font-['Inter:Regular',sans-serif] text-[16px]">г. Москва, ул. Юридическая, д. 1</span>
+                <span className="text-[16px]">г. Москва, ул. Юридическая, д. 1</span>
               </div>
               <div className="flex items-center gap-3">
                 <Phone className="w-5 h-5 text-[#87b7ce]" />
-                <span className="font-['Inter:Regular',sans-serif] text-[16px]">+7 (999) 123-45-67</span>
+                <span className="text-[16px]">+7 (999) 123-45-67</span>
               </div>
               <div className="flex items-center gap-3">
                 <FileText className="w-5 h-5 text-[#87b7ce]" />
-                <span className="font-['Inter:Regular',sans-serif] text-[16px]">info@urconsult.ru</span>
+                <span className="text-[16px]">info@urconsult.ru</span>
               </div>
             </div>
 

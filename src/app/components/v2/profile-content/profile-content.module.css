@@ -1,0 +1,222 @@
+.root {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+}
+
+.card {
+  padding: 32px;
+  background: #fff;
+  border: 1px solid rgba(18, 22, 27, 0.05);
+  border-radius: 28px;
+  box-shadow:
+    0 3px 36px 0 rgba(0, 0, 0, 0.04),
+    0 -102px 250px 0 rgba(0, 0, 0, 0.07);
+}
+
+.cardInner {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.headerText {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cardTitle {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 24px;
+  letter-spacing: -0.01em;
+  color: #12161b;
+}
+
+.cardSubtitle {
+  font-size: 12px;
+  line-height: 17px;
+  color: rgba(18, 22, 27, 0.6);
+}
+
+.editBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  padding: 11px 16px;
+  color: rgba(18, 22, 27, 0.6);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 18px;
+  text-align: center;
+  background: rgba(18, 22, 27, 0.05);
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.editBtn:hover {
+  background: rgba(18, 22, 27, 0.08);
+}
+
+.editBtn:active {
+  background: rgba(18, 22, 27, 0.12);
+}
+
+.editBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.editIcon {
+  width: 16px;
+  height: 16px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px;
+  background: #f7f6f9;
+  border: 1px solid rgba(18, 22, 27, 0.05);
+  border-radius: 16px;
+}
+
+.fieldLabel {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 17px;
+  color: rgba(18, 22, 27, 0.35);
+}
+
+.fieldValue {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  color: #12161b;
+}
+
+.fieldValueMuted {
+  color: rgba(18, 22, 27, 0.6);
+}
+
+.fieldInput {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  color: #12161b;
+  background: transparent;
+  border: none;
+  outline: none;
+}
+
+.fieldInputMuted {
+  color: rgba(18, 22, 27, 0.6);
+}
+
+.phoneRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.changePhoneBtn {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  color: #34347c;
+  font-size: 12px;
+  font-weight: 500;
+  background: transparent;
+  border: 1px solid rgba(52, 52, 124, 0.3);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.changePhoneBtn:hover {
+  background: rgba(52, 52, 124, 0.06);
+}
+
+.changePhoneBtn:active {
+  background: rgba(52, 52, 124, 0.12);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  margin-top: 4px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: 999px;
+}
+
+.badgeVerified {
+  align-items: center;
+  color: #059669;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.badgePending {
+  align-items: flex-start;
+  color: #b45309;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+
+.badgeIcon {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+}
+
+.badgeIconTop {
+  margin-top: 1px;
+}
+
+/* ─── Mobile (≤767px) ───────────────────────────────────────────────────── */
+@media (max-width: 767px) {
+  .root {
+    gap: 24px;
+  }
+
+  .card {
+    padding: 20px;
+  }
+
+  .cardInner {
+    gap: 24px;
+  }
+
+  .header {
+    flex-wrap: wrap;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}

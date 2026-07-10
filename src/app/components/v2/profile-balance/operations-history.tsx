@@ -11,6 +11,7 @@ import {
   isFreeQuestionOperation,
   operationTypeLabels,
 } from '@/src/app/components/admin/users/format'
+import styles from './operations-history.module.css'
 
 const typeFilterOptions = [
   { value: 'all', label: 'Все операции' },
@@ -62,28 +63,26 @@ export function OperationsHistory() {
       return op.questionUuid ? (
         <Link
           href={`/consultation/${op.questionUuid}/`}
-          className="truncate text-[#34347C] transition-colors hover:opacity-80"
+          className={styles.subtitleLink}
         >
           {label}
         </Link>
       ) : (
-        <span className="truncate">{label}</span>
+        <span className={styles.subtitleText}>{label}</span>
       )
     }
-    return <span className="truncate">{op.comment ?? op.actor}</span>
+    return <span className={styles.subtitleText}>{op.comment ?? op.actor}</span>
   }
 
   return (
-    <div className="flex flex-col gap-6 rounded-[28px] border border-[rgba(18,22,27,0.05)] bg-white px-8 pb-6 pt-7 shadow-[0px_3px_36px_0px_rgba(0,0,0,0.04),_0px_-102px_250px_0px_rgba(0,0,0,0.07)]">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <h3 className="text-[20px] font-semibold leading-6 tracking-[-0.01em] text-[#12161B]">
-          История операций
-        </h3>
-        <div className="relative">
+    <div className={styles.card}>
+      <div className={styles.header}>
+        <h3 className={styles.title}>История операций</h3>
+        <div className={styles.selectWrap}>
           <select
             value={type}
             onChange={(e) => setType(e.target.value)}
-            className="h-10 appearance-none rounded-[12px] border border-[rgba(18,22,27,0.1)] bg-white pl-4 pr-10 text-[14px] font-medium leading-5 text-[#12161B] outline-none focus:border-[#34347C]"
+            className={styles.select}
           >
             {typeFilterOptions.map((opt) => (
               <option key={opt.value} value={opt.value}>
@@ -91,43 +90,39 @@ export function OperationsHistory() {
               </option>
             ))}
           </select>
-          <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[rgba(18,22,27,0.5)]" />
+          <ChevronDown className={styles.selectIcon} />
         </div>
       </div>
 
-      <div className="flex flex-col">
+      <div className={styles.list}>
         {loading && (
-          <div className="py-10 text-center text-[14px] text-[rgba(18,22,27,0.5)]">Загружаем…</div>
+          <div className={styles.stateText}>Загружаем…</div>
         )}
         {!loading && totalCount === 0 && (
-          <div className="py-10 text-center text-[14px] text-[rgba(18,22,27,0.5)]">Операций пока нет</div>
+          <div className={styles.stateText}>Операций пока нет</div>
         )}
         {!loading &&
           pageItems.map((op) => {
             const free = isFreeQuestionOperation(op.type)
             const credit = isCredit(op)
             return (
-              <div key={op.id} className="flex min-h-[72px] items-center gap-4 border-b border-[rgba(18,22,27,0.05)] py-3 last:border-b-0">
+              <div key={op.id} className={styles.opRow}>
                 <div
-                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px] ${
-                    credit
-                      ? 'bg-[rgba(22,163,74,0.12)] text-[#16A34A]'
-                      : 'bg-gradient-to-br from-[rgba(153,153,202,0.15)] to-[rgba(165,165,221,0.15)] text-[#34347C]'
-                  }`}
+                  className={`${styles.opIcon} ${credit ? styles.opIconCredit : styles.opIconDefault}`}
                 >
-                  {free ? <Gift className="h-5 w-5" /> : credit ? <Plus className="h-5 w-5" /> : <Wallet className="h-5 w-5" />}
+                  {free ? <Gift className={styles.opIconSvg} /> : credit ? <Plus className={styles.opIconSvg} /> : <Wallet className={styles.opIconSvg} />}
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[16px] font-semibold leading-5 text-[#12161B]">{operationTypeLabels[op.type]}</p>
-                  <p className="mt-0.5 flex max-w-full truncate text-[12px] leading-[17px] text-[rgba(18,22,27,0.6)]">
+                <div className={styles.opBody}>
+                  <p className={styles.opTitle}>{operationTypeLabels[op.type]}</p>
+                  <p className={styles.opSubtitle}>
                     {renderSubtitle(op)}
                   </p>
                 </div>
-                <div className="text-right">
-                  <p className={`text-[16px] font-semibold leading-5 ${credit ? 'text-[#16A34A]' : 'text-[#12161B]'}`}>
+                <div className={styles.opRight}>
+                  <p className={`${styles.opValue} ${credit ? styles.opValueCredit : ''}`}>
                     {formatOperationValue(op)}
                   </p>
-                  <p className="mt-0.5 text-[12px] leading-[17px] text-[rgba(18,22,27,0.35)]">
+                  <p className={styles.opDate}>
                     {formatDateTime(op.createdAt)}
                   </p>
                 </div>
@@ -137,16 +132,16 @@ export function OperationsHistory() {
       </div>
 
       {totalCount > PER_PAGE && (
-        <div className="flex items-center justify-between text-[13px] text-[rgba(18,22,27,0.55)]">
+        <div className={styles.pagination}>
           <span>
             {(safePage - 1) * PER_PAGE + 1}–{Math.min(safePage * PER_PAGE, totalCount)} из {totalCount}
           </span>
-          <div className="flex items-center gap-2">
+          <div className={styles.pageBtns}>
             <button
               type="button"
               disabled={safePage <= 1}
               onClick={() => setPage((p) => p - 1)}
-              className="rounded-[10px] border border-[rgba(18,22,27,0.1)] px-4 py-1.5 font-medium text-[#12161B] transition-opacity disabled:opacity-40"
+              className={styles.pageBtn}
             >
               Назад
             </button>
@@ -154,7 +149,7 @@ export function OperationsHistory() {
               type="button"
               disabled={safePage >= totalPages}
               onClick={() => setPage((p) => p + 1)}
-              className="rounded-[10px] border border-[rgba(18,22,27,0.1)] px-4 py-1.5 font-medium text-[#12161B] transition-opacity disabled:opacity-40"
+              className={styles.pageBtn}
             >
               Вперёд
             </button>

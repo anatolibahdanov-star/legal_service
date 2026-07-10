@@ -42,6 +42,7 @@ function ChangePhoneForm({
   const [otpExpiresInSec, setOtpExpiresInSec] = useState<number>(0);
 
   const currentDigits = useMemo(() => (currentPhone || "").replace(/\D/g, ""), [currentPhone]);
+  const isAddingPhone = currentDigits.length === 0;
   const phoneDigits = phone.replace(/\D/g, "");
   const phoneValid = useMemo(() => isPhoneComplete(phone), [phone]);
   const isSamePhone = phoneValid && phoneDigits === currentDigits;
@@ -155,10 +156,12 @@ function ChangePhoneForm({
     <>
       <div className="mb-[24px] pr-[24px]">
         <h1 className="font-bold text-[26px] leading-[32px] text-[#0F1B2D] mb-[10px]">
-          Смена номера телефона
+          {isAddingPhone ? "Привязка номера телефона" : "Смена номера телефона"}
         </h1>
         <p className="text-[14px] leading-[22px] text-[#6B7280]">
-          Введите новый номер телефона. Мы отправим на него SMS с кодом подтверждения.
+          {isAddingPhone
+            ? "Введите номер телефона. Мы отправим на него SMS с кодом подтверждения."
+            : "Введите новый номер телефона. Мы отправим на него SMS с кодом подтверждения."}
         </p>
       </div>
 
@@ -239,7 +242,7 @@ export function ChangePhoneWindow({ isOpen, currentPhone, onClose, onChanged }: 
 
   return (
     <div
-      className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50"
+      className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[1400]"
       onClick={onClose}
     >
       <div

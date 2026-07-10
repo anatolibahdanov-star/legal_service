@@ -537,7 +537,7 @@ export const ProfileJobList = ({is_user, user}: ProfileJobListPropsI) => {
                   <td className="p-4 text-sm text-[#2196f3]">{caseItem.category_name}</td>
                   <td className="p-4 text-sm text-[#333] max-w-xs truncate">
                     <Link href={domainUrl + '/consultation/' + caseItem.uuid + '/'} target="_blank" rel="noopener noreferrer"
-                        className="font-['Inter:Regular',sans-serif] font-normal text-[14px] text-[#87b7ce] hover:text-[#6fa2b8] transition-colors line-clamp-2"
+                        className="font-normal text-[14px] text-[#87b7ce] hover:text-[#6fa2b8] transition-colors line-clamp-2"
                     >{caseItem.question}</Link>
                     {caseItem.attachments && caseItem.attachments.length > 0 && (
                       <div className="flex items-center gap-1.5 mt-1.5">
