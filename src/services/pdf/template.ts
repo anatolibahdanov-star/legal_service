@@ -71,6 +71,7 @@ export interface QuarkdownTemplateInput {
   thread: DBQuestion[];
   /** Absolute filesystem path to the logo PNG/SVG used in the page header. */
   logoPath: string;
+  fontPath: string;
 }
 
 /**
@@ -83,7 +84,7 @@ export interface QuarkdownTemplateInput {
  *  - Footer (every page): «ЭНКИ • enki.legal • Конфиденциально»
  */
 export function buildQuarkdownSource(input: QuarkdownTemplateInput): string {
-  const { root, thread, logoPath } = input;
+  const { root, thread, logoPath, fontPath } = input;
 
   const recipientName = (root.username ?? '').trim();
   const subject = (root.category_name ?? '').trim();
@@ -127,7 +128,7 @@ export function buildQuarkdownSource(input: QuarkdownTemplateInput): string {
     `    - headings: none`,
     `.docname {Ответ юриста #${root.id}}`,
     `.pageformat size:{A4} margin:{3cm}`,
-    `.font {Helvetica} heading:{Helvetica} size:{11pt}`,
+    `.font {${escapeInline(fontPath)}} heading:{${escapeInline(fontPath)}} size:{11pt}`,
     ``,
     `.pagemargin {topleft}`,
     `    .container width:{16cm}`,

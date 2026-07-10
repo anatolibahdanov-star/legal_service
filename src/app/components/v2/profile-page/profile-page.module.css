@@ -1,0 +1,152 @@
+.page {
+  min-height: 100vh;
+  background: #f9f9f9;
+  color: #12161b;
+}
+
+.container {
+  width: 100%;
+  max-width: 1440px;
+  margin-inline: auto;
+  padding: 46px 24px;
+}
+
+@media (min-width: 768px) {
+  .container {
+    padding-inline: 32px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container {
+    padding-inline: 100px;
+  }
+}
+
+.inner {
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.title {
+  font-size: 48px;
+  font-weight: 600;
+  line-height: 56px;
+  letter-spacing: -0.01em;
+  color: #12161b;
+}
+
+.tabs {
+  display: flex;
+  width: fit-content;
+  max-width: 100%;
+  padding: 4px;
+  background: linear-gradient(
+    135deg,
+    rgba(153, 153, 202, 0.06) 0%,
+    rgba(165, 165, 221, 0.06) 100%
+  );
+  border: 1px solid rgba(18, 22, 27, 0.05);
+  border-radius: 18px;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 13px 24px;
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 23px;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  color: #12161b;
+  background: none;
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.tab:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.tab:active {
+  transform: scale(0.98);
+}
+
+.tabActive,
+.tabActive:hover {
+  color: #fff;
+  background: linear-gradient(90deg, #34347c 0%, #34537c 100%);
+  opacity: 0.98;
+}
+
+.body {
+  display: flex;
+  align-items: flex-start;
+  gap: 48px;
+}
+
+.contentCol {
+  min-width: 0;
+  flex: 1;
+}
+
+.fullCol {
+  width: 100%;
+}
+
+.loadingText {
+  font-size: 16px;
+  color: rgba(18, 22, 27, 0.6);
+}
+
+/* ─── Tablet / Mobile: stack sidebar + content ──────────────────────────── */
+@media (max-width: 1023px) {
+  .body {
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .contentCol,
+  .fullCol {
+    width: 100%;
+  }
+}
+
+/* ─── Mobile (≤767px) ───────────────────────────────────────────────────── */
+@media (max-width: 767px) {
+  .container {
+    padding: 32px 16px;
+  }
+
+  .inner {
+    gap: 24px;
+  }
+
+  .title {
+    font-size: 32px;
+    line-height: 38px;
+  }
+
+  .tabs {
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  .tab {
+    flex: 1;
+    padding: 10px 12px;
+    font-size: 14px;
+    line-height: 18px;
+  }
+}

@@ -19,6 +19,7 @@ import {
   wizardUpdateQuestionTextAction,
   wizardVerifyOtpAction,
 } from "@/src/app/components/forms/action/wizard"
+import { uploadQuestionAttachmentsAction } from "@/src/app/components/forms/action/attachments"
 import { RequestFormI, FormDataObjectT } from "@/src/interfaces/form"
 import { isPhoneComplete } from "@/src/libs/phoneMask"
 import { useYandexInvisibleCaptcha } from "@/src/app/components/forms/useYandexInvisibleCaptcha"
@@ -26,6 +27,12 @@ import { usePhoneBlockCountdown } from "@/src/app/components/forms/hooks/usePhon
 import type { OtpStepResult } from "@/src/app/components/forms/hooks/useOtpStep"
 import type { CompleteProfileResult } from "@/src/app/components/forms/RequestStepProfile"
 import type { SuccessVariant } from "@/src/app/components/forms/RequestStepSuccess"
+import {
+  allConsentsAccepted,
+  emptyLegalConsents,
+  type LegalConsentsValue,
+} from '@/src/app/components/LegalConsents'
+import { emptyValidator } from "@/src/app/components/forms/validation/common"
 import { emitBalanceRefresh } from "@/src/libs/balanceEvents"
 import { isPhoneEmail, needsProfileCompletion, phoneToDefaultName } from "@/src/libs/phoneIdentity"
 import { locales } from '@/i18n.config'
@@ -47,47 +54,50 @@ const emptyErrors = (): FormDataObjectT => ({
   common: "",
 })
 
-export const useInquirySection = () => {
+type UseInquirySectionOptions = {
+  isProfile?: boolean
+}
+
+export const useInquirySection = ({ isProfile = false }: UseInquirySectionOptions = {}) => {
   const { data: session, status: sessionStatus } = useSession()
   const { execute: executeCaptcha } = useYandexInvisibleCaptcha({ variant: "light" })
   const phoneBlock = usePhoneBlockCountdown()
 
-  // Navigation state
   const [step, setStep] = useState(1)
   const [direction, setDirection] = useState(1)
   const [isComplete, setIsComplete] = useState(false)
   const directionRef = useRef(1)
 
-  // Form data
   const [problemText, setProblemText] = useState('')
   const [attachedFiles, setAttachedFiles] = useState<File[]>([])
   const [channel, setChannel] = useState<ContactChannel>('email')
   const [contactValue, setContactValue] = useState('')
+  const [guestName, setGuestName] = useState('')
+  const [consents, setConsents] = useState<LegalConsentsValue>(emptyLegalConsents)
+  const [consentErrors, setConsentErrors] = useState<Partial<Record<keyof LegalConsentsValue, string>>>({})
 
-  // Verification modals
   const [verificationModal, setVerificationModal] = useState<VerificationModal>('none')
   const [normalizedPhone, setNormalizedPhone] = useState('')
   const [pendingEmail, setPendingEmail] = useState('')
 
-  // Validation and submission
   const [errors, setErrors] = useState<FormDataObjectT>(emptyErrors())
   const [captchaToken, setCaptchaToken] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [questionTouched, setQuestionTouched] = useState(false)
 
-  // Phone wizard state. Mirrors the old RequestForm business flow while the
-  // surrounding UI stays in the v2 inquiry section.
   const [panel, setPanel] = useState<InquiryPanel>('quiz')
   const [verifiedUser, setVerifiedUser] = useState<{ id: number; name: string; email: string } | null>(null)
   const [verifyToken, setVerifyToken] = useState('')
   const [isFirstQuestionFree, setIsFirstQuestionFree] = useState(false)
   const [questionPrice, setQuestionPrice] = useState(0)
   const [userBalance, setUserBalance] = useState(0)
+  const [freeQuestions, setFreeQuestions] = useState(0)
   const [successKind, setSuccessKind] = useState<SuccessVariant>('free')
   const [successAmount, setSuccessAmount] = useState(0)
   const questionIdRef = useRef<string | number | null>(null)
   const questionUuidRef = useRef<string | null>(null)
   const committedQuestionTextRef = useRef('')
+  const attachmentsUploadedRef = useRef(false)
   const [paymentIdempotencyKey, setPaymentIdempotencyKey] = useState(
     () => `inquiry_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`
   )
@@ -101,6 +111,9 @@ export const useInquirySection = () => {
     setAttachedFiles([])
     setChannel('email')
     setContactValue('')
+    setGuestName('')
+    setConsents(emptyLegalConsents)
+    setConsentErrors({})
     setVerificationModal('none')
     setNormalizedPhone('')
     setPendingEmail('')
@@ -114,11 +127,13 @@ export const useInquirySection = () => {
     setIsFirstQuestionFree(false)
     setQuestionPrice(0)
     setUserBalance(0)
+    setFreeQuestions(0)
     setSuccessKind('free')
     setSuccessAmount(0)
     questionIdRef.current = null
     questionUuidRef.current = null
     committedQuestionTextRef.current = ''
+    attachmentsUploadedRef.current = false
     setPaymentIdempotencyKey(
       `inquiry_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`
     )
@@ -148,14 +163,17 @@ export const useInquirySection = () => {
         isFirstQuestionFree?: boolean
         questionPrice?: number
         userBalance?: number
+        freeQuestions?: number
       }
       const isFirstFree = !!initData.isFirstQuestionFree
       const price = typeof initData.questionPrice === 'number' ? initData.questionPrice : 0
       const balance = typeof initData.userBalance === 'number' ? initData.userBalance : 0
+      const freeQ = typeof initData.freeQuestions === 'number' ? initData.freeQuestions : 0
 
       setIsFirstQuestionFree(isFirstFree)
       setQuestionPrice(price)
       setUserBalance(balance)
+      setFreeQuestions(freeQ)
 
       const ensured = await ensureUnpaidQuestionExists()
       if (!ensured.ok) {
@@ -177,7 +195,7 @@ export const useInquirySection = () => {
         return
       }
 
-      if (balance >= price) {
+      if (freeQ > 0 || balance >= price) {
         const result = await handlePayBalance()
         if (!result.ok) {
           setErrors((prev) => ({
@@ -240,7 +258,7 @@ export const useInquirySection = () => {
 
   const buildRequestPayload = (): RequestFormI => {
     const contact = contactValue.trim()
-    let name = 'Пользователь'
+    let name = guestName.trim()
     let email = ''
 
     if (channel === 'email') {
@@ -255,9 +273,22 @@ export const useInquirySection = () => {
       email,
       topic: '',
       question: problemText,
-      agree: true,
+      agree: allConsentsAccepted(consents),
       auth: '0',
     }
+  }
+
+  const validateConsents = (): boolean => {
+    if (allConsentsAccepted(consents)) {
+      setConsentErrors({})
+      return true
+    }
+    const next: Partial<Record<keyof LegalConsentsValue, string>> = {}
+    if (!consents.privacy) next.privacy = 'Подтвердите согласие.'
+    if (!consents.data) next.data = 'Подтвердите согласие.'
+    if (!consents.offer) next.offer = 'Подтвердите согласие.'
+    setConsentErrors(next)
+    return false
   }
 
   const validateContactStep = (): FormDataObjectT | null => {
@@ -267,6 +298,12 @@ export const useInquirySection = () => {
     if (questionError) {
       newErrors.question = questionError
       newErrors.common = questionError
+      return newErrors
+    }
+
+    if (channel === 'email' && !emptyValidator(guestName.trim())) {
+      newErrors.name = 'Пожалуйста, введите ваше имя.'
+      newErrors.common = 'Пожалуйста, введите ваше имя.'
       return newErrors
     }
 
@@ -290,6 +327,11 @@ export const useInquirySection = () => {
       return newErrors
     }
 
+    if (!validateConsents()) {
+      newErrors.common = 'Пожалуйста, примите все юридические документы.'
+      return newErrors
+    }
+
     if (!captchaToken) {
       newErrors.common = "Подтвердите, что вы не робот."
       return newErrors
@@ -297,8 +339,14 @@ export const useInquirySection = () => {
 
     const validResult = validateRequestForm(buildRequestPayload())
     if (!validResult.is_success) {
-      const firstError = validResult.errors?.[0]?.error?.[0]
-      newErrors.common = firstError ?? "Проверьте правильность заполнения полей."
+      const firstError = validResult.errors?.[0]
+      if (firstError?.field === 'name') {
+        newErrors.name = firstError.error?.[0] ?? 'Пожалуйста, введите ваше имя.'
+      }
+      if (firstError?.field === 'email') {
+        newErrors.email = firstError.error?.[0] ?? 'Пожалуйста, введите корректный email.'
+      }
+      newErrors.common = firstError?.error?.[0] ?? 'Проверьте правильность заполнения полей.'
       return newErrors
     }
 
@@ -308,6 +356,14 @@ export const useInquirySection = () => {
   const submitAnonymousRequest = async (token: string) => {
     const responseData = await submitRequestFormAction(buildRequestPayload(), token, 'light')
     if (!responseData.status) {
+      const payload = responseData.data as { code?: string; message?: string } | null
+      if (payload?.code === 'email_taken') {
+        const err = new Error(
+          payload.message ?? 'Этот email уже зарегистрирован. Войдите в личный кабинет.',
+        )
+        ;(err as Error & { code?: string }).code = 'email_taken'
+        throw err
+      }
       throw new Error(responseData.error || 'Произошла ошибка при отправке. Попробуйте еще раз.')
     }
   }
@@ -348,9 +404,28 @@ export const useInquirySection = () => {
     return { ok: true, id: created.id, uuid: created.uuid ?? '' }
   }
 
+  const uploadStagedAttachments = async (
+    questionId: string | number,
+  ): Promise<{ ok: boolean; message?: string }> => {
+    if (attachmentsUploadedRef.current) return { ok: true }
+    if (attachedFiles.length === 0) {
+      attachmentsUploadedRef.current = true
+      return { ok: true }
+    }
+    const result = await uploadQuestionAttachmentsAction(questionId, attachedFiles)
+    if (!result.ok) {
+      return { ok: false, message: result.error || 'Не удалось загрузить файлы.' }
+    }
+    attachmentsUploadedRef.current = true
+    return { ok: true }
+  }
+
   const submitFreeAndShowSuccess = async (): Promise<{ ok: boolean; message?: string }> => {
     const ensured = await ensureUnpaidQuestionExists()
     if (!ensured.ok) return { ok: false, message: ensured.message }
+
+    const uploaded = await uploadStagedAttachments(ensured.id)
+    if (!uploaded.ok) return { ok: false, message: uploaded.message }
 
     const response = await wizardSubmitQuestionAction({
       questionId: ensured.id,
@@ -369,6 +444,9 @@ export const useInquirySection = () => {
   const showPayLaterSuccess = async (): Promise<{ ok: boolean; message?: string }> => {
     const ensured = await ensureUnpaidQuestionExists()
     if (!ensured.ok) return { ok: false, message: ensured.message }
+
+    const uploaded = await uploadStagedAttachments(ensured.id)
+    if (!uploaded.ok) return { ok: false, message: uploaded.message }
 
     const response = await wizardSubmitQuestionAction({
       questionId: ensured.id,
@@ -429,6 +507,15 @@ export const useInquirySection = () => {
       setCaptchaToken(null)
       setIsComplete(true)
     } catch (error) {
+      const code = (error as Error & { code?: string }).code
+      if (code === 'email_taken') {
+        setErrors(prev => ({
+          ...prev,
+          email: error instanceof Error ? error.message : 'Этот email уже зарегистрирован.',
+          common: error instanceof Error ? error.message : 'Этот email уже зарегистрирован.',
+        }))
+        return
+      }
       setErrors(prev => ({
         ...prev,
         common: error instanceof Error ? error.message : 'Произошла ошибка при отправке. Попробуйте еще раз.',
@@ -464,12 +551,14 @@ export const useInquirySection = () => {
       isFirstQuestionFree?: boolean
       questionPrice?: number
       userBalance?: number
+      freeQuestions?: number
     }
 
     setVerifyToken(data.verifyToken)
     setIsFirstQuestionFree(data.isFirstQuestionFree ?? false)
     if (typeof data.questionPrice === 'number') setQuestionPrice(data.questionPrice)
     if (typeof data.userBalance === 'number') setUserBalance(data.userBalance)
+    if (typeof data.freeQuestions === 'number') setFreeQuestions(data.freeQuestions)
 
     const user = data.user ?? null
     if (user) setVerifiedUser(user)
@@ -497,6 +586,14 @@ export const useInquirySection = () => {
       }
       setVerificationModal('none')
       return { ok: true }
+    }
+
+    if ((data.freeQuestions ?? 0) > 0) {
+      const paid = await handlePayBalance()
+      if (paid.ok) {
+        setVerificationModal('none')
+        return { ok: true }
+      }
     }
 
     setVerificationModal('none')
@@ -540,11 +637,13 @@ export const useInquirySection = () => {
       isFirstQuestionFree?: boolean
       questionPrice?: number
       userBalance?: number
+      freeQuestions?: number
     }
     if (data.user) setVerifiedUser(data.user)
     if (typeof data.isFirstQuestionFree === 'boolean') setIsFirstQuestionFree(data.isFirstQuestionFree)
     if (typeof data.questionPrice === 'number') setQuestionPrice(data.questionPrice)
     if (typeof data.userBalance === 'number') setUserBalance(data.userBalance)
+    if (typeof data.freeQuestions === 'number') setFreeQuestions(data.freeQuestions)
 
     const signInResult = await signInWithPhoneOtp(normalizedPhone, verifyToken)
     if (!signInResult.status) {
@@ -566,12 +665,21 @@ export const useInquirySection = () => {
       })
       return
     }
+    if (freeQuestions > 0) {
+      handlePayBalance().then((result) => {
+        if (!result.ok) setPanel('payment')
+      })
+      return
+    }
     setPanel('payment')
   }
 
   const handlePayCard = async (): Promise<{ ok: boolean; message?: string }> => {
     const ensured = await ensureUnpaidQuestionExists()
     if (!ensured.ok) return { ok: false, message: ensured.message }
+
+    const uploaded = await uploadStagedAttachments(ensured.id)
+    if (!uploaded.ok) return { ok: false, message: uploaded.message }
 
     const response = await createWizardCardOrderAction(questionPrice, ensured.id)
     if (!response.status) {
@@ -589,17 +697,20 @@ export const useInquirySection = () => {
     const ensured = await ensureUnpaidQuestionExists()
     if (!ensured.ok) return { ok: false, message: ensured.message }
 
+    const uploaded = await uploadStagedAttachments(ensured.id)
+    if (!uploaded.ok) return { ok: false, message: uploaded.message }
+
     const response = await payWithBalanceAction({
       questionId: ensured.id,
       idempotencyKey: paymentIdempotencyKey,
-      source: 'main',
+      source: isProfile ? 'lk' : 'main',
     })
     if (!response.status) {
       return { ok: false, message: response.error || 'Не удалось провести оплату с баланса.' }
     }
 
-    const data = response.data as { amount?: number }
-    setSuccessKind('balance')
+    const data = response.data as { amount?: number; freeUsed?: boolean }
+    setSuccessKind(data?.freeUsed ? 'bonus' : 'balance')
     setSuccessAmount(typeof data.amount === 'number' ? data.amount : questionPrice)
     emitBalanceRefresh()
     setPanel('success')
@@ -645,6 +756,9 @@ export const useInquirySection = () => {
     attachedFiles,
     channel,
     contactValue,
+    guestName,
+    consents,
+    consentErrors,
     errors,
     captchaToken,
     submitting,
@@ -659,6 +773,7 @@ export const useInquirySection = () => {
     profileInitialEmail,
     questionPrice,
     userBalance,
+    freeQuestions,
     successKind,
     successAmount,
     goNext,
@@ -681,10 +796,17 @@ export const useInquirySection = () => {
     setChannel: (next: ContactChannel) => {
       setChannel(next)
       setContactValue('')
+      setGuestName('')
       setCaptchaToken(null)
+      setConsentErrors({})
       setErrors(emptyErrors())
     },
     setContactValue,
+    setGuestName,
+    setConsents: (next: LegalConsentsValue) => {
+      setConsents(next)
+      if (allConsentsAccepted(next)) setConsentErrors({})
+    },
     setCaptchaToken,
     setQuestionTouched,
     validateQuestionText,

@@ -66,7 +66,7 @@ export const ProfileListData = ({ id, currentPage, itemsPerPage, totalItems, onT
         return (
             <div>
                 <div className="text-center py-[60px]">
-                    <p className="font-['Inter:Regular',sans-serif] font-normal text-[16px] text-[rgba(255,255,255,0.6)]">
+                    <p className="font-normal text-[16px] text-[rgba(255,255,255,0.6)]">
                         У вас пока нет вопросов
                     </p>
                 </div>
@@ -87,17 +87,17 @@ export const ProfileListData = ({ id, currentPage, itemsPerPage, totalItems, onT
               <div className="text-sm text-[rgba(255,255,255,0.9)] font-medium">#{question.id}</div>
               <div className="text-sm text-[rgba(255,255,255,0.9)] truncate">
                 <Link href={domainUrl + '/consultation/' + question.uuid + '/'} target="_blank" rel="noopener noreferrer" 
-                    className="font-['Inter:Regular',sans-serif] font-normal text-[14px] text-[#87b7ce] hover:text-[#6fa2b8] transition-colors line-clamp-2"
+                    className="font-normal text-[14px] text-[#87b7ce] hover:text-[#6fa2b8] transition-colors line-clamp-2"
                 >{question.question} </Link>
               </div>
               <div className="text-sm text-[rgba(255,255,255,0.7)]">{format((new Date(question.created_at)), dFormat)}</div>
               <div className="text-sm text-[rgba(255,255,255,0.7)]">
                 {[QuestionStatusesE.Approved, QuestionStatusesE.Spam].includes(question.job_status) ? (
                 <Link href={domainUrl + '/consultation/' + question.uuid + '/'}  target="_blank" rel="noopener noreferrer" 
-                    className="font-['Inter:Regular',sans-serif] font-normal text-[14px] text-[#87b7ce] hover:text-[#6fa2b8] transition-colors line-clamp-2"
+                    className="font-normal text-[14px] text-[#87b7ce] hover:text-[#6fa2b8] transition-colors line-clamp-2"
                 >Ссылка</Link>
                 ) : (
-                <span className="font-['Inter:Regular',sans-serif] font-normal text-[14px] text-[rgba(255,255,255,0.4)]">
+                <span className="font-normal text-[14px] text-[rgba(255,255,255,0.4)]">
                     —
                 </span>
                 )}

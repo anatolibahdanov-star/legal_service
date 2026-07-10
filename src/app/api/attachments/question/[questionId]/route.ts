@@ -90,9 +90,12 @@ export async function POST(
 
   const existingCount = await countByQuestionId(questionId, 'user');
   const status = Number(question.status);
-  const editable = existingCount === 0
-    && (status === QuestionStatusesE.Unpaid || status === QuestionStatusesE.New);
-  if (!editable) {
+  const jobStatus = Number(question.job_status);
+  const isPreSubmit =
+    existingCount === 0 &&
+    (status === QuestionStatusesE.Unpaid || status === QuestionStatusesE.New);
+  const isInProgressUpload = jobStatus === QuestionStatusesE.InProgress;
+  if (!isPreSubmit && !isInProgressUpload) {
     return NextResponse.json(
       { success: false, message: 'Файлы нельзя изменить после отправки запроса.' },
       { status: 409 },

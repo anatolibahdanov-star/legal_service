@@ -193,7 +193,7 @@ export function CaseModal({ caseItem, isOpen, onClose, openRatingSection, user, 
     const dataRequest: RequestFormI = {
       name: user.name ?? "",
       email: user.email ?? "",
-      topic: caseItem.category_name,
+      topic: caseItem.category_name ?? '',
       question: questionOrId,
       agree: true,
       parent: parseInt(caseItem.id),

@@ -20,13 +20,13 @@ export const AdminJobView = ({record, jobs, attachmentsMap}: AdminJobViewPropsI)
                     <div className="flex items-center gap-3 mb-3">
                         <div className="relative shrink-0">
                             <div className="bg-clip-padding border-0 border-[transparent] border-solid content-stretch flex items-start relative">
-                                <p className="font-['Inter:Medium',sans-serif] font-medium leading-[32px] not-italic relative shrink-0 text-[24px] text-white whitespace-nowrap">
+                                <p className="font-medium leading-[32px] not-italic relative shrink-0 text-[24px] text-white whitespace-nowrap">
                                 Дело #{id} от {username}
                                 </p>
                             </div>
                         </div>
                         {statusColor && (<div className={`bg-[${statusColor.color}] relative rounded-full shrink-0 px-4 py-1.5`}>
-                        <p className="font-['Inter:Medium',sans-serif] font-medium leading-[16px] text-[13px] text-white whitespace-nowrap">
+                        <p className="font-medium leading-[16px] text-[13px] text-white whitespace-nowrap">
                             {statusColor.name}
                         </p>
                         </div>)}
@@ -38,13 +38,13 @@ export const AdminJobView = ({record, jobs, attachmentsMap}: AdminJobViewPropsI)
                             </div>
                         )}
                     </div>
-                {createdAt && (<p className="font-['Inter:Regular',sans-serif] font-normal leading-[20px] text-[14px] text-[rgba(255,255,255,0.7)] mb-4">
+                {createdAt && (<p className="font-normal leading-[20px] text-[14px] text-[rgba(255,255,255,0.7)] mb-4">
                     Дата обращения: {createdAt}
                 </p>)}
-                {category_name && (<p className="font-['Inter:Regular',sans-serif] font-normal leading-[20px] text-[14px] text-[rgba(255,255,255,0.7)] mb-4">
+                {category_name && (<p className="font-normal leading-[20px] text-[14px] text-[rgba(255,255,255,0.7)] mb-4">
                     Категория: {category_name} ({category_id})
                 </p>)}
-                {lawyer && (<p className="font-['Inter:Regular',sans-serif] font-normal leading-[20px] text-[14px] text-[rgba(255,255,255,0.7)] mb-4">
+                {lawyer && (<p className="font-normal leading-[20px] text-[14px] text-[rgba(255,255,255,0.7)] mb-4">
                     {lawyer}
                 </p>)}
                 </div>

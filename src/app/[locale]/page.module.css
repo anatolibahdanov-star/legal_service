@@ -1,0 +1,81 @@
+.page {
+  min-height: 100vh;
+  background: #f9f9f9;
+  color: #12161b;
+  font-family: var(--font-sans);
+}
+
+.hero {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  height: 780px;
+}
+
+.heroImageWrap {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.heroImage {
+  object-fit: cover;
+  object-position: center;
+}
+
+.heroContent {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: flex-end;
+  width: 100%;
+  height: 100%;
+  max-width: 1440px;
+  margin-inline: auto;
+  padding-inline: 100px;
+  padding-bottom: 120px;
+}
+
+.heroTitle {
+  max-width: 615px;
+  font-size: 64px;
+  line-height: 70px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: #fff;
+}
+
+/* ─── Tablet (768–1023px) ───────────────────────────────────────────────── */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .hero {
+    height: 600px;
+  }
+
+  .heroContent {
+    padding-inline: 40px;
+    padding-bottom: 64px;
+  }
+
+  .heroTitle {
+    font-size: 48px;
+    line-height: 52px;
+  }
+}
+
+/* ─── Mobile (≤767px) ───────────────────────────────────────────────────── */
+@media (max-width: 767px) {
+  .hero {
+    height: 480px;
+  }
+
+  .heroContent {
+    padding-inline: 16px;
+    padding-bottom: 40px;
+  }
+
+  .heroTitle {
+    max-width: 352px;
+    font-size: 28px;
+    line-height: 32px;
+  }
+}

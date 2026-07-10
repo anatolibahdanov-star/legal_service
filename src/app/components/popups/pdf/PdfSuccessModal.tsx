@@ -1,15 +1,16 @@
-"use client";
+'use client'
 
-import { Check } from "lucide-react";
-import { Dialog, DialogContent, DialogTitle } from "@/src/app/components/ui/dialog";
-import { Button } from "@/src/app/components/ui/button";
+import { Check } from 'lucide-react'
+import { Dialog, DialogContent, DialogTitle } from '@/src/app/components/ui/dialog'
+import { cn } from '@/src/app/components/ui/utils'
+import styles from './pdf-actions-modal.module.css'
 
 interface PdfSuccessModalProps {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  questionId: string | number;
-  questionDate?: string;
-  message?: string;
+  open: boolean
+  onOpenChange: (v: boolean) => void
+  questionId: string | number
+  questionDate?: string
+  message?: string
 }
 
 export function PdfSuccessModal({
@@ -17,34 +18,40 @@ export function PdfSuccessModal({
   onOpenChange,
   questionId,
   questionDate,
-  message = "PDF успешно отправлен",
+  message = 'PDF успешно отправлен',
 }: PdfSuccessModalProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm p-0 gap-0 overflow-hidden border-0">
-        <div className="bg-[#323c54] px-6 pt-6 pb-5 text-white">
-          <DialogTitle className="text-lg font-semibold leading-tight pr-8">
+      <DialogContent
+        className={cn(
+          '!flex !max-w-[400px] !flex-col !gap-0 !overflow-hidden !rounded-[28px] !border !border-[rgba(18,22,27,0.05)] !bg-white !p-0',
+          'shadow-[0_3px_36px_0_rgba(0,0,0,0.04),0_-102px_250px_0_rgba(0,0,0,0.07)]',
+          '[&>button]:top-[18px] [&>button]:right-[18px] [&>button]:rounded-full [&>button]:p-2',
+          '[&>button]:opacity-100 [&>button]:text-[rgba(18,22,27,0.55)]',
+          '[&>button:hover]:bg-[#f7f6f9] [&>button:hover]:text-[#12161b]',
+          '[&>button>svg]:size-4',
+        )}
+      >
+        <div className={styles.header}>
+          <span className={styles.caseId}>ENK-{questionId}</span>
+          <DialogTitle className={styles.title}>
             Вопрос и ответ #{questionId}
           </DialogTitle>
           {questionDate && (
-            <p className="mt-2 text-xs text-white/70">Дата обращения: {questionDate}</p>
+            <p className={styles.meta}>Дата обращения: {questionDate}</p>
           )}
         </div>
 
-        <div className="px-6 py-8 bg-white flex flex-col items-center text-center space-y-4">
-          <div className="inline-flex items-center justify-center size-20 rounded-full bg-emerald-100">
-            <Check className="size-12 text-emerald-600 stroke-[2.5]" />
+        <div className={styles.successBody}>
+          <div className={styles.successIcon}>
+            <Check className="h-8 w-8" strokeWidth={2.5} />
           </div>
-          <p className="text-base font-medium text-[#29282b]">{message}</p>
-          <Button
-            onClick={() => onOpenChange(false)}
-            className="w-full text-white hover:opacity-90"
-            style={{ backgroundColor: "#323c54" }}
-          >
+          <p className={styles.successText}>{message}</p>
+          <button type="button" onClick={() => onOpenChange(false)} className={styles.downloadBtn}>
             Готово
-          </Button>
+          </button>
         </div>
       </DialogContent>
     </Dialog>
-  );
+  )
 }

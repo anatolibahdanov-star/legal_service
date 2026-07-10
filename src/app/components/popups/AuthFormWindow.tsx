@@ -16,7 +16,7 @@ export function AuthFormWindow({
 
   return (
     <div
-      className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-[200]"
+      className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-[1400]"
       onClick={onClose}
     >
       <div

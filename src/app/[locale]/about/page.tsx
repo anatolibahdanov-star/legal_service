@@ -69,32 +69,32 @@ export default async function AboutPage({
                     <div className="h-[1px] flex-1 bg-gradient-to-r from-[#87b7ce] to-transparent"></div>
                   </div>
                   
-                  <h2 className="font-['Inter:Bold',sans-serif] font-bold text-[32px] leading-[1.3] text-[#29282b] mb-4">
+                  <h2 className="font-bold text-[32px] leading-[1.3] text-[#29282b] mb-4">
                     О компании
                   </h2>
-                  <p className="font-['Inter:Semi_Bold',sans-serif] font-semibold text-[20px] leading-[1.5] text-[#87b7ce] mb-6">
+                  <p className="font-semibold text-[20px] leading-[1.5] text-[#87b7ce] mb-6">
                     С 2014 года мы помогаем защищать права собственников и участников сделок с недвижимостью.
                   </p>
-                  <p className="font-['Inter:Regular',sans-serif] text-[18px] leading-[1.7] text-[#29282b]">
+                  <p className="text-[18px] leading-[1.7] text-[#29282b]">
                     Мы — профессиональная юридическая компания с многолетним опытом работы в сфере права. Наша команда опытных юристов помогла сотням клиентов защитить интересы и добиться справедливого решения.
                   </p>
                 </div>
 
                 <div>
-                  <p className="font-['Inter:Regular',sans-serif] text-[18px] leading-[1.7] text-[#29282b]">
+                  <p className="text-[18px] leading-[1.7] text-[#29282b]">
                     География нашей работы — <span className="font-semibold text-[#87b7ce]">Москва и Московская область</span>. С 2014 года мы накопили значительный опыт в решении самых сложных юридических вопросов.
                   </p>
                 </div>
 
                 <div>
-                  <p className="font-['Inter:Regular',sans-serif] text-[18px] leading-[1.7] text-[#29282b]">
+                  <p className="text-[18px] leading-[1.7] text-[#29282b]">
                     Гарантируем индивидуальный подход, полную конфиденциальность и профессиональное сопровождение на всех этапах — от консультации и досудебного урегулирования до представительства в суде и обжалования решений.
                   </p>
                 </div>
 
                 <div className="pt-4">
                   <div className="bg-[#3d4b5e] relative rounded-[16px] size-full" data-name="Link">
-                    <p className="absolute css-ew64yg font-['Inter:Medium',sans-serif] font-medium leading-[24px] left-[32px] not-italic text-[16px] text-white top-[15px]">Онлайн консультация</p>
+                    <p className="absolute css-ew64yg font-medium leading-[24px] left-[32px] not-italic text-[16px] text-white top-[15px]">Онлайн консультация</p>
                   </div>
                 </div>
               </div>
@@ -113,14 +113,14 @@ export default async function AboutPage({
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-baseline gap-2 mb-1">
-                    <span className="font-['Inter:Bold',sans-serif] font-bold text-[24px] leading-[32px] text-white">
+                    <span className="font-bold text-[24px] leading-[32px] text-white">
                       500+
                     </span>
-                    <span className="font-['Inter:Regular',sans-serif] text-[14px] leading-[20px] text-[rgba(255,255,255,0.9)]">
+                    <span className="text-[14px] leading-[20px] text-[rgba(255,255,255,0.9)]">
                       дел
                     </span>
                   </div>
-                  <p className="font-['Inter:Regular',sans-serif] text-[12px] leading-[16px] text-[#87b7ce]">
+                  <p className="text-[12px] leading-[16px] text-[#87b7ce]">
                     успешно закрыто
                   </p>
                 </div>
@@ -133,14 +133,14 @@ export default async function AboutPage({
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-baseline gap-2 mb-1">
-                    <span className="font-['Inter:Bold',sans-serif] font-bold text-[24px] leading-[32px] text-white">
+                    <span className="font-bold text-[24px] leading-[32px] text-white">
                       87%
                     </span>
-                    <span className="font-['Inter:Regular',sans-serif] text-[14px] leading-[20px] text-[rgba(255,255,255,0.9)]">
+                    <span className="text-[14px] leading-[20px] text-[rgba(255,255,255,0.9)]">
                       успех
                     </span>
                   </div>
-                  <p className="font-['Inter:Regular',sans-serif] text-[12px] leading-[16px] text-[#87b7ce]">
+                  <p className="text-[12px] leading-[16px] text-[#87b7ce]">
                     в пользу клиентов
                   </p>
                 </div>
@@ -153,14 +153,14 @@ export default async function AboutPage({
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-baseline gap-2 mb-1">
-                    <span className="font-['Inter:Bold',sans-serif] font-bold text-[24px] leading-[32px] text-white">
+                    <span className="font-bold text-[24px] leading-[32px] text-white">
                       15+
                     </span>
-                    <span className="font-['Inter:Regular',sans-serif] text-[14px] leading-[20px] text-[rgba(255,255,255,0.9)]">
+                    <span className="text-[14px] leading-[20px] text-[rgba(255,255,255,0.9)]">
                       лет
                     </span>
                   </div>
-                  <p className="font-['Inter:Regular',sans-serif] text-[12px] leading-[16px] text-[#87b7ce]">
+                  <p className="text-[12px] leading-[16px] text-[#87b7ce]">
                     опыта работы
                   </p>
                 </div>
@@ -173,11 +173,11 @@ export default async function AboutPage({
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-baseline gap-2 mb-1">
-                    <span className="font-['Inter:Bold',sans-serif] font-bold text-[24px] leading-[32px] text-white">
+                    <span className="font-bold text-[24px] leading-[32px] text-white">
                       24/7
                     </span>
                   </div>
-                  <p className="font-['Inter:Regular',sans-serif] text-[12px] leading-[16px] text-[#87b7ce]">
+                  <p className="text-[12px] leading-[16px] text-[#87b7ce]">
                     всегда на связи
                   </p>
                 </div>
@@ -189,28 +189,28 @@ export default async function AboutPage({
         {/* Call to Action - Narrow */}
         <section className="py-8 px-4 bg-[#fefdf9]">
           <div className="max-w-3xl mx-auto text-center">
-            <h2 className="font-['Inter:Bold',sans-serif] font-bold text-[48px] leading-[1.2] text-[#252623] mb-6">
+            <h2 className="font-bold text-[48px] leading-[1.2] text-[#252623] mb-6">
               Готовы защитить ваши права
             </h2>
-            <p className="font-['Inter:Regular',sans-serif] text-[20px] leading-[1.6] text-[rgba(41,40,43,0.7)] mb-8">
+            <p className="text-[20px] leading-[1.6] text-[rgba(41,40,43,0.7)] mb-8">
               Получите бесплатную консультацию и узнайте, как мы можем помочь в вашей ситуации
             </p>
-            <OriginalLink href="/" className="bg-[#87b7ce] hover:bg-[#6fa3bb] transition-colors rounded-[16px] px-12 py-4 font-['Inter:Medium',sans-serif] font-medium text-[18px] text-white shadow-lg">
+            <OriginalLink href="/" className="bg-[#87b7ce] hover:bg-[#6fa3bb] transition-colors rounded-[16px] px-12 py-4 font-medium text-[18px] text-white shadow-lg">
               Задать вопрос адвокату
             </OriginalLink>
 
             <div className="mt-8 flex flex-wrap justify-center gap-8 text-[rgba(41,40,43,0.6)]">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-[#87b7ce] rounded-full"></div>
-                <span className="font-['Inter:Medium',sans-serif] text-[14px]">Онлайн консультации</span>
+                <span className="text-[14px]">Онлайн консультации</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-[#87b7ce] rounded-full"></div>
-                <span className="font-['Inter:Medium',sans-serif] text-[14px]">Конфиденциально</span>
+                <span className="text-[14px]">Конфиденциально</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-[#87b7ce] rounded-full"></div>
-                <span className="font-['Inter:Medium',sans-serif] text-[14px]">Без визита в офис</span>
+                <span className="text-[14px]">Без визита в офис</span>
               </div>
             </div>
           </div>
@@ -220,7 +220,7 @@ export default async function AboutPage({
         <section className="py-8 px-4 bg-[#fefdf9]">
           <div className="max-w-[920px] mx-auto">
             <div className="text-center mb-12">
-              <h2 className="font-['Inter:Bold',sans-serif] font-bold text-[48px] leading-[1.2] text-[#252623] mb-4">
+              <h2 className="font-bold text-[48px] leading-[1.2] text-[#252623] mb-4">
                 Контакты
               </h2>
             </div>

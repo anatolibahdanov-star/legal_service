@@ -1,5 +1,5 @@
 .page {
-    font-family: Inter, "Segoe UI", system-ui, -apple-system, sans-serif;
+    font-family: var(--font-sans);
     color: #1f2430;
     padding: 8px 4px 40px;
     background: #ffffff;

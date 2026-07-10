@@ -156,14 +156,18 @@ export async function POST(request: Request) {
 
     if(question !== null) {
         const sendData: EmailDataNewRequestI = {
-            id: question.id,
+            id: String(question.id),
             username: question.username,
             email: question.email,
             admin_id: question.admin_id,
         }
-        const isSendEmail = await sendNewRequestEmail(sendData)
-        if(!isSendEmail) {
-            logger.error(msg + "email on new request event was not sent", sendData)
+        try {
+            const isSendEmail = await sendNewRequestEmail(sendData)
+            if(!isSendEmail) {
+                logger.error(msg + "email on new request event was not sent", sendData)
+            }
+        } catch (err) {
+            logger.error(msg + "email on new request event threw", (err as Error).message, sendData)
         }
     }
     

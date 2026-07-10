@@ -20,6 +20,7 @@ export const DOCUMENT_KEYS: LegalDocumentKey[] = [
   'privacy-policy',
   'personal-data-consent',
   'public-offer',
+  'insurance-policy',
 ]
 
 export const DOCUMENTS: DocumentLink[] = DOCUMENT_KEYS.map((key) => ({

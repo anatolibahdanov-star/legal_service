@@ -1,8 +1,6 @@
 "use client";
 
-import { useState } from "react";
 import { Check } from "lucide-react";
-import { PdfDocumentModal } from "@/src/app/components/PdfDocumentModal";
 import {
   LEGAL_DOCUMENTS,
   type LegalDocumentKey,
@@ -37,7 +35,6 @@ interface CheckboxRowProps {
   tone: "light" | "dark";
   showError?: boolean;
   errorText?: string;
-  onOpenDoc: (key: LegalDocumentKey) => void;
 }
 
 function CheckboxRow({
@@ -51,7 +48,6 @@ function CheckboxRow({
   tone,
   showError,
   errorText,
-  onOpenDoc,
 }: CheckboxRowProps) {
   const isDark = tone === "dark";
   const textColor = isDark ? "text-white/90" : "text-[#0F1B2D]";
@@ -94,25 +90,15 @@ function CheckboxRow({
         </span>
         <span className="text-[14px] leading-[20px] flex-1">
           <span>{prefix} </span>
-          <span
-            role="link"
-            tabIndex={0}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              onOpenDoc(docKey);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                e.stopPropagation();
-                onOpenDoc(docKey);
-              }
-            }}
+          <a
+            href={LEGAL_DOCUMENTS[docKey].src}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
             className={`underline underline-offset-2 decoration-1 cursor-pointer transition-colors ${linkColor}`}
           >
             {docLabel}
-          </span>
+          </a>
           {suffix ?? ""}
         </span>
       </label>
@@ -138,14 +124,11 @@ export function LegalConsents({
   errors,
   idPrefix = "consent",
 }: LegalConsentsProps) {
-  const [openDoc, setOpenDoc] = useState<LegalDocumentKey | null>(null);
-
   const set = (key: keyof LegalConsentsValue, next: boolean) =>
     onChange({ ...value, [key]: next });
 
   return (
-    <>
-      <div className="flex flex-col gap-[12px]">
+    <div className="flex flex-col gap-[12px]">
         <CheckboxRow
           id={`${idPrefix}-privacy`}
           checked={value.privacy}
@@ -156,7 +139,6 @@ export function LegalConsents({
           tone={tone}
           showError={!!errors?.privacy}
           errorText={errors?.privacy}
-          onOpenDoc={setOpenDoc}
         />
         <CheckboxRow
           id={`${idPrefix}-data`}
@@ -168,7 +150,6 @@ export function LegalConsents({
           tone={tone}
           showError={!!errors?.data}
           errorText={errors?.data}
-          onOpenDoc={setOpenDoc}
         />
         <CheckboxRow
           id={`${idPrefix}-offer`}
@@ -180,16 +161,7 @@ export function LegalConsents({
           tone={tone}
           showError={!!errors?.offer}
           errorText={errors?.offer}
-          onOpenDoc={setOpenDoc}
         />
-      </div>
-
-      <PdfDocumentModal
-        open={openDoc !== null}
-        title={openDoc ? LEGAL_DOCUMENTS[openDoc].title : ""}
-        src={openDoc ? LEGAL_DOCUMENTS[openDoc].src : ""}
-        onClose={() => setOpenDoc(null)}
-      />
-    </>
+    </div>
   );
 }

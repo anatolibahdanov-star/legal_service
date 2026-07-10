@@ -651,7 +651,7 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
             <div className="bg-[#3d4b5e] rounded-2xl sm:rounded-3xl p-5 sm:p-8 lg:p-10 shadow-2xl">
                 <form onSubmit={handleSubmit} className="space-y-5" noValidate>
                     {errors.common && (
-                        <p className="font-['Inter:Regular',sans-serif] font-normal text-[12px] text-red-400 ml-[4px]">
+                        <p className="font-normal text-[12px] text-red-400 ml-[4px]">
                             {errors.common}
                         </p>
                     )}
@@ -842,7 +842,7 @@ export default function RequestForm({parent = null, setCurrent, setPage, onClose
                 </p>
 
                 {errors.common && (
-                    <p className="font-['Inter:Regular',sans-serif] font-normal text-[12px] text-red-400 ml-[4px] mb-2">
+                    <p className="font-normal text-[12px] text-red-400 ml-[4px] mb-2">
                         {errors.common}
                     </p>
                 )}

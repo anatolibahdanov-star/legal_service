@@ -106,13 +106,13 @@ export default function ContactForm() {
         <div className="flex items-stretch">
         <div className="bg-gradient-to-r from-[#3d4b5e] to-[#2a3542] rounded-[24px] p-8 w-full flex flex-col">
             <div className="text-center mb-6">
-                <h3 className="font-['Inter:Bold',sans-serif] font-bold text-[28px] text-white mb-3">Остались вопросы?</h3>
-                <p className="font-['Inter:Regular',sans-serif] text-[16px] text-white/80">
+                <h3 className="font-bold text-[28px] text-white mb-3">Остались вопросы?</h3>
+                <p className="text-[16px] text-white/80">
                     Не получилось получить консультацию или нужны уточнения?<br />
                     Напишите нам — мы свяжемся с вами.
                 </p>
                 {errors.common && (
-                    <p className="font-['Inter:Regular',sans-serif] font-normal pt-2 text-[16px] text-red-400 ml-[4px]">
+                    <p className="font-normal pt-2 text-[16px] text-red-400 ml-[4px]">
                         {errors.common}
                     </p>
                 )}
@@ -125,45 +125,45 @@ export default function ContactForm() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                 </div>
-                <h4 className="font-['Inter:Bold',sans-serif] font-bold text-[24px] text-white mb-2">Спасибо!</h4>
-                <p className="font-['Inter:Regular',sans-serif] text-[14px] text-white/80">Ваше сообщение получено. Мы свяжемся с вами в ближайшее время.</p>
+                <h4 className="font-bold text-[24px] text-white mb-2">Спасибо!</h4>
+                <p className="text-[14px] text-white/80">Ваше сообщение получено. Мы свяжемся с вами в ближайшее время.</p>
             </div>
             ) : (
             <form onSubmit={handleSubmit} className="flex-1 flex flex-col" noValidate>
                 <div className="space-y-3 mb-4 flex-1">
                 <div>
-                    <label className="block font-['Inter:Medium',sans-serif] font-medium text-[13px] text-white/90 mb-1">Телефон</label>
+                    <label className="block font-medium text-[13px] text-white/90 mb-1">Телефон</label>
                     <input type="tel" name="phone" value={formData.phone} onChange={handleChange} placeholder="+7 ___ ___-__-__" required
-                    className={`w-full px-3 py-2.5 rounded-[10px] border bg-white/10 font-['Inter:Regular',sans-serif] text-[15px] text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#87b7ce]/20 transition-all ${
+                    className={`w-full px-3 py-2.5 rounded-[10px] border bg-white/10 text-[15px] text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#87b7ce]/20 transition-all ${
                         errors.phone 
                             ? "border-red-400 focus:border-red-500" 
                             : "border-white/20 focus:border-[#87b7ce]"
                         }`}
                     />
                     {errors.phone && (
-                    <p className="font-['Inter:Regular',sans-serif] font-normal text-[12px] text-red-400 ml-[4px]">{errors.phone}</p>
+                    <p className="font-normal text-[12px] text-red-400 ml-[4px]">{errors.phone}</p>
                     )}
                 </div>
 
                 <div>
-                    <label className="block font-['Inter:Medium',sans-serif] font-medium text-[13px] text-white/90 mb-1">Email</label>
+                    <label className="block font-medium text-[13px] text-white/90 mb-1">Email</label>
                     <input type="email" name="email" value={email} onChange={handleChange} placeholder="example@mail.com" required
-                    className={`w-full px-3 py-2.5 rounded-[10px] border bg-white/10 font-['Inter:Regular',sans-serif] text-[15px] text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#87b7ce]/20 transition-all ${
+                    className={`w-full px-3 py-2.5 rounded-[10px] border bg-white/10 text-[15px] text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#87b7ce]/20 transition-all ${
                         errors.email 
                             ? "border-red-400 focus:border-red-500" 
                             : "border-white/20 focus:border-[#87b7ce]"
                         }`}
                     />
                     {errors.email && (
-                    <p className="font-['Inter:Regular',sans-serif] font-normal text-[12px] text-red-400 ml-[4px]">{errors.email}</p>
+                    <p className="font-normal text-[12px] text-red-400 ml-[4px]">{errors.email}</p>
                     )}
                 </div>
 
                 <div>
-                    <label className="block font-['Inter:Medium',sans-serif] font-medium text-[13px] text-white/90 mb-1">Сообщение</label>
+                    <label className="block font-medium text-[13px] text-white/90 mb-1">Сообщение</label>
                     <textarea name="message" value={formData.message} onChange={handleChange} placeholder="Опишите ваш вопрос или проблему"
                     rows={3} required maxLength={4000}
-                    className={`w-full px-3 py-2.5 rounded-[10px] border bg-white/10 font-['Inter:Regular',sans-serif] text-[15px] text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#87b7ce]/20 transition-all resize-none ${
+                    className={`w-full px-3 py-2.5 rounded-[10px] border bg-white/10 text-[15px] text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#87b7ce]/20 transition-all resize-none ${
                         errors.message
                             ? "border-red-400 focus:border-red-500"
                             : "border-white/20 focus:border-[#87b7ce]"
@@ -189,9 +189,9 @@ export default function ContactForm() {
 
                 <div className="text-center">
                 <button type="submit"
-                    className="w-full px-8 py-3 bg-[#87b7ce] hover:bg-[#6fa3b4] rounded-[10px] font-['Inter:Medium',sans-serif] font-medium text-[15px] text-white transition-colors shadow-lg hover:shadow-xl"
+                    className="w-full px-8 py-3 bg-[#87b7ce] hover:bg-[#6fa3b4] rounded-[10px] font-medium text-[15px] text-white transition-colors shadow-lg hover:shadow-xl"
                 >Связаться с нами</button>
-                <p className="mt-3 font-['Inter:Regular',sans-serif] text-[12px] text-white/60 italic">Ответим в ближайшее время удобным для Вас способом.</p>
+                <p className="mt-3 text-[12px] text-white/60 italic">Ответим в ближайшее время удобным для Вас способом.</p>
                 </div>
             </form>
             )}

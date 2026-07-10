@@ -20,6 +20,7 @@ import {
   operationTypeLabels,
 } from '@/src/app/components/admin/users/format'
 import { OperationsHistory } from './operations-history'
+import styles from './profile-balance.module.css'
 
 interface V2ProfileBalanceProps {
   data: DBUser | null
@@ -191,33 +192,33 @@ export function V2ProfileBalance({ data, setUserBalance }: V2ProfileBalanceProps
     if (op.questionId) {
       const label = `Вопрос №${op.questionId}`
       return op.questionUuid ? (
-        <Link href={`/consultation/${op.questionUuid}/`} className="truncate text-[#34347C] transition-colors hover:opacity-80">
+        <Link href={`/consultation/${op.questionUuid}/`} className={styles.subtitleLink}>
           {label}
         </Link>
       ) : (
-        <span className="truncate">{label}</span>
+        <span className={styles.subtitleText}>{label}</span>
       )
     }
-    return <span className="truncate">{op.comment ?? op.actor}</span>
+    return <span className={styles.subtitleText}>{op.comment ?? op.actor}</span>
   }
 
   return (
-    <div className="flex w-full flex-col gap-12">
-      <div className="flex items-stretch gap-12">
+    <div className={styles.root}>
+      <div className={styles.topRow}>
         {/* Доступный баланс */}
-        <div className="relative flex flex-1 overflow-hidden rounded-[28px] border border-[rgba(18,22,27,0.05)] bg-white p-8 shadow-[0px_3px_36px_0px_rgba(0,0,0,0.04),_0px_-102px_250px_0px_rgba(0,0,0,0.07)]">
-          <div className="relative z-[1] flex flex-1 flex-col justify-between gap-10">
-            <div className="flex flex-col gap-6">
-              <div className="flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-[#00BC7D]" />
-                <span className="text-[14px] font-semibold leading-5 text-[rgba(18,22,27,0.5)]">Доступный баланс</span>
+        <div className={styles.balanceCard}>
+          <div className={styles.balanceInner}>
+            <div className={styles.balanceTop}>
+              <div className={styles.balanceStatus}>
+                <span className={styles.statusDot} />
+                <span className={styles.statusLabel}>Доступный баланс</span>
               </div>
-              <div className="flex flex-col">
-                <div className="flex items-end gap-2">
-                  <span className="text-[64px] font-bold leading-[70px] text-[#12161B]">{formatRub(balance)}</span>
-                  <span className="pb-1.5 text-[32px] font-semibold leading-[35px] tracking-[-0.02em] text-[rgba(18,22,27,0.5)]">₽</span>
+              <div className={styles.balanceAmountWrap}>
+                <div className={styles.balanceAmountRow}>
+                  <span className={styles.balanceAmount}>{formatRub(balance)}</span>
+                  <span className={styles.balanceCurrency}>₽</span>
                 </div>
-                <span className="text-[12px] leading-[17px] text-[rgba(18,22,27,0.5)]">
+                <span className={styles.balanceHint}>
                   {lastTopup
                     ? `Пополнено ${formatDateTime(lastTopup.createdAt)}`
                     : 'Доступно для оплаты вопросов и услуг'}
@@ -228,58 +229,56 @@ export function V2ProfileBalance({ data, setUserBalance }: V2ProfileBalanceProps
               type="button"
               onClick={handleCreateOrder}
               disabled={creatingOrder}
-              className="inline-flex h-14 w-fit items-center gap-2 rounded-[35px] border border-white/15 bg-[radial-gradient(circle_at_50%_0%,#34347C_0%,#2D2D6C_100%)] px-7 pl-[22px] text-[18px] font-semibold leading-[21px] text-white shadow-[0px_4px_20px_0px_rgba(47,47,113,0.15)] transition-opacity cursor-pointer hover:opacity-90 active:opacity-80 disabled:opacity-60 disabled:cursor-not-allowed"
+              className={styles.topupBtn}
             >
-              <Plus className="h-6 w-6" />
+              <Plus className={styles.topupIcon} />
               {creatingOrder ? 'Создаём...' : 'Пополнить'}
             </button>
           </div>
-          <div className="absolute -left-12 top-[101px] h-64 w-64 rounded-full bg-[rgba(10,2,255,0.06)] blur-[64px]" />
+          <div className={styles.balanceBlur} />
         </div>
 
         {/* История операций — превью */}
-        <div className="flex w-[600px] shrink-0 flex-col gap-6 rounded-[28px] border border-[rgba(18,22,27,0.05)] bg-white px-8 py-7 shadow-[0px_3px_36px_0px_rgba(0,0,0,0.04),_0px_-102px_250px_0px_rgba(0,0,0,0.07)]">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex flex-col gap-1">
-              <h3 className="text-[20px] font-semibold leading-6 tracking-[-0.01em] text-[#12161B]">История операций</h3>
-              <span className="text-[12px] leading-[17px] text-[rgba(18,22,27,0.5)]">{monthLabel}</span>
+        <div className={styles.historyCard}>
+          <div className={styles.historyHeader}>
+            <div className={styles.historyTitleWrap}>
+              <h3 className={styles.historyTitle}>История операций</h3>
+              <span className={styles.historyMonth}>{monthLabel}</span>
             </div>
             <button
               type="button"
               onClick={() => setShowAllOperations((value) => !value)}
-              className="inline-flex items-center gap-1 text-[14px] font-medium text-[#34347C] transition-opacity cursor-pointer hover:opacity-80 active:opacity-60"
+              className={styles.historyToggle}
             >
               {showAllOperations ? 'Свернуть' : 'Все операции'}
-              <ArrowRight className="h-4 w-4" />
+              <ArrowRight className={styles.toggleIcon} />
             </button>
           </div>
 
-          <div className="flex flex-1 flex-col justify-center">
+          <div className={styles.historyList}>
             {recentOperations.length === 0 ? (
-              <p className="py-6 text-center text-[14px] text-[rgba(18,22,27,0.5)]">Операций пока нет</p>
+              <p className={styles.historyEmpty}>Операций пока нет</p>
             ) : (
               recentOperations.map((op) => {
                 const credit = isCredit(op)
                 return (
-                  <div key={op.id} className="flex items-center gap-4 border-b border-[rgba(18,22,27,0.05)] py-3 last:border-b-0">
+                  <div key={op.id} className={styles.opRow}>
                     <div
-                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] ${
-                        credit ? 'bg-[rgba(22,163,74,0.12)] text-[#16A34A]' : 'bg-[rgba(18,22,27,0.04)] text-[rgba(18,22,27,0.6)]'
-                      }`}
+                      className={`${styles.opIcon} ${credit ? styles.opIconCredit : styles.opIconDebit}`}
                     >
-                      {credit ? <ArrowDownLeft className="h-5 w-5" /> : <ArrowUpRight className="h-5 w-5" />}
+                      {credit ? <ArrowDownLeft className={styles.opIconSvg} /> : <ArrowUpRight className={styles.opIconSvg} />}
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[15px] font-semibold leading-5 text-[#12161B]">{operationTypeLabels[op.type]}</p>
-                      <p className="mt-0.5 flex max-w-full truncate text-[12px] leading-[17px] text-[rgba(18,22,27,0.5)]">
+                    <div className={styles.opBody}>
+                      <p className={styles.opTitle}>{operationTypeLabels[op.type]}</p>
+                      <p className={styles.opSubtitle}>
                         {renderOperationSubtitle(op)}
                       </p>
                     </div>
-                    <div className="text-right">
-                      <p className={`text-[15px] font-semibold leading-5 ${credit ? 'text-[#16A34A]' : 'text-[#12161B]'}`}>
+                    <div className={styles.opRight}>
+                      <p className={`${styles.opValue} ${credit ? styles.opValueCredit : ''}`}>
                         {renderOperationValue(op)}
                       </p>
-                      <p className="mt-0.5 text-[12px] leading-[17px] text-[rgba(18,22,27,0.35)]">{formatDateTime(op.createdAt)}</p>
+                      <p className={styles.opDate}>{formatDateTime(op.createdAt)}</p>
                     </div>
                   </div>
                 )
@@ -290,47 +289,35 @@ export function V2ProfileBalance({ data, setUserBalance }: V2ProfileBalanceProps
       </div>
 
       {/* Стат-карточки: реальные данные */}
-      <div className="grid grid-cols-2 gap-12">
-        <div className="rounded-[28px] border border-[rgba(18,22,27,0.05)] bg-white px-8 py-6 shadow-[0px_3px_36px_0px_rgba(0,0,0,0.04),_0px_-102px_250px_0px_rgba(0,0,0,0.07)]">
-          <p className="text-[12px] font-medium uppercase leading-[17px] tracking-wide text-[rgba(18,22,27,0.4)]">
-            Потрачено в этом месяце
-          </p>
-          <p className="mt-3 text-[32px] font-bold leading-[35px] text-[#12161B]">{formatRub(monthlySpent)} ₽</p>
+      <div className={styles.statsGrid}>
+        <div className={styles.statCard}>
+          <p className={styles.statLabel}>Потрачено в этом месяце</p>
+          <p className={styles.statValue}>{formatRub(monthlySpent)} ₽</p>
         </div>
-        <div className="rounded-[28px] border border-[rgba(18,22,27,0.05)] bg-white px-8 py-6 shadow-[0px_3px_36px_0px_rgba(0,0,0,0.04),_0px_-102px_250px_0px_rgba(0,0,0,0.07)]">
-          <p className="text-[12px] font-medium uppercase leading-[17px] tracking-wide text-[rgba(18,22,27,0.4)]">Активных дел</p>
-          <div className="mt-3 flex items-end gap-3">
-            <span className="text-[32px] font-bold leading-[35px] text-[#12161B]">{dealsActive}</span>
+        <div className={styles.statCard}>
+          <p className={styles.statLabel}>Активных дел</p>
+          <div className={styles.statRow}>
+            <span className={styles.statNumber}>{dealsActive}</span>
             {dealsCompleted > 0 && (
-              <span className="mb-1 inline-flex items-center rounded-full bg-[rgba(22,163,74,0.12)] px-2.5 py-1 text-[12px] font-medium text-[#16A34A]">
-                {dealsCompleted} завершено
-              </span>
+              <span className={styles.statBadge}>{dealsCompleted} завершено</span>
             )}
           </div>
         </div>
       </div>
 
-      {/* Блок «Ваши вопросы» (платные/бесплатные) временно скрыт по решению —
-          дизайн Баланса приведён к новому макету. Логика реальная сохранена.
-      <div className="flex w-[600px] shrink-0 flex-col gap-6 ...">
-        ... Платные вопросы: {data?.paid_questions ?? 0} ...
-        ... Бесплатные вопросы: {data?.free_questions ?? 0} ...
-      </div>
-      */}
-
       {showAllOperations && <OperationsHistory />}
 
       {newOrder && (
-        <div className="rounded-[28px] border border-[rgba(18,22,27,0.05)] bg-white p-8 shadow-[0px_3px_36px_0px_rgba(0,0,0,0.04),_0px_-102px_250px_0px_rgba(0,0,0,0.07)]">
-          <div className="flex items-start justify-between gap-8">
+        <div className={styles.orderCard}>
+          <div className={styles.orderRow}>
             <div>
-              <h3 className="text-[20px] font-semibold leading-6 tracking-[-0.01em] text-[#12161B]">Завершите пополнение</h3>
-              <p className="mt-2 text-[14px] leading-5 text-[rgba(18,22,27,0.55)]">Оплатите через Альфа-Банк или отсканируйте QR-код.</p>
+              <h3 className={styles.orderTitle}>Завершите пополнение</h3>
+              <p className={styles.orderSubtitle}>Оплатите через Альфа-Банк или отсканируйте QR-код.</p>
               {alfaUrl && (
                 <button
                   type="button"
                   onClick={() => { window.location.href = alfaUrl }}
-                  className="mt-6 rounded-[18px] bg-[#12161B] px-6 py-3 text-[14px] font-medium text-white transition-opacity cursor-pointer hover:opacity-90 active:opacity-80"
+                  className={styles.orderPayBtn}
                 >
                   Перейти к оплате
                 </button>
@@ -338,7 +325,7 @@ export function V2ProfileBalance({ data, setUserBalance }: V2ProfileBalanceProps
             </div>
 
             {qrUrl && (
-              <div className="flex items-center justify-center rounded-[24px] bg-white p-4">
+              <div className={styles.qrWrap}>
                 <QRCodeSVG value={qrUrl} size={180} />
               </div>
             )}

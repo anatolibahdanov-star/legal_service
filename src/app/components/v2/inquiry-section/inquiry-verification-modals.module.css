@@ -1,0 +1,90 @@
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.modalBox {
+  position: relative;
+  width: 100%;
+  max-width: 520px;
+  max-height: 92vh;
+  padding: 32px;
+  overflow-y: auto;
+  background: #fff;
+  border-radius: 24px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+.modalClose {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  color: rgba(18, 22, 27, 0.6);
+  background: none;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    color 0.15s,
+    background 0.15s;
+}
+
+.modalClose:hover {
+  color: #12161b;
+  background: #f7f6f9;
+}
+
+.modalTitle {
+  margin-bottom: 8px;
+  padding-right: 32px;
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 32px;
+  letter-spacing: -0.01em;
+  color: #12161b;
+}
+
+.modalText {
+  margin-bottom: 24px;
+  font-size: 14px;
+  line-height: 22px;
+  color: rgba(18, 22, 27, 0.6);
+}
+
+.modalTextStrong {
+  font-weight: 600;
+  color: #12161b;
+}
+
+.modalConfirmBtn {
+  width: 100%;
+  height: 52px;
+  font-size: 16px;
+  font-weight: 500;
+  color: #fff;
+  background: radial-gradient(circle at 50% 0%, #34347c 0%, #2d2d6c 100%);
+  border: none;
+  border-radius: 35px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.modalConfirmBtn:hover {
+  opacity: 0.9;
+}
+
+.icon20 {
+  width: 20px;
+  height: 20px;
+}
