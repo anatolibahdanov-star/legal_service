@@ -1,13 +1,11 @@
 import {ValidationErrorI, ValidationFormReplyI, RequestFormI} from "@/src/interfaces/form"
 import { EmailValidator, emptyValidator } from "@/src/app/components/forms/validation/common";
 
-export const QUESTION_MIN_LENGTH = 30;
 export const QUESTION_MAX_LENGTH = 4000;
 
 export const validateQuestionText = (value: string): string | null => {
     const length = value.length;
     if (length === 0) return "Пожалуйста, введите текст вопроса";
-    if (length < QUESTION_MIN_LENGTH) return `Вопрос должен содержать минимум ${QUESTION_MIN_LENGTH} символов`;
     if (length > QUESTION_MAX_LENGTH) return `Вопрос не может превышать ${QUESTION_MAX_LENGTH} символов`;
     return null;
 };

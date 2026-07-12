@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { Document, Page, pdfjs } from "react-pdf";
+import { useBodyScrollLock } from "@/src/app/hooks/useBodyScrollLock";
 
 export interface PdfDocumentModalProps {
   open: boolean;
@@ -32,6 +33,8 @@ export function PdfDocumentModal({ open, title, src, onClose }: PdfDocumentModal
   const [numPages, setNumPages] = useState<number>(0);
   const [loadError, setLoadError] = useState<string | null>(null);
 
+  useBodyScrollLock(open);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -44,11 +47,8 @@ export function PdfDocumentModal({ open, title, src, onClose }: PdfDocumentModal
       }
     };
     document.addEventListener("keydown", onKey);
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
     return () => {
       document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prevOverflow;
     };
   }, [open, onClose]);
 

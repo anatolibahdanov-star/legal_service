@@ -11,27 +11,23 @@ import inquiryCubeImg from '@/public/design/v2-main-page/inquiry-cube-mobile.png
 
 import {
   STEPS,
-  CHANNEL_OPTIONS,
   TOTAL_VISIBLE_STEPS,
   type StepMeta,
-  type ContactChannel,
 } from './inquiry-section.data'
 
 import {
   QUESTION_MAX_LENGTH,
 } from "@/src/app/components/forms/validation/request"
-import { formatPhoneInput } from "@/src/libs/phoneMask"
+import { formatPhoneInput, PHONE_MASK_TEMPLATE } from "@/src/libs/phoneMask"
 import { FormDataObjectT } from "@/src/interfaces/form"
 import {
   LegalConsents,
-  allConsentsAccepted,
-  emptyLegalConsents,
   type LegalConsentsValue,
 } from '@/src/app/components/LegalConsents'
 import { YandexSmartCaptcha } from "@/src/app/components/forms/YandexSmartCaptcha"
 import { useInquirySection } from './inquiry-section.hook'
 import { useFileUpload } from './file-upload.hook'
-import { InquiryEmailModal, InquiryOtpModal } from './inquiry-verification-modals'
+import { InquiryOtpModal } from './inquiry-verification-modals'
 import RequestStepProfile from '@/src/app/components/forms/RequestStepProfile'
 import RequestStepPayment from '@/src/app/components/forms/RequestStepPayment'
 import type { SuccessVariant } from '@/src/app/components/forms/RequestStepSuccess'
@@ -307,29 +303,10 @@ function StepComplexityPanel({ value, onChange, errors }: {
 }
 */
 
-// ─── channel icons ────────────────────────────────────────────────────────────
+// ─── contact step (phone only) ────────────────────────────────────────────────
 
-function ChannelIcon({ id, active }: { id: ContactChannel; active: boolean }) {
-  const color = active ? '#fff' : '#12161B'
-  if (id === 'phone') return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <path d="M3 2h3l1.5 3.5-1.75 1.05A8.5 8.5 0 0 0 9.45 9.25L10.5 7.5 14 9v3a1 1 0 0 1-1 1A11 11 0 0 1 2 3a1 1 0 0 1 1-1z" stroke={color} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  )
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <rect x="1.5" y="3.5" width="13" height="9" rx="1.5" stroke={color} strokeWidth="1.3"/>
-      <path d="M1.5 5.5l6.5 4 6.5-4" stroke={color} strokeWidth="1.3" strokeLinecap="round"/>
-    </svg>
-  )
-}
-
-function Step5Panel({ 
-  channel, 
-  onChannelChange, 
-  nameValue,
-  onNameChange,
-  inputValue, 
+function Step5Panel({
+  inputValue,
   onInputChange,
   consents,
   onConsentsChange,
@@ -339,10 +316,6 @@ function Step5Panel({
   onCaptchaChange,
   submitting,
 }: {
-  channel: ContactChannel
-  onChannelChange: (c: ContactChannel) => void
-  nameValue: string
-  onNameChange: (v: string) => void
   inputValue: string
   onInputChange: (v: string) => void
   consents: LegalConsentsValue
@@ -353,90 +326,29 @@ function Step5Panel({
   onCaptchaChange: (token: string | null) => void
   submitting: boolean
 }) {
-  const current = CHANNEL_OPTIONS.find(c => c.id === channel)!
-
   return (
     <div className={styles.colGap6}>
       <div className={styles.colGap1}>
         <h3 className={styles.stepHeading}>
-          Введите контактные данные
+          Введите номер телефона
         </h3>
         <p className={styles.stepSubtext}>
-          {channel === 'email'
-            ? 'Введите имя и email, чтобы получить первую бесплатную консультацию'
-            : 'Введите номер телефона, чтобы получить первую бесплатную консультацию'}
+          Отправим код подтверждения в SMS. После проверки укажите email для ответа юриста.
         </p>
       </div>
 
-      <div className={styles.channelToggle}>
-        {CHANNEL_OPTIONS.map(opt => {
-          const isActive = opt.id === channel
-          return (
-            <button
-              key={opt.id}
-              onClick={() => onChannelChange(opt.id)}
-              className={styles.channelBtn}
-              style={
-                isActive
-                  ? { 
-                      background: 'radial-gradient(circle at 50% 0%, #34347C 0%, #2D2D6C 100%)', 
-                      color: '#fff', 
-                      border: '0.5px solid rgba(255,255,255,0.15)' 
-                    }
-                  : { 
-                      color: '#12161B', 
-                      border: '0.5px solid rgba(18,22,27,0.1)', 
-                      background: 'transparent' 
-                    }
-              }
-            >
-              <ChannelIcon id={opt.id} active={isActive} />
-              {opt.label}
-            </button>
-          )
-        })}
-      </div>
-
-      {channel === 'email' && (
-        <div className={styles.colGap1_5}>
-          <label className={styles.fieldLabel}>Имя</label>
-          <input
-            type="text"
-            value={nameValue}
-            onChange={e => onNameChange(e.target.value)}
-            placeholder="Как к вам обращаться"
-            className={`${styles.textInput} ${errors.name ? styles.textInputError : ''}`}
-          />
-          {errors.name && (
-            <span className={styles.fieldErrorInline}>{errors.name}</span>
-          )}
-        </div>
-      )}
-
       <div className={styles.colGap1_5}>
-        <label className={styles.fieldLabel}>
-          {current.label}
-        </label>
+        <label className={styles.fieldLabel}>Телефон</label>
         <input
-          key={channel}
-          type={current.inputType}
+          type="tel"
+          inputMode="tel"
+          autoComplete="tel"
           value={inputValue}
-          onChange={e => {
-            const newValue = e.target.value
-            // Применяем форматирование только для телефонных полей
-            if (channel === 'phone') {
-              onInputChange(formatPhoneInput(newValue))
-            } else {
-              onInputChange(newValue)
-            }
-          }}
-          placeholder={current.placeholder}
-          maxLength={channel === 'phone' ? 18 : undefined}
-          className={`${styles.textInput} ${errors.email && channel === 'email' ? styles.textInputError : ''}`}
+          onChange={e => onInputChange(formatPhoneInput(e.target.value))}
+          placeholder={PHONE_MASK_TEMPLATE}
+          maxLength={18}
+          className={styles.textInput}
         />
-        {errors.email && channel === 'email' && (
-          <span className={styles.fieldErrorInline}>{errors.email}</span>
-        )}
       </div>
 
       {errors.common && (
@@ -650,9 +562,7 @@ export function InquirySection({
     isComplete,
     problemText,
     attachedFiles,
-    channel,
     contactValue,
-    guestName,
     consents,
     consentErrors,
     errors,
@@ -663,7 +573,6 @@ export function InquirySection({
     isAuthed,
     isSessionLoading,
     verificationModal,
-    pendingEmail,
     profileInitialName,
     profileInitialEmail,
     questionPrice,
@@ -676,7 +585,6 @@ export function InquirySection({
     closeVerificationModal,
     handleOtpVerify,
     handleOtpResend,
-    confirmEmailModal,
     handleProfileSubmit,
     handleProfileContinue,
     handlePayCard,
@@ -686,9 +594,7 @@ export function InquirySection({
     resetForm,
     setProblemText,
     setAttachedFiles,
-    setChannel,
     setContactValue,
-    setGuestName,
     setConsents,
     setCaptchaToken,
     setQuestionTouched,
@@ -777,10 +683,6 @@ export function InquirySection({
                         )}
                         {panel === 'quiz' && step === 2 && (
                           <Step5Panel
-                            channel={channel}
-                            onChannelChange={setChannel}
-                            nameValue={guestName}
-                            onNameChange={setGuestName}
                             inputValue={contactValue}
                             onInputChange={setContactValue}
                             consents={consents}
@@ -857,12 +759,6 @@ export function InquirySection({
         onClose={closeVerificationModal}
         onVerify={handleOtpVerify}
         onResend={handleOtpResend}
-      />
-
-      <InquiryEmailModal
-        isOpen={verificationModal === 'email'}
-        email={pendingEmail}
-        onConfirm={confirmEmailModal}
       />
     </>
   )

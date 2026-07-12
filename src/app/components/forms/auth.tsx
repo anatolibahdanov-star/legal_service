@@ -19,11 +19,8 @@ import OtpCodeStep, { OtpStepResult } from "@/src/app/components/forms/OtpCodeSt
 type Tab = "email" | "phone";
 type PhoneStep = "phone" | "code";
 
-const FIELD_BG = "bg-[#EFE7D8]";
-const PILL_BG = "bg-[#EFE7D8]";
-const PASSWORD_MIN_LENGTH = 6;
-const HAS_LATIN_LETTER = /[a-zA-Z]/;
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const FIELD_BG = "bg-[#f7f6f9] border border-[rgba(18,22,27,0.1)]";
+const PILL_BG = "bg-[#f7f6f9]";
 
 interface ParsedAuthError {
   message: string;
@@ -93,26 +90,18 @@ export default function AuthForm({
     : 0;
   const isEmailLocked = emailLockRemainingSec > 0;
 
-  const emailValid = useMemo(() => EMAIL_REGEX.test(email), [email]);
-  // const passwordValid =
-  //   password.length >= PASSWORD_MIN_LENGTH && HAS_LATIN_LETTER.test(password);
-  const passwordValid =
-    password.length >= PASSWORD_MIN_LENGTH;
   const canSubmitEmail =
-    emailValid && passwordValid && !!emailCaptchaToken && !emailSubmitting && !isEmailLocked;
-
-  const passwordPolicyError = (value: string): string => {
-    if (!value) return "";
-    if (value.length < PASSWORD_MIN_LENGTH) return `Минимум ${PASSWORD_MIN_LENGTH} символов`;
-    // if (!HAS_LATIN_LETTER.test(value)) return "There must be at least one Latin letter";
-    return "";
-  };
+    email.trim().length > 0 &&
+    password.length > 0 &&
+    !!emailCaptchaToken &&
+    !emailSubmitting &&
+    !isEmailLocked;
 
   const handleEmailChange = (value: string) => {
     setEmail(value);
     setEmailErrors((prev) => ({
       ...prev,
-      email: !value || EMAIL_REGEX.test(value) ? "" : "Некорректный формат email",
+      email: "",
       common: "",
     }));
     setAttemptsLeft(null);
@@ -123,7 +112,7 @@ export default function AuthForm({
     setPassword(value);
     setEmailErrors((prev) => ({
       ...prev,
-      password: passwordPolicyError(value),
+      password: "",
       common: "",
     }));
     setAttemptsLeft(null);
@@ -378,10 +367,10 @@ export default function AuthForm({
   return (
     <>
       <div className="mb-[24px] pr-[24px]">
-        <h1 className="font-bold text-[26px] leading-[32px] text-[#0F1B2D] mb-[10px]">
+        <h1 className="font-bold text-[26px] leading-[32px] text-[#12161b] mb-[10px]">
           Вход в систему
         </h1>
-        <p className="font-normal text-[14px] leading-[22px] text-[#6B7280]">
+        <p className="font-normal text-[14px] leading-[22px] text-[rgba(18,22,27,0.6)]">
           Войдите в свою учетную запись для доступа к личному кабинету и консультациям с юристами.
         </p>
       </div>
@@ -392,8 +381,8 @@ export default function AuthForm({
           onClick={() => setTab("email")}
           className={`flex-1 h-[44px] rounded-full text-[15px] font-medium transition-all flex items-center justify-center gap-[8px] ${
             tab === "email"
-              ? "bg-white text-[#0F1B2D] shadow-sm"
-              : "text-[#0F1B2D]/70 hover:text-[#0F1B2D]"
+              ? "bg-white text-[#12161b] shadow-sm"
+              : "text-[#12161b]/70 hover:text-[#12161b]"
           }`}
         >
           <Mail className="w-4 h-4" /> Email
@@ -403,8 +392,8 @@ export default function AuthForm({
           onClick={() => setTab("phone")}
           className={`flex-1 h-[44px] rounded-full text-[15px] font-medium transition-all flex items-center justify-center gap-[8px] ${
             tab === "phone"
-              ? "bg-white text-[#0F1B2D] shadow-sm"
-              : "text-[#0F1B2D]/70 hover:text-[#0F1B2D]"
+              ? "bg-white text-[#12161b] shadow-sm"
+              : "text-[#12161b]/70 hover:text-[#12161b]"
           }`}
         >
           <Phone className="w-4 h-4" /> Телефон
@@ -434,17 +423,18 @@ export default function AuthForm({
           )}
 
           <div className="flex flex-col gap-[8px]">
-            <label className="font-semibold text-[14px] text-[#0F1B2D]">Email</label>
+            <label className="font-semibold text-[14px] text-[#12161b]">Email</label>
             <div className={`relative h-[52px] rounded-[14px] ${FIELD_BG}`}>
-              <Mail className="w-4 h-4 absolute left-[16px] top-1/2 -translate-y-1/2 text-[#0F1B2D]/60" />
+              <Mail className="w-4 h-4 absolute left-[16px] top-1/2 -translate-y-1/2 text-[#12161b]/60" />
               <input
-                type="email"
+                type="text"
                 autoComplete="email"
+                inputMode="email"
                 value={email}
                 onChange={(e) => handleEmailChange(e.target.value)}
                 placeholder="email"
-                className={`w-full h-full pl-[44px] pr-[16px] bg-transparent text-[15px] text-[#0F1B2D] placeholder:text-[#0F1B2D]/40 rounded-[14px] outline-none ring-2 ${
-                  emailErrors.email ? "ring-red-400" : "ring-transparent focus:ring-[#9BB7C9]"
+                className={`w-full h-full pl-[44px] pr-[16px] bg-transparent text-[15px] text-[#12161b] placeholder:text-[#12161b]/40 rounded-[14px] outline-none ring-2 ${
+                  emailErrors.email ? "ring-red-400" : "ring-transparent focus:ring-[#34347c]/35"
                 } transition-all`}
               />
             </div>
@@ -455,32 +445,32 @@ export default function AuthForm({
 
           <div className="flex flex-col gap-[8px]">
             <div className="flex items-center justify-between">
-              <label className="font-semibold text-[14px] text-[#0F1B2D]">Пароль</label>
+              <label className="font-semibold text-[14px] text-[#12161b]">Пароль</label>
               <button
                 type="button"
                 onClick={onSwitchToReset}
-                className="text-[13px] text-[#9BB7C9] hover:text-[#7DA0B7] font-medium transition-colors"
+                className="text-[13px] text-[#34347c] hover:opacity-80 font-medium transition-colors"
               >
                 Забыли пароль?
               </button>
             </div>
             <div className={`relative h-[52px] rounded-[14px] ${FIELD_BG}`}>
-              <Lock className="w-4 h-4 absolute left-[16px] top-1/2 -translate-y-1/2 text-[#0F1B2D]/60" />
+              <Lock className="w-4 h-4 absolute left-[16px] top-1/2 -translate-y-1/2 text-[#12161b]/60" />
               <input
                 type={showPassword ? "text" : "password"}
                 autoComplete="current-password"
                 value={password}
                 onChange={(e) => handlePasswordChange(e.target.value)}
-                placeholder="Минимум 8 символов"
-                className={`w-full h-full pl-[44px] pr-[44px] bg-transparent text-[15px] text-[#0F1B2D] placeholder:text-[#0F1B2D]/40 rounded-[14px] outline-none ring-2 ${
-                  emailErrors.password ? "ring-red-400" : "ring-transparent focus:ring-[#9BB7C9]"
+                placeholder="Пароль"
+                className={`w-full h-full pl-[44px] pr-[44px] bg-transparent text-[15px] text-[#12161b] placeholder:text-[#12161b]/40 rounded-[14px] outline-none ring-2 ${
+                  emailErrors.password ? "ring-red-400" : "ring-transparent focus:ring-[#34347c]/35"
                 } transition-all`}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword((v) => !v)}
                 aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
-                className="absolute right-[14px] top-1/2 -translate-y-1/2 text-[#0F1B2D]/60 hover:text-[#0F1B2D] transition-colors"
+                className="absolute right-[14px] top-1/2 -translate-y-1/2 text-[#12161b]/60 hover:text-[#12161b] transition-colors"
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
@@ -498,8 +488,8 @@ export default function AuthForm({
           />
 
           {attemptsLeft !== null && attemptsLeft > 0 && !isEmailLocked && (
-            <p className="text-center text-[13px] text-[#6B7280]">
-              Осталось попыток: <span className="font-bold text-[#0F1B2D]">{attemptsLeft}</span>
+            <p className="text-center text-[13px] text-[rgba(18,22,27,0.6)]">
+              Осталось попыток: <span className="font-bold text-[#12161b]">{attemptsLeft}</span>
             </p>
           )}
           {attemptsLeft === 0 && !isEmailLocked && (
@@ -511,10 +501,10 @@ export default function AuthForm({
           <button
             type="submit"
             disabled={!canSubmitEmail}
-            className={`h-[52px] rounded-[14px] font-semibold text-[15px] flex items-center justify-center gap-[8px] transition-all ${
+            className={`h-[52px] rounded-[35px] font-semibold text-[15px] flex items-center justify-center gap-[8px] transition-all ${
               canSubmitEmail
-                ? "bg-[#5A8FB5] text-white hover:bg-[#4A7EA3]"
-                : "bg-[#D6E3EF] text-[#0F1B2D]/50 cursor-not-allowed"
+                ? "bg-[radial-gradient(circle_at_50%_0%,#34347c_0%,#2d2d6c_100%)] text-white hover:opacity-90"
+                : "bg-[#e8e7ed] text-[#12161b]/50 cursor-not-allowed"
             }`}
           >
             {emailSubmitting
@@ -526,11 +516,11 @@ export default function AuthForm({
           </button>
 
           <div className="flex items-center justify-center gap-[6px]">
-            <p className="text-[14px] text-[#6B7280]">Нет аккаунта?</p>
+            <p className="text-[14px] text-[rgba(18,22,27,0.6)]">Нет аккаунта?</p>
             <button
               type="button"
               onClick={onSwitchToRegister}
-              className="text-[14px] font-semibold text-[#3B82F6] hover:text-[#2563EB] transition-colors"
+              className="text-[14px] font-semibold text-[#34347c] hover:opacity-80 transition-colors"
             >
               Зарегистрироваться
             </button>
@@ -570,7 +560,7 @@ export default function AuthForm({
                   <button
                     type="button"
                     onClick={onSwitchToRegister}
-                    className="font-semibold text-[#3B82F6] hover:text-[#2563EB] transition-colors cursor-pointer"
+                    className="font-semibold text-[#34347c] hover:opacity-80 transition-colors cursor-pointer"
                   >
                     зарегистрируйтесь
                   </button>
@@ -581,9 +571,9 @@ export default function AuthForm({
           )}
 
           <div className="flex flex-col gap-[8px]">
-            <label className="font-semibold text-[14px] text-[#0F1B2D]">Номер телефона</label>
+            <label className="font-semibold text-[14px] text-[#12161b]">Номер телефона</label>
             <div className={`relative h-[52px] rounded-[14px] ${FIELD_BG}`}>
-              <Phone className="w-4 h-4 absolute left-[16px] top-1/2 -translate-y-1/2 text-[#0F1B2D]/60" />
+              <Phone className="w-4 h-4 absolute left-[16px] top-1/2 -translate-y-1/2 text-[#12161b]/60" />
               <input
                 type="tel"
                 inputMode="tel"
@@ -591,15 +581,15 @@ export default function AuthForm({
                 value={phone}
                 onChange={(e) => handlePhoneChange(e.target.value)}
                 placeholder={PHONE_MASK_TEMPLATE}
-                className={`w-full h-full pl-[44px] pr-[16px] bg-transparent text-[15px] text-[#0F1B2D] placeholder:text-[#0F1B2D]/40 rounded-[14px] outline-none ring-2 ${
-                  phoneErrors.phone ? "ring-red-400" : "ring-transparent focus:ring-[#9BB7C9]"
+                className={`w-full h-full pl-[44px] pr-[16px] bg-transparent text-[15px] text-[#12161b] placeholder:text-[#12161b]/40 rounded-[14px] outline-none ring-2 ${
+                  phoneErrors.phone ? "ring-red-400" : "ring-transparent focus:ring-[#34347c]/35"
                 } transition-all`}
               />
             </div>
             {phoneErrors.phone ? (
               <p className="text-[12px] text-red-500 ml-[4px]">{phoneErrors.phone}</p>
             ) : (
-              <p className="text-[13px] text-[#6B7280] ml-[4px]">
+              <p className="text-[13px] text-[rgba(18,22,27,0.6)] ml-[4px]">
                 Отправим SMS c кодом подтверждения
               </p>
             )}
@@ -615,10 +605,10 @@ export default function AuthForm({
           <button
             type="submit"
             disabled={!canSubmitPhone}
-            className={`h-[52px] rounded-[14px] font-semibold text-[15px] flex items-center justify-center gap-[8px] transition-all ${
+            className={`h-[52px] rounded-[35px] font-semibold text-[15px] flex items-center justify-center gap-[8px] transition-all ${
               canSubmitPhone
-                ? "bg-[#5A8FB5] text-white hover:bg-[#4A7EA3]"
-                : "bg-[#D6E3EF] text-[#0F1B2D]/50 cursor-not-allowed"
+                ? "bg-[radial-gradient(circle_at_50%_0%,#34347c_0%,#2d2d6c_100%)] text-white hover:opacity-90"
+                : "bg-[#e8e7ed] text-[#12161b]/50 cursor-not-allowed"
             }`}
           >
             {phoneSubmitting
@@ -632,11 +622,11 @@ export default function AuthForm({
           </button>
 
           <div className="flex items-center justify-center gap-[6px]">
-            <p className="text-[14px] text-[#6B7280]">Нет аккаунта?</p>
+            <p className="text-[14px] text-[rgba(18,22,27,0.6)]">Нет аккаунта?</p>
             <button
               type="button"
               onClick={onSwitchToRegister}
-              className="text-[14px] font-semibold text-[#3B82F6] hover:text-[#2563EB] transition-colors"
+              className="text-[14px] font-semibold text-[#34347c] hover:opacity-80 transition-colors"
             >
               Зарегистрироваться
             </button>

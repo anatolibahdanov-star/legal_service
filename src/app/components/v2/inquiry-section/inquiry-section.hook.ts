@@ -3,11 +3,8 @@
 import { useState, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import {
-  validateRequestForm,
   validateQuestionText,
 } from "@/src/app/components/forms/validation/request"
-import { EmailValidator } from "@/src/app/components/forms/validation/common"
-import { submitRequestFormAction } from "@/src/app/components/forms/action/request"
 import { signInWithPhoneOtp } from "@/src/app/components/forms/action/register-phone"
 import { completeProfileAction } from "@/src/app/components/forms/action/complete-profile"
 import {
@@ -20,7 +17,7 @@ import {
   wizardVerifyOtpAction,
 } from "@/src/app/components/forms/action/wizard"
 import { uploadQuestionAttachmentsAction } from "@/src/app/components/forms/action/attachments"
-import { RequestFormI, FormDataObjectT } from "@/src/interfaces/form"
+import { FormDataObjectT } from "@/src/interfaces/form"
 import { isPhoneComplete } from "@/src/libs/phoneMask"
 import { useYandexInvisibleCaptcha } from "@/src/app/components/forms/useYandexInvisibleCaptcha"
 import { usePhoneBlockCountdown } from "@/src/app/components/forms/hooks/usePhoneBlockCountdown"
@@ -32,11 +29,10 @@ import {
   emptyLegalConsents,
   type LegalConsentsValue,
 } from '@/src/app/components/LegalConsents'
-import { emptyValidator } from "@/src/app/components/forms/validation/common"
 import { emitBalanceRefresh } from "@/src/libs/balanceEvents"
 import { isPhoneEmail, needsProfileCompletion, phoneToDefaultName } from "@/src/libs/phoneIdentity"
 import { locales } from '@/i18n.config'
-import { TOTAL_VISIBLE_STEPS, type ContactChannel } from './inquiry-section.data'
+import { TOTAL_VISIBLE_STEPS } from './inquiry-section.data'
 import {
   type VerificationModal,
   sendInquiryPhoneOtp,
@@ -70,15 +66,12 @@ export const useInquirySection = ({ isProfile = false }: UseInquirySectionOption
 
   const [problemText, setProblemText] = useState('')
   const [attachedFiles, setAttachedFiles] = useState<File[]>([])
-  const [channel, setChannel] = useState<ContactChannel>('email')
   const [contactValue, setContactValue] = useState('')
-  const [guestName, setGuestName] = useState('')
   const [consents, setConsents] = useState<LegalConsentsValue>(emptyLegalConsents)
   const [consentErrors, setConsentErrors] = useState<Partial<Record<keyof LegalConsentsValue, string>>>({})
 
   const [verificationModal, setVerificationModal] = useState<VerificationModal>('none')
   const [normalizedPhone, setNormalizedPhone] = useState('')
-  const [pendingEmail, setPendingEmail] = useState('')
 
   const [errors, setErrors] = useState<FormDataObjectT>(emptyErrors())
   const [captchaToken, setCaptchaToken] = useState<string | null>(null)
@@ -109,14 +102,11 @@ export const useInquirySection = ({ isProfile = false }: UseInquirySectionOption
     setIsComplete(false)
     setProblemText('')
     setAttachedFiles([])
-    setChannel('email')
     setContactValue('')
-    setGuestName('')
     setConsents(emptyLegalConsents)
     setConsentErrors({})
     setVerificationModal('none')
     setNormalizedPhone('')
-    setPendingEmail('')
     setErrors(emptyErrors())
     setCaptchaToken(null)
     setSubmitting(false)
@@ -256,28 +246,6 @@ export const useInquirySection = ({ isProfile = false }: UseInquirySectionOption
     })
   }
 
-  const buildRequestPayload = (): RequestFormI => {
-    const contact = contactValue.trim()
-    let name = guestName.trim()
-    let email = ''
-
-    if (channel === 'email') {
-      email = contact
-    } else {
-      name = contact
-      email = `${contact.replace(/\D/g, '')}@phone.enki.local`
-    }
-
-    return {
-      name,
-      email,
-      topic: '',
-      question: problemText,
-      agree: allConsentsAccepted(consents),
-      auth: '0',
-    }
-  }
-
   const validateConsents = (): boolean => {
     if (allConsentsAccepted(consents)) {
       setConsentErrors({})
@@ -301,29 +269,13 @@ export const useInquirySection = ({ isProfile = false }: UseInquirySectionOption
       return newErrors
     }
 
-    if (channel === 'email' && !emptyValidator(guestName.trim())) {
-      newErrors.name = 'Пожалуйста, введите ваше имя.'
-      newErrors.common = 'Пожалуйста, введите ваше имя.'
-      return newErrors
-    }
-
     if (!contactValue.trim()) {
-      if (channel === 'phone') {
-        newErrors.common = "Пожалуйста, введите номер телефона"
-      } else {
-        newErrors.common = "Пожалуйста, введите email"
-      }
+      newErrors.common = 'Пожалуйста, введите номер телефона'
       return newErrors
     }
 
-    if (channel === 'email' && !EmailValidator(contactValue)) {
-      newErrors.email = "Пожалуйста, введите корректный email"
-      newErrors.common = "Пожалуйста, введите корректный email"
-      return newErrors
-    }
-
-    if (channel === 'phone' && !isPhoneComplete(contactValue)) {
-      newErrors.common = "Пожалуйста, введите корректный номер телефона"
+    if (!isPhoneComplete(contactValue)) {
+      newErrors.common = 'Пожалуйста, введите корректный номер телефона'
       return newErrors
     }
 
@@ -333,39 +285,11 @@ export const useInquirySection = ({ isProfile = false }: UseInquirySectionOption
     }
 
     if (!captchaToken) {
-      newErrors.common = "Подтвердите, что вы не робот."
-      return newErrors
-    }
-
-    const validResult = validateRequestForm(buildRequestPayload())
-    if (!validResult.is_success) {
-      const firstError = validResult.errors?.[0]
-      if (firstError?.field === 'name') {
-        newErrors.name = firstError.error?.[0] ?? 'Пожалуйста, введите ваше имя.'
-      }
-      if (firstError?.field === 'email') {
-        newErrors.email = firstError.error?.[0] ?? 'Пожалуйста, введите корректный email.'
-      }
-      newErrors.common = firstError?.error?.[0] ?? 'Проверьте правильность заполнения полей.'
+      newErrors.common = 'Подтвердите, что вы не робот.'
       return newErrors
     }
 
     return null
-  }
-
-  const submitAnonymousRequest = async (token: string) => {
-    const responseData = await submitRequestFormAction(buildRequestPayload(), token, 'light')
-    if (!responseData.status) {
-      const payload = responseData.data as { code?: string; message?: string } | null
-      if (payload?.code === 'email_taken') {
-        const err = new Error(
-          payload.message ?? 'Этот email уже зарегистрирован. Войдите в личный кабинет.',
-        )
-        ;(err as Error & { code?: string }).code = 'email_taken'
-        throw err
-      }
-      throw new Error(responseData.error || 'Произошла ошибка при отправке. Попробуйте еще раз.')
-    }
   }
 
   const ensureUnpaidQuestionExists = async (): Promise<
@@ -477,45 +401,21 @@ export const useInquirySection = ({ isProfile = false }: UseInquirySectionOption
     const token = captchaToken!
 
     try {
-      if (channel === 'phone') {
-        const result = await sendInquiryPhoneOtp(contactValue, token, 'light')
-        setCaptchaToken(null)
-
-        if (!result.ok) {
-          phoneBlock.applyFromServer(result.blockPayload)
-          setErrors(prev => ({ ...prev, common: result.error }))
-          return
-        }
-
-        setNormalizedPhone(result.normalizedPhone)
-        if (result.devCode) {
-          console.info('[DEV] OTP code:', result.devCode)
-        }
-        setVerificationModal('otp')
-        return
-      }
-
-      if (channel === 'email') {
-        await submitAnonymousRequest(token)
-        setCaptchaToken(null)
-        setPendingEmail(contactValue.trim())
-        setVerificationModal('email')
-        return
-      }
-
-      await submitAnonymousRequest(token)
+      const result = await sendInquiryPhoneOtp(contactValue, token, 'light')
       setCaptchaToken(null)
-      setIsComplete(true)
-    } catch (error) {
-      const code = (error as Error & { code?: string }).code
-      if (code === 'email_taken') {
-        setErrors(prev => ({
-          ...prev,
-          email: error instanceof Error ? error.message : 'Этот email уже зарегистрирован.',
-          common: error instanceof Error ? error.message : 'Этот email уже зарегистрирован.',
-        }))
+
+      if (!result.ok) {
+        phoneBlock.applyFromServer(result.blockPayload)
+        setErrors(prev => ({ ...prev, common: result.error }))
         return
       }
+
+      setNormalizedPhone(result.normalizedPhone)
+      if (result.devCode) {
+        console.info('[DEV] OTP code:', result.devCode)
+      }
+      setVerificationModal('otp')
+    } catch (error) {
       setErrors(prev => ({
         ...prev,
         common: error instanceof Error ? error.message : 'Произошла ошибка при отправке. Попробуйте еще раз.',
@@ -613,11 +513,6 @@ export const useInquirySection = ({ isProfile = false }: UseInquirySectionOption
       return { ok: false, message: 'Не удалось пройти проверку. Попробуйте позже.' }
     }
     return resendInquiryPhoneOtp(normalizedPhone, token, 'light')
-  }
-
-  const confirmEmailModal = () => {
-    setVerificationModal('none')
-    setIsComplete(true)
   }
 
   const handleProfileSubmit = async (name: string, email: string): Promise<CompleteProfileResult> => {
@@ -754,9 +649,7 @@ export const useInquirySection = ({ isProfile = false }: UseInquirySectionOption
     isComplete,
     problemText,
     attachedFiles,
-    channel,
     contactValue,
-    guestName,
     consents,
     consentErrors,
     errors,
@@ -768,7 +661,6 @@ export const useInquirySection = ({ isProfile = false }: UseInquirySectionOption
     isSessionLoading,
     verificationModal,
     normalizedPhone,
-    pendingEmail,
     profileInitialName,
     profileInitialEmail,
     questionPrice,
@@ -782,7 +674,6 @@ export const useInquirySection = ({ isProfile = false }: UseInquirySectionOption
     closeVerificationModal,
     handleOtpVerify,
     handleOtpResend,
-    confirmEmailModal,
     handleProfileSubmit,
     handleProfileContinue,
     handlePayCard,
@@ -793,16 +684,7 @@ export const useInquirySection = ({ isProfile = false }: UseInquirySectionOption
     resetForm,
     setProblemText: handleProblemTextChange,
     setAttachedFiles,
-    setChannel: (next: ContactChannel) => {
-      setChannel(next)
-      setContactValue('')
-      setGuestName('')
-      setCaptchaToken(null)
-      setConsentErrors({})
-      setErrors(emptyErrors())
-    },
     setContactValue,
-    setGuestName,
     setConsents: (next: LegalConsentsValue) => {
       setConsents(next)
       if (allConsentsAccepted(next)) setConsentErrors({})

@@ -9,6 +9,7 @@ import {
   payWithBalanceAction,
 } from "@/src/app/components/forms/action/wizard";
 import { emitBalanceRefresh } from "@/src/libs/balanceEvents";
+import { useBodyScrollLock } from "@/src/app/hooks/useBodyScrollLock";
 
 interface PayQuestionWindowProps {
   isOpen: boolean;
@@ -45,6 +46,8 @@ export default function PayQuestionWindow({
   const [paidWithFree, setPaidWithFree] = useState<boolean>(false);
   /** После успешной оплаты с баланса заменяем платёжный экран на success. */
   const [paid, setPaid] = useState<boolean>(false);
+
+  useBodyScrollLock(isOpen);
 
   useEffect(() => {
     if (!isOpen) return;

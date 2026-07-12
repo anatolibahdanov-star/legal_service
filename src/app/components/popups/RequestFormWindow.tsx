@@ -1,7 +1,12 @@
+"use client";
+
 import { RequestFormPropsI } from "@/src/interfaces/form";
 import RequestForm from "@/src/app/components/forms/request"
+import { useBodyScrollLock } from "@/src/app/hooks/useBodyScrollLock";
 
 export default function RequestFormWindow({ isOpen, onClose, setCurrent, setPage }: RequestFormPropsI) {
+  useBodyScrollLock(isOpen);
+
   if (!isOpen) return null;
 
   return (

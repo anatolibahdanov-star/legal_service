@@ -28,7 +28,7 @@ export const STEPS: StepMeta[] = [
   { num: 1, label: 'Суть проблемы',      progress: 50,  image: progressStep2 },
   // TODO: шаг «Категория» временно отключён — см. StepCategoryPanel в inquiry-section.tsx
   // { num: 2, label: 'Категория',          progress: 66,  image: progressStep4 },
-  { num: 2, label: 'Контакт для связи',  progress: 99, image: progressStep4 },
+  { num: 2, label: 'Телефон',  progress: 99, image: progressStep4 },
 ]
 
 export interface CategoryOption {
@@ -91,16 +91,4 @@ export const COMPLEXITY: ComplexityOption[] = [
   },
 ]
 
-export type ContactChannel = 'phone' | 'email'
-
-export interface ChannelOption {
-  id: ContactChannel
-  label: string
-  placeholder: string
-  inputType: string
-}
-
-export const CHANNEL_OPTIONS: ChannelOption[] = [
-  { id: 'email',    label: 'Email',    placeholder: 'example@mail.ru',    inputType: 'email' },
-  { id: 'phone',    label: 'Телефон',  placeholder: '+7 (___) ___-__-__', inputType: 'tel' },
-]
+// Contact step is phone-only for guests (OTP → then name/email on profile panel).
