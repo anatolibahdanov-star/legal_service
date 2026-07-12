@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import Swal from 'sweetalert2'
@@ -9,6 +10,7 @@ import { ProfileSidebar } from '@/src/app/components/v2/profile-sidebar/profile-
 import { ProfileContent } from '@/src/app/components/v2/profile-content/profile-content'
 import { V2ProfileBalance } from '@/src/app/components/v2/profile-balance/profile-balance'
 import { V2ProfileCases } from '@/src/app/components/v2/profile-cases/profile-cases'
+import { LawyerProfileCases } from '@/src/app/components/v2/profile-cases/lawyer-profile-cases'
 import { ProfilePaymentHistory } from '@/src/app/components/screen/profile/ProfilePaymentHistory'
 import { CustomGetRequest } from '@/src/libs/request'
 import { emitBalanceRefresh } from '@/src/libs/balanceEvents'
@@ -17,9 +19,14 @@ import styles from './profile-page.module.css'
 
 type ProfileTab = 'account' | 'balance' | 'cases' | 'payments'
 
-const TABS: Array<{ id: ProfileTab; label: string }> = [
+const USER_TABS: Array<{ id: ProfileTab; label: string }> = [
   { id: 'cases', label: 'Ваши заявки' },
   { id: 'balance', label: 'Баланс' },
+  { id: 'account', label: 'Аккаунт' },
+]
+
+const STAFF_TABS: Array<{ id: ProfileTab; label: string }> = [
+  { id: 'cases', label: 'Мои дела' },
   { id: 'account', label: 'Аккаунт' },
 ]
 
@@ -32,9 +39,20 @@ export function V2ProfilePage() {
   const searchParams = useSearchParams()
   const { data: session, status } = useSession()
   const tabParam = searchParams.get('tab')
-  const activeTab: ProfileTab = isProfileTab(tabParam) ? tabParam : 'cases'
   const [data, setData] = useState<DBUser | null>(null)
   const [editEmailSignal, setEditEmailSignal] = useState(0)
+
+  const user = session?.user
+  const userId = user?.id
+  const userRole = user?.role
+  const isStaff = !!userRole && userRole !== 'user'
+  const tabs = isStaff ? STAFF_TABS : USER_TABS
+  const activeTab: ProfileTab = isProfileTab(tabParam)
+    ? isStaff && (tabParam === 'balance' || tabParam === 'payments')
+      ? 'cases'
+      : tabParam
+    : 'cases'
+  const showSidebar = activeTab === 'account'
 
   const selectTab = (tab: ProfileTab) => {
     const params = new URLSearchParams(searchParams.toString())
@@ -47,35 +65,26 @@ export function V2ProfilePage() {
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
   }
 
-  const user = session?.user
-  const userId = user?.id
-  const userRole = user?.role
-  const isStaff = !!userRole && userRole !== 'user'
-  const showSidebar = activeTab === 'account'
-
   useEffect(() => {
     if (status === 'loading') return
     if (!userId) {
       router.replace('/')
-      return
     }
-    if (isStaff) {
-      window.location.replace('/admin#/profile')
-    }
-  }, [status, userId, isStaff, router])
+  }, [status, userId, router])
 
   useEffect(() => {
-    if (!userId || isStaff) return
+    if (!userId) return
 
     let active = true
     const fetchData = async () => {
-      const userData = await CustomGetRequest(`/users/${userId}`)
-      if (active && userData.status) {
+      const path = isStaff ? `/administrators/${userId}` : `/users/${userId}`
+      const userData = await CustomGetRequest(path)
+      if (active && userData.status && userData.data) {
         setData(userData.data as DBUser)
       }
     }
 
-    fetchData()
+    void fetchData()
     const onFocus = () => {
       void fetchData()
     }
@@ -99,7 +108,7 @@ export function V2ProfilePage() {
     emitBalanceRefresh()
   }
 
-  if (status === 'loading' || !user || isStaff) {
+  if (status === 'loading' || !user) {
     return (
       <main className={`v2-header-bleed ${styles.page}`}>
         <section className={styles.container}>
@@ -114,11 +123,18 @@ export function V2ProfilePage() {
       <section className={styles.container}>
         <div className={styles.inner}>
           <div className={styles.header}>
-            <h1 className={styles.title}>Личный кабинет</h1>
+            <h1 className={styles.title}>
+              {isStaff ? 'Кабинет юриста' : 'Личный кабинет'}
+            </h1>
+            {isStaff ? (
+              <Link href="/admin/requests" className={styles.staffLink}>
+                Все заявки →
+              </Link>
+            ) : null}
           </div>
 
           <div className={styles.tabs}>
-            {TABS.map((tab) => (
+            {tabs.map((tab) => (
               <button
                 key={tab.id}
                 type="button"
@@ -147,15 +163,21 @@ export function V2ProfilePage() {
                   user={user}
                   setData={setData}
                   editEmailSignal={editEmailSignal}
+                  apiBase={isStaff ? '/administrators' : '/users'}
+                  hidePhone={isStaff}
                 />
               </div>
-            ) : activeTab === 'balance' ? (
+            ) : activeTab === 'balance' && !isStaff ? (
               <div className={styles.fullCol}>
                 <V2ProfileBalance data={data} setUserBalance={setUserBalance} />
               </div>
-            ) : activeTab === 'payments' ? (
+            ) : activeTab === 'payments' && !isStaff ? (
               <div className={styles.contentCol}>
                 <ProfilePaymentHistory />
+              </div>
+            ) : isStaff ? (
+              <div className={styles.fullCol}>
+                <LawyerProfileCases user={user} />
               </div>
             ) : (
               <V2ProfileCases user={user} />

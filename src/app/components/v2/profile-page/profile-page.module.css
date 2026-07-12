@@ -31,8 +31,21 @@
 
 .header {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
   gap: 16px;
+}
+
+.staffLink {
+  color: #34347c;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.staffLink:hover {
+  text-decoration: underline;
 }
 
 .title {

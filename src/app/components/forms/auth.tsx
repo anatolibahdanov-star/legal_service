@@ -224,7 +224,7 @@ export default function AuthForm({
     const user = session?.user;
     onClose();
     if (user && user.role !== "user") {
-      router.push("/admin");
+      router.push("/admin/requests");
     } else {
       router.push("/profile");
     }

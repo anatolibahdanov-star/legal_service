@@ -1,0 +1,241 @@
+.page {
+  min-height: 100vh;
+  background: #f9f9f9;
+  color: #12161b;
+  font-family: var(--font-sans);
+}
+
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 40px 24px 80px;
+}
+
+.topBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.backLink {
+  color: #34347c;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.topActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.card {
+  overflow: hidden;
+  border: 1px solid rgba(18, 22, 27, 0.06);
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: 0 3px 36px rgba(0, 0, 0, 0.04);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px;
+}
+
+.fieldLabel {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(18, 22, 27, 0.65);
+}
+
+.textarea,
+.select,
+.rich {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid rgba(18, 22, 27, 0.1);
+  border-radius: 14px;
+  background: #f7f6f9;
+  font-size: 14px;
+  line-height: 1.45;
+  color: #12161b;
+}
+
+.textarea {
+  min-height: 110px;
+  resize: vertical;
+}
+
+.rich {
+  min-height: 160px;
+  font-family: inherit;
+}
+
+.rowActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.btn,
+.btnSecondary,
+.btnDanger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 18px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.btn {
+  border: none;
+  background: linear-gradient(135deg, #34347c, #34537c);
+  color: #fff;
+}
+
+.btnSecondary {
+  border: 1px solid rgba(18, 22, 27, 0.12);
+  background: #fff;
+  color: #12161b;
+}
+
+.btnDanger {
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  background: #fff;
+  color: #ef4444;
+}
+
+.btn:disabled,
+.btnSecondary:disabled,
+.btnDanger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.attachBox {
+  padding: 16px;
+  border: 1px dashed rgba(52, 52, 124, 0.3);
+  border-radius: 16px;
+  background: #f9f9f9;
+}
+
+.attachTitle {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.attachList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.attachItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid rgba(18, 22, 27, 0.1);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.attachItem a {
+  overflow: hidden;
+  color: #34347c;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.loading,
+.error {
+  padding: 80px 24px;
+  text-align: center;
+}
+
+.error {
+  color: #ef4444;
+}
+
+@media (max-width: 1023px) {
+  .container {
+    padding: 28px 16px 64px;
+  }
+}
+
+@media (max-width: 767px) {
+  .container {
+    padding: 20px 12px 48px;
+  }
+
+  .topBar {
+    align-items: stretch;
+    margin-bottom: 16px;
+  }
+
+  .topActions {
+    width: 100%;
+  }
+
+  .topActions .btn,
+  .topActions .btnSecondary,
+  .topActions .btnDanger {
+    flex: 1;
+    min-width: calc(50% - 4px);
+    height: 42px;
+    padding: 0 12px;
+    font-size: 13px;
+  }
+
+  .card {
+    border-radius: 18px;
+  }
+
+  .form {
+    gap: 14px;
+    padding: 16px;
+  }
+
+  .textarea {
+    min-height: 96px;
+  }
+
+  .rich {
+    min-height: 140px;
+  }
+
+  .rowActions {
+    flex-direction: column;
+  }
+
+  .rowActions .btn,
+  .rowActions .btnSecondary,
+  .rowActions .btnDanger {
+    width: 100%;
+  }
+
+  .attachBox {
+    padding: 12px;
+  }
+
+  .attachItem {
+    flex-wrap: wrap;
+  }
+}

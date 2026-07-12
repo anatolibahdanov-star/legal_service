@@ -26,10 +26,13 @@ const isHomeRoute = (pathname: string) =>
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isAdminPage = isRoute(pathname, "/admin");
+  const isAdminRequests = isRoute(pathname, "/admin/requests");
+  const isLegacyAdminShell = isAdminPage && !isAdminRequests;
   const isHome = isHomeRoute(pathname);
-  const contentClass = isHome || isAdminPage ? undefined : "v2-header-content-offset";
+  const contentClass =
+    isHome || isLegacyAdminShell ? undefined : "v2-header-content-offset";
 
-  if (isAdminPage) {
+  if (isLegacyAdminShell) {
     return (
       <NextAuthProvider>
         <YandexCaptchaProvider>

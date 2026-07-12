@@ -24,7 +24,7 @@ const typeFilterOptions = [
 
 const questionHref = (questionId: number): string => {
     const base = (process.env.NEXT_PUBLIC_URL ?? "").replace(/\/$/, "");
-    return `${base}/admin#/requests/${questionId}/show`;
+    return `${base}/admin/requests/${questionId}`;
 };
 
 export const OperationsTab = ({ user, apiBase, onChanged }: OperationsTabProps) => {
