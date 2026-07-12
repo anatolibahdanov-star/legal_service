@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { motion, AnimatePresence } from 'motion/react'
 import { Clock, FileText, Globe } from 'lucide-react'
 
-import finalCubeImg from '@/public/design/v2-main-page/progress-step4.png'
+import finalCubeImg from '@/public/design/v2-main-page/progress-final.png'
 import inquiryCubeImg from '@/public/design/v2-main-page/inquiry-cube-mobile.png'
 
 import {
@@ -87,15 +87,22 @@ function Step2Panel({
       <h3 className={styles.stepHeading}>
         Кратко опишите суть проблемы
       </h3>
+      <p className={styles.stepHint}>
+        Опишите ситуацию или юридический вопрос в свободной форме. Лучше всего
+        задачу структурировать по шагам: дата, участники, что произошло, какие
+        документы подписаны или какие меры предпринимались. Сформулируйте
+        вопрос, на который надо ответить (например: оценить юридические риски,
+        предложить стратегию действий, разъяснить правовые последствия и тп.)
+      </p>
       <textarea
         value={value}
         onChange={e => onChange(e.target.value)}
         onBlur={onBlur}
-        placeholder="Например: трудовой спор, вопрос по наследству, жалоба на действия организации"
+        placeholder="Опишите ситуацию или задайте вопрос…"
         className={`${styles.textarea} ${touched && questionError ? styles.textareaError : ''}`}
         maxLength={QUESTION_MAX_LENGTH}
       />
-      
+
       {touched && questionError && (
         <div className={styles.fieldErrorWrap}>
           <span className={styles.errorText}>
@@ -103,6 +110,7 @@ function Step2Panel({
           </span>
         </div>
       )}
+
       
       <div
         className="flex flex-col gap-3 cursor-pointer transition-all duration-200 hover:border-[#34347C]/60 hover:bg-[#f4f4ff] active:scale-[0.98]"

@@ -11,6 +11,128 @@
     backdrop-filter: blur(15px);
     box-shadow: 0 2px 72px 0 rgba(21, 22, 25, 0.2), 0 2px 15px 0 rgba(21, 22, 25, 0.02);
     background: rgba(255, 255, 255, 0.8);
+    transition:
+        background 0.25s ease,
+        border-color 0.25s ease,
+        box-shadow 0.25s ease;
+}
+
+/* Mobile over dark hero (Figma): glass, no frosted white pill */
+.headerOverHero {
+    border-color: rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.08);
+    box-shadow: none;
+    backdrop-filter: blur(20px);
+}
+
+.headerOverHero .logo {
+    color: #fff;
+}
+
+.headerOverHero .navBtn {
+    border-color: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.1);
+    box-shadow: none;
+    color: #fff;
+}
+
+.headerOverHero .burger {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+.headerOverHero .burger:hover {
+    background: rgba(255, 255, 255, 0.18);
+}
+
+.headerOverHero .mobileMenu {
+    border-color: rgba(255, 255, 255, 0.12);
+    background: rgba(18, 22, 27, 0.92);
+}
+
+.headerOverHero .mobileMenuLink {
+    color: #fff;
+}
+
+.headerOverHero .mobileMenuLink:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.headerOverHero .mobileMenuAuth {
+    border-top-color: rgba(255, 255, 255, 0.12);
+}
+
+.headerOverHero .menuAuthBtn {
+    border-color: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    padding-bottom: 2px;
+    color: #12161b;
+    font-weight: 600;
+    font-size: 22px;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    text-decoration: none;
+    transition: color 0.2s, opacity 0.2s;
+}
+
+.logo:hover {
+    opacity: 0.7;
+}
+
+.logo:active {
+    opacity: 0.5;
+}
+
+@media (min-width: 768px) {
+    .logo {
+        font-size: 28px;
+    }
+}
+
+.navLink {
+    position: relative;
+    display: flex;
+    align-items: center;
+    height: 40px;
+    padding: 0 12px 2px;
+    color: #12161b;
+    font-size: 18px;
+    font-weight: 500;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.navLink:hover {
+    color: #34347c;
+}
+
+.navLink:active {
+    color: #1a1a5e;
+}
+
+.navLinkUnderline {
+    position: absolute;
+    bottom: 4px;
+    left: 12px;
+    right: 12px;
+    height: 1.5px;
+    border-radius: 999px;
+    background: #34347c;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.2s;
+}
+
+.navLink:hover .navLinkUnderline {
+    transform: scaleX(1);
 }
 
 .sticky {
@@ -79,7 +201,7 @@
     background: rgba(18, 22, 27, 0.05);
     color: #12161b;
     cursor: pointer;
-    transition: background-color 0.15s;
+    transition: background-color 0.15s, color 0.2s;
 }
 
 .burger:hover {
@@ -123,7 +245,9 @@
     cursor: pointer;
     transition:
         opacity 0.15s,
-        transform 0.15s;
+        transform 0.15s,
+        background 0.2s,
+        border-color 0.2s;
 }
 
 @media (min-width: 768px) {

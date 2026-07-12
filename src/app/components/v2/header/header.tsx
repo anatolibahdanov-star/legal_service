@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useLayoutEffect, useState } from "react";
 import Link from "next/link";
 import styles from "./header.module.css";
 
@@ -42,20 +42,60 @@ export const Header: React.FC<HeaderProps> = ({
   } = useHeader({ isAuthenticated, userName, userInitials });
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  /** On mobile home hero: transparent dark header; after scroll → light frosted. */
+  const [overDarkHero, setOverDarkHero] = useState(false);
+
+  useLayoutEffect(() => {
+    const update = () => {
+      if (typeof window === 'undefined') return
+      const isMobile = window.matchMedia('(max-width: 767px)').matches
+      const hero = document.getElementById('hero')
+      if (!isMobile || !hero) {
+        setOverDarkHero(false)
+        return
+      }
+      const heroBottom = hero.getBoundingClientRect().bottom
+      // Stay in dark style while most of the hero is still under the header.
+      setOverDarkHero(heroBottom > 120)
+    }
+
+    update()
+    window.addEventListener('scroll', update, { passive: true })
+    window.addEventListener('resize', update)
+    return () => {
+      window.removeEventListener('scroll', update)
+      window.removeEventListener('resize', update)
+    }
+  }, []);
+
+  const scrollToSection = (href: string) => {
+    const id = href.split("#")[1];
+    if (!id) return false;
+    // На мобиле секции landing имеют префикс m-; десктопные скрыты.
+    const target =
+      document.getElementById(`m-${id}`) ?? document.getElementById(id);
+    if (!target) return false;
+    target.scrollIntoView({ behavior: "smooth", block: "start" });
+    return true;
+  };
+
+  const handleNavClick = (
+    e: React.MouseEvent<HTMLAnchorElement>,
+    href: string,
+  ) => {
+    if (!scrollToSection(href)) return;
+    e.preventDefault();
+    // Keep URL in sync even when hash is already set (re-click same section).
+    if (window.location.hash !== `#${href.split("#")[1]}`) {
+      window.history.pushState(null, "", href.startsWith("/") ? href : `/${href}`);
+    }
+  };
 
   const handleMobileNavClick = (
     e: React.MouseEvent<HTMLAnchorElement>,
     href: string,
   ) => {
-    const id = href.split("#")[1];
-    if (!id) return;
-    // На мобиле секции landing имеют префикс m-; десктопные скрыты.
-    const target =
-      document.getElementById(`m-${id}`) ?? document.getElementById(id);
-    if (target) {
-      e.preventDefault();
-      target.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
+    handleNavClick(e, href);
     setMobileMenuOpen(false);
   };
 
@@ -116,13 +156,16 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <>
     {/* Header */}
-    <header id="header" className={`${styles.header} ${styles[mode]} ${underAppBar ? styles.underAppBar : ''} ${hideNav ? styles.hideNav : ''}`}>
+    <header
+      id="header"
+      className={`${styles.header} ${styles[mode]} ${underAppBar ? styles.underAppBar : ''} ${hideNav ? styles.hideNav : ''} ${overDarkHero ? styles.headerOverHero : ''}`}
+    >
         <div id="container" className={styles.container}>
 
             <Link
               href="/"
               id="logo"
-              className="flex items-center pb-0.5 text-[#12161B] font-semibold text-[22px] md:text-[28px] leading-none tracking-tight transition-opacity duration-200 hover:opacity-70 active:opacity-50"
+              className={styles.logo}
             >
               ЭНКИ
             </Link>
@@ -134,10 +177,11 @@ export const Header: React.FC<HeaderProps> = ({
                       <li key={label} className="flex items-center">
                         <Link
                           href={href}
-                          className="relative flex items-center px-3 h-10 pb-0.5 text-[18px] font-medium leading-none tracking-tight text-[#12161B] transition-colors duration-200 hover:text-[#34347C] active:text-[#1a1a5e] group"
+                          onClick={(e) => handleNavClick(e, href)}
+                          className={styles.navLink}
                         >
                           {label}
-                          <span className="absolute bottom-1 left-3 right-3 h-[1.5px] bg-[#34347C] scale-x-0 group-hover:scale-x-100 transition-transform duration-200 origin-left rounded-full" />
+                          <span className={styles.navLinkUnderline} />
                         </Link>
                       </li>
                     ))}

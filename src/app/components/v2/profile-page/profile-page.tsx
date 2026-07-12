@@ -34,6 +34,7 @@ export function V2ProfilePage() {
   const tabParam = searchParams.get('tab')
   const activeTab: ProfileTab = isProfileTab(tabParam) ? tabParam : 'cases'
   const [data, setData] = useState<DBUser | null>(null)
+  const [editEmailSignal, setEditEmailSignal] = useState(0)
 
   const selectTab = (tab: ProfileTab) => {
     const params = new URLSearchParams(searchParams.toString())
@@ -130,11 +131,23 @@ export function V2ProfilePage() {
           </div>
 
           <div className={styles.body}>
-            {showSidebar && <ProfileSidebar data={data} user={user} setData={setData} />}
+            {showSidebar && (
+              <ProfileSidebar
+                data={data}
+                user={user}
+                setData={setData}
+                onEditEmail={() => setEditEmailSignal((n) => n + 1)}
+              />
+            )}
 
             {activeTab === 'account' ? (
               <div className={styles.contentCol}>
-                <ProfileContent data={data} user={user} setData={setData} />
+                <ProfileContent
+                  data={data}
+                  user={user}
+                  setData={setData}
+                  editEmailSignal={editEmailSignal}
+                />
               </div>
             ) : activeTab === 'balance' ? (
               <div className={styles.fullCol}>

@@ -9,9 +9,9 @@ export interface CompletionItem {
 export const COMPLETION_ITEMS: CompletionItem[] = [
   {
     key: 'email',
-    title: 'Email подтверждён',
-    description: 'ivan@gmail.com',
-    completed: true
+    title: 'Email',
+    description: 'Добавьте email',
+    completed: false
   },
   {
     key: 'phone',
