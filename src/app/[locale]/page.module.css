@@ -20,29 +20,66 @@
 
 .heroImage {
   object-fit: cover;
-  object-position: center;
+  object-position: 62% center;
+}
+
+.heroImageDesktop {
+  display: block;
+}
+
+.heroImageMobile {
+  display: none;
+}
+
+.heroOverlay {
+  display: none;
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0) 45%),
+    linear-gradient(0deg, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0) 50%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0) 88%, #f9f9f9 100%);
 }
 
 .heroContent {
   position: relative;
   z-index: 10;
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   width: 100%;
   height: 100%;
   max-width: 1440px;
   margin-inline: auto;
   padding-inline: 100px;
-  padding-bottom: 120px;
+  padding-top: 140px;
+  padding-bottom: 0;
+}
+
+.heroText {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: min(520px, 42vw);
 }
 
 .heroTitle {
-  max-width: 615px;
-  font-size: 64px;
-  line-height: 70px;
+  margin: 0;
+  font-size: 56px;
+  line-height: 62px;
   font-weight: 500;
   letter-spacing: -0.01em;
   color: #fff;
+  text-shadow: 0 2px 24px rgba(0, 0, 0, 0.45);
+}
+
+.heroSubtitle {
+  margin: 0;
+  max-width: 560px;
+  font-size: 18px;
+  line-height: 26px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.88);
 }
 
 /* ─── Tablet (768–1023px) ───────────────────────────────────────────────── */
@@ -51,31 +88,71 @@
     height: 600px;
   }
 
+  .heroImage {
+    object-position: 70% center;
+  }
+
   .heroContent {
     padding-inline: 40px;
-    padding-bottom: 64px;
+    padding-top: 120px;
+    padding-bottom: 0;
+  }
+
+  .heroText {
+    max-width: min(340px, 48vw);
+    gap: 12px;
   }
 
   .heroTitle {
-    font-size: 48px;
-    line-height: 52px;
+    font-size: 40px;
+    line-height: 46px;
+  }
+
+  .heroSubtitle {
+    font-size: 16px;
+    line-height: 24px;
   }
 }
 
-/* ─── Mobile (≤767px) ───────────────────────────────────────────────────── */
+/* ─── Mobile (≤767px) — match Figma Mobile/Landing ───────────────────────── */
 @media (max-width: 767px) {
   .hero {
     height: 480px;
   }
 
+  .heroImageDesktop {
+    display: none;
+  }
+
+  .heroImageMobile {
+    display: block;
+    object-position: center 35%;
+  }
+
+  .heroOverlay {
+    display: block;
+  }
+
   .heroContent {
+    align-items: flex-start;
     padding-inline: 16px;
-    padding-bottom: 40px;
+    padding-top: 96px;
+    padding-bottom: 0;
+  }
+
+  .heroText {
+    max-width: min(280px, 78vw);
+    gap: 10px;
   }
 
   .heroTitle {
-    max-width: 352px;
     font-size: 28px;
     line-height: 32px;
+    font-weight: 600;
+  }
+
+  .heroSubtitle {
+    font-size: 14px;
+    line-height: 20px;
   }
 }

@@ -16,6 +16,7 @@ interface ProfileSidebarProps {
   user?: User | null
   setData?: (data: DBUser) => void
   documentsComplete?: boolean
+  onEditEmail?: () => void
 }
 
 const getInitials = (value?: string | null) => {
@@ -36,7 +37,13 @@ const formatClientSince = (value?: string | Date | null) => {
   return `Клиент с ${date.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })}`
 }
 
-export function ProfileSidebar({ data = null, user = null, setData, documentsComplete = false }: ProfileSidebarProps) {
+export function ProfileSidebar({
+  data = null,
+  user = null,
+  setData,
+  documentsComplete = false,
+  onEditEmail,
+}: ProfileSidebarProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [changePhoneOpen, setChangePhoneOpen] = useState(false)
@@ -60,6 +67,10 @@ export function ProfileSidebar({ data = null, user = null, setData, documentsCom
   }
 
   const handleCompletionAction = (key?: 'email' | 'phone' | 'photo' | 'documents') => {
+    if (key === 'email') {
+      onEditEmail?.()
+      return
+    }
     if (key === 'phone') {
       setChangePhoneOpen(true)
       return
@@ -77,10 +88,16 @@ export function ProfileSidebar({ data = null, user = null, setData, documentsCom
   const initials = getInitials(displayName)
   const completionItems = COMPLETION_ITEMS.map((item) => {
     if (item.key === 'email') {
+      const emailVerified = !!email && data?.email_verified === 1
       return {
         ...item,
+        title: emailVerified
+          ? 'Email подтверждён'
+          : email
+            ? 'Email не подтверждён'
+            : 'Email не указан',
         description: email || 'Добавьте email',
-        completed: !!email && data?.email_verified === 1,
+        completed: emailVerified,
       }
     }
     if (item.key === 'phone') {
@@ -224,7 +241,7 @@ export function ProfileSidebar({ data = null, user = null, setData, documentsCom
                             className={styles.itemAddBtn}
                             onClick={() => handleCompletionAction(item.key)}
                           >
-                            Добавить
+                            {item.key === 'email' && email ? 'Изменить' : 'Добавить'}
                           </button>
                         </div>
                       )}

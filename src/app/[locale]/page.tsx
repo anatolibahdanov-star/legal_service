@@ -1,5 +1,6 @@
 import Image from 'next/image'
 import heroImage from '@/public/design/v2-main-page/hero-image.jpg'
+import heroImageMobile from '@/public/design/v2-main-page/hero-image-mobile.png'
 
 import { InquirySection } from '@/src/app/components/v2/inquiry-section/inquiry-section'
 import { HowItWorks } from '@/src/app/components/v2/how-it-works/how-it-works'
@@ -17,14 +18,37 @@ export default function Home() {
             priority
             fill
             sizes="100vw"
-            className={styles.heroImage}
+            className={`${styles.heroImage} ${styles.heroImageDesktop}`}
           />
+          <Image
+            src={heroImageMobile}
+            alt="ENKI hero background"
+            priority
+            fill
+            sizes="100vw"
+            className={`${styles.heroImage} ${styles.heroImageMobile}`}
+          />
+          <div className={styles.heroOverlay} aria-hidden />
         </div>
 
         <div className={styles.heroContent}>
-          <h1 className={styles.heroTitle}>
-            Задавайте вопросы опытным юристам онлайн
-          </h1>
+          <div className={styles.heroText}>
+            <h1 className={styles.heroTitle}>
+              ЭНКИ – ваш
+              <br />
+              персональный
+              <br />
+              юрист в кармане
+            </h1>
+            {/* <p className={styles.heroSubtitle}>
+              ИИ подбирает решение, практикующий юрист проверяет и формирует
+              официальное заключение.
+            </p>
+            <p className={styles.heroSubtitle}>
+              Пользователь получает ответ в пределах 3-х часов с момента
+              отправки запроса
+            </p> */}
+          </div>
         </div>
       </section>
 

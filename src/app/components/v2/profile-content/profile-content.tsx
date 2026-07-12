@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { User } from 'next-auth'
 import Swal from 'sweetalert2'
 import { toast } from 'sonner'
@@ -20,6 +20,8 @@ interface ProfileContentProps {
   data?: DBUser | null
   user?: User | null
   setData?: (data: DBUser) => void
+  /** Increment to open profile edit and focus the email field. */
+  editEmailSignal?: number
 }
 
 const emptyValue = 'Не указано'
@@ -30,7 +32,12 @@ type ProfileDraft = {
   phone: string
 }
 
-export function ProfileContent({ data = null, user = null, setData }: ProfileContentProps) {
+export function ProfileContent({
+  data = null,
+  user = null,
+  setData,
+  editEmailSignal = 0,
+}: ProfileContentProps) {
   const [editingProfile, setEditingProfile] = useState(false)
   const [savingProfile, setSavingProfile] = useState(false)
   const [editingPassword, setEditingPassword] = useState(false)
@@ -41,6 +48,8 @@ export function ProfileContent({ data = null, user = null, setData }: ProfileCon
     new_password: '',
     repeat_new_password: '',
   })
+  const emailInputRef = useRef<HTMLInputElement>(null)
+  const lastEditEmailSignal = useRef(0)
 
   const rawEmail = data?.email ?? user?.email ?? ''
   const email = rawEmail && !isPhoneEmail(rawEmail) ? rawEmail : ''
@@ -58,6 +67,26 @@ export function ProfileContent({ data = null, user = null, setData }: ProfileCon
   const phoneValue = data?.phone ?? ''
   const hasRealEmail = !!email && !isPhoneEmail(rawEmail)
   const emailVerified = data?.email_verified === 1
+
+  useEffect(() => {
+    if (!editEmailSignal || editEmailSignal === lastEditEmailSignal.current) return
+    lastEditEmailSignal.current = editEmailSignal
+    setFormData({
+      firstName: firstName ?? '',
+      lastName,
+      email,
+      phone: data?.phone ?? '',
+    })
+    setEditingProfile(true)
+  }, [editEmailSignal, firstName, lastName, email, data?.phone])
+
+  useEffect(() => {
+    if (!editingProfile || !editEmailSignal || editEmailSignal !== lastEditEmailSignal.current) return
+    const input = emailInputRef.current
+    if (!input) return
+    input.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    input.focus()
+  }, [editingProfile, editEmailSignal])
 
   const personalInfoFields: ProfileFieldWithKey[] = [
     {
@@ -194,6 +223,7 @@ export function ProfileContent({ data = null, user = null, setData }: ProfileCon
                   </div>
                 ) : editingProfile ? (
                   <input
+                    ref={field.key === 'email' ? emailInputRef : undefined}
                     value={field.value === emptyValue ? '' : field.value}
                     onChange={(event) => {
                       setFormData((prev) => ({ ...(prev ?? profileDefaults), [field.key]: event.target.value }))
