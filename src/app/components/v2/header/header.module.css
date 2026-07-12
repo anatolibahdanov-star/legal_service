@@ -40,6 +40,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+    min-height: 68px;
 }
 
 .actions {
@@ -102,21 +103,23 @@
 }
 
 .navBtn {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
     height: 40px;
-    padding-inline: 16px;
+    /* Extra bottom padding optically centers Helvetica glyphs (they sit low in the em box). */
+    padding: 0 16px 2px;
     border: 0.5px solid rgba(255, 255, 255, 0.5);
     border-radius: 24px;
     background: #12161b;
     box-shadow: 0 2px 8px 0 rgba(30, 47, 72, 0.06);
     font-size: 14px;
-    font-weight: 500;
-    line-height: 23px;
+    font-weight: 400;
+    line-height: 1;
     letter-spacing: -0.01em;
     color: #fff;
     white-space: nowrap;
+    text-decoration: none;
     cursor: pointer;
     transition:
         opacity 0.15s,
@@ -126,7 +129,7 @@
 @media (min-width: 768px) {
     .navBtn {
         height: 48px;
-        padding-inline: 24px;
+        padding: 0 24px 3px;
         font-size: 18px;
     }
 }
@@ -211,22 +214,23 @@
 }
 
 .menuAuthBtn {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
     width: 100%;
     height: 40px;
-    padding-inline: 16px;
+    padding: 0 16px 2px;
     border: 0.5px solid rgba(255, 255, 255, 0.5);
     border-radius: 24px;
     background: #12161b;
     box-shadow: 0 2px 8px 0 rgba(30, 47, 72, 0.06);
     font-size: 14px;
-    font-weight: 500;
-    line-height: 23px;
+    font-weight: 400;
+    line-height: 1;
     letter-spacing: -0.01em;
     color: #fff;
     white-space: nowrap;
+    text-decoration: none;
     cursor: pointer;
     transition: opacity 0.15s;
 }
@@ -244,8 +248,15 @@
     margin-left: auto;
 }
 
+@media (min-width: 768px) {
+    .container {
+        min-height: 76px;
+    }
+}
+
 @media (max-width: 767px) {
     .container {
         padding: 8px 8px 8px 16px;
+        min-height: 56px;
     }
 }

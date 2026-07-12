@@ -108,7 +108,7 @@ export default function RequestStepProfile({
               : "text-white/80 text-sm leading-relaxed mb-5 sm:mb-6"
           )}
         >
-        Email поможет не потерять ответ юриста и восстановить доступ к вашему аккаунту при необходимости.
+          Персональный ответ юриста отправляется на указанный Email.
         </p>
       </div>
 

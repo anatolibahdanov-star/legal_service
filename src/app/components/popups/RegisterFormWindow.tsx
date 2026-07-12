@@ -4,13 +4,15 @@ import { Mail, Phone, X } from "lucide-react";
 import { FormWindowProps } from "@/src/interfaces/form";
 import RegisterForm from "@/src/app/components/forms/register";
 import RegisterPhoneForm from "@/src/app/components/forms/register-phone";
+import { useBodyScrollLock } from "@/src/app/hooks/useBodyScrollLock";
 
 type Mode = "phone" | "email";
 
-const PILL_BG = "bg-[#EFE7D8]";
+const PILL_BG = "bg-[#f7f6f9]";
 
 export function RegisterFormWindow({ isOpen, onClose, onSwitchToLogin }: FormWindowProps) {
   const [mode, setMode] = useState<Mode>("phone");
+  useBodyScrollLock(isOpen);
 
   if (!isOpen) return null;
 
@@ -25,17 +27,17 @@ export function RegisterFormWindow({ isOpen, onClose, onSwitchToLogin }: FormWin
       >
         <button
           onClick={onClose}
-          className="absolute top-[16px] right-[16px] w-[36px] h-[36px] rounded-full flex items-center justify-center text-[#0F1B2D]/60 hover:text-[#0F1B2D] hover:bg-[#EFE7D8] transition-colors"
+          className="absolute top-[16px] right-[16px] w-[36px] h-[36px] rounded-full flex items-center justify-center text-[rgba(18,22,27,0.6)] hover:text-[#12161b] hover:bg-[#f7f6f9] transition-colors"
           aria-label="Закрыть"
         >
           <X className="w-5 h-5" />
         </button>
 
         <div className="mb-[24px] pr-[24px]">
-          <h1 className="font-bold text-[26px] leading-[32px] text-[#0F1B2D] mb-[10px]">
+          <h1 className="font-bold text-[26px] leading-[32px] text-[#12161b] mb-[10px]">
             Регистрация
           </h1>
-          <p className="font-normal text-[14px] leading-[22px] text-[#6B7280]">
+          <p className="font-normal text-[14px] leading-[22px] text-[rgba(18,22,27,0.6)]">
             Создайте учётную запись для доступа к консультациям юристов и личному кабинету.
           </p>
         </div>
@@ -46,8 +48,8 @@ export function RegisterFormWindow({ isOpen, onClose, onSwitchToLogin }: FormWin
             onClick={() => setMode("phone")}
             className={`flex-1 h-[44px] rounded-full text-[15px] font-medium transition-all flex items-center justify-center gap-[8px] ${
               mode === "phone"
-                ? "bg-white text-[#0F1B2D] shadow-sm"
-                : "text-[#0F1B2D]/70 hover:text-[#0F1B2D]"
+                ? "bg-white text-[#12161b] shadow-sm"
+                : "text-[rgba(18,22,27,0.7)] hover:text-[#12161b]"
             }`}
           >
             <Phone className="w-4 h-4" /> Телефон
@@ -57,8 +59,8 @@ export function RegisterFormWindow({ isOpen, onClose, onSwitchToLogin }: FormWin
             onClick={() => setMode("email")}
             className={`flex-1 h-[44px] rounded-full text-[15px] font-medium transition-all flex items-center justify-center gap-[8px] ${
               mode === "email"
-                ? "bg-white text-[#0F1B2D] shadow-sm"
-                : "text-[#0F1B2D]/70 hover:text-[#0F1B2D]"
+                ? "bg-white text-[#12161b] shadow-sm"
+                : "text-[rgba(18,22,27,0.7)] hover:text-[#12161b]"
             }`}
           >
             <Mail className="w-4 h-4" /> Email

@@ -2,6 +2,7 @@
 
 import { X } from 'lucide-react'
 import OtpCodeStep, { type OtpStepResult } from '@/src/app/components/forms/OtpCodeStep'
+import { useBodyScrollLock } from '@/src/app/hooks/useBodyScrollLock'
 import styles from './inquiry-verification-modals.module.css'
 
 type ModalShellProps = {
@@ -12,6 +13,8 @@ type ModalShellProps = {
 }
 
 function ModalShell({ isOpen, onClose, title, children }: ModalShellProps) {
+  useBodyScrollLock(isOpen)
+
   if (!isOpen) return null
 
   return (
@@ -57,6 +60,8 @@ export function InquiryOtpModal({
   onVerify,
   onResend,
 }: InquiryOtpModalProps) {
+  useBodyScrollLock(isOpen)
+
   if (!isOpen) return null
 
   return (

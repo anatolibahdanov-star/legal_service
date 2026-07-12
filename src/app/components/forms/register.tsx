@@ -13,7 +13,7 @@ import {
   type LegalConsentsValue,
 } from "@/src/app/components/LegalConsents";
 
-const FIELD_BG = "bg-[#EFE7D8]";
+const FIELD_BG = "bg-[#f7f6f9] border border-[rgba(18,22,27,0.1)]";
 const PASSWORD_MIN_LENGTH = 6;
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const HAS_LATIN_LETTER = /[a-zA-Z]/;
@@ -161,17 +161,17 @@ export default function RegisterForm({ onClose, onSwitchToLogin }: FormContainer
           </div>
         )}
         <div className="flex flex-col gap-[8px]">
-          <label className="font-semibold text-[14px] text-[#0F1B2D]">Ваше имя</label>
+          <label className="font-semibold text-[14px] text-[#12161b]">Ваше имя</label>
           <div className={`relative h-[52px] rounded-[14px] ${FIELD_BG}`}>
-            <User className="w-4 h-4 absolute left-[16px] top-1/2 -translate-y-1/2 text-[#0F1B2D]/60" />
+            <User className="w-4 h-4 absolute left-[16px] top-1/2 -translate-y-1/2 text-[#12161b]/60" />
             <input
               type="text"
               autoComplete="name"
               value={name}
               onChange={(e) => handleNameChange(e.target.value)}
               placeholder="Имя"
-              className={`w-full h-full pl-[44px] pr-[16px] bg-transparent text-[15px] text-[#0F1B2D] placeholder:text-[#0F1B2D]/40 rounded-[14px] outline-none ring-2 ${
-                errors.name ? "ring-red-400" : "ring-transparent focus:ring-[#9BB7C9]"
+              className={`w-full h-full pl-[44px] pr-[16px] bg-transparent text-[15px] text-[#12161b] placeholder:text-[#12161b]/40 rounded-[14px] outline-none ring-2 ${
+                errors.name ? "ring-red-400" : "ring-transparent focus:ring-[#34347c]/35"
               } transition-all`}
             />
           </div>
@@ -179,17 +179,17 @@ export default function RegisterForm({ onClose, onSwitchToLogin }: FormContainer
         </div>
 
         <div className="flex flex-col gap-[8px]">
-          <label className="font-semibold text-[14px] text-[#0F1B2D]">Email</label>
+          <label className="font-semibold text-[14px] text-[#12161b]">Email</label>
           <div className={`relative h-[52px] rounded-[14px] ${FIELD_BG}`}>
-            <Mail className="w-4 h-4 absolute left-[16px] top-1/2 -translate-y-1/2 text-[#0F1B2D]/60" />
+            <Mail className="w-4 h-4 absolute left-[16px] top-1/2 -translate-y-1/2 text-[#12161b]/60" />
             <input
               type="email"
               autoComplete="email"
               value={email}
               onChange={(e) => handleEmailChange(e.target.value)}
               placeholder="email"
-              className={`w-full h-full pl-[44px] pr-[16px] bg-transparent text-[15px] text-[#0F1B2D] placeholder:text-[#0F1B2D]/40 rounded-[14px] outline-none ring-2 ${
-                errors.email ? "ring-red-400" : "ring-transparent focus:ring-[#9BB7C9]"
+              className={`w-full h-full pl-[44px] pr-[16px] bg-transparent text-[15px] text-[#12161b] placeholder:text-[#12161b]/40 rounded-[14px] outline-none ring-2 ${
+                errors.email ? "ring-red-400" : "ring-transparent focus:ring-[#34347c]/35"
               } transition-all`}
             />
           </div>
@@ -197,24 +197,24 @@ export default function RegisterForm({ onClose, onSwitchToLogin }: FormContainer
         </div>
 
         <div className="flex flex-col gap-[8px]">
-          <label className="font-semibold text-[14px] text-[#0F1B2D]">Пароль</label>
+          <label className="font-semibold text-[14px] text-[#12161b]">Пароль</label>
           <div className={`relative h-[52px] rounded-[14px] ${FIELD_BG}`}>
-            <Lock className="w-4 h-4 absolute left-[16px] top-1/2 -translate-y-1/2 text-[#0F1B2D]/60" />
+            <Lock className="w-4 h-4 absolute left-[16px] top-1/2 -translate-y-1/2 text-[#12161b]/60" />
             <input
               type={showPassword ? "text" : "password"}
               autoComplete="new-password"
               value={password}
               onChange={(e) => handlePasswordChange(e.target.value)}
               placeholder="Минимум 6 символов"
-              className={`w-full h-full pl-[44px] pr-[44px] bg-transparent text-[15px] text-[#0F1B2D] placeholder:text-[#0F1B2D]/40 rounded-[14px] outline-none ring-2 ${
-                errors.password ? "ring-red-400" : "ring-transparent focus:ring-[#9BB7C9]"
+              className={`w-full h-full pl-[44px] pr-[44px] bg-transparent text-[15px] text-[#12161b] placeholder:text-[#12161b]/40 rounded-[14px] outline-none ring-2 ${
+                errors.password ? "ring-red-400" : "ring-transparent focus:ring-[#34347c]/35"
               } transition-all`}
             />
             <button
               type="button"
               onClick={() => setShowPassword((v) => !v)}
               aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
-              className="absolute right-[14px] top-1/2 -translate-y-1/2 text-[#0F1B2D]/60 hover:text-[#0F1B2D] transition-colors"
+              className="absolute right-[14px] top-1/2 -translate-y-1/2 text-[#12161b]/60 hover:text-[#12161b] transition-colors"
             >
               {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
@@ -225,24 +225,24 @@ export default function RegisterForm({ onClose, onSwitchToLogin }: FormContainer
         </div>
 
         <div className="flex flex-col gap-[8px]">
-          <label className="font-semibold text-[14px] text-[#0F1B2D]">Повторите пароль</label>
+          <label className="font-semibold text-[14px] text-[#12161b]">Повторите пароль</label>
           <div className={`relative h-[52px] rounded-[14px] ${FIELD_BG}`}>
-            <Lock className="w-4 h-4 absolute left-[16px] top-1/2 -translate-y-1/2 text-[#0F1B2D]/60" />
+            <Lock className="w-4 h-4 absolute left-[16px] top-1/2 -translate-y-1/2 text-[#12161b]/60" />
             <input
               type={showConfirm ? "text" : "password"}
               autoComplete="new-password"
               value={confirmPassword}
               onChange={(e) => handleConfirmChange(e.target.value)}
               placeholder="Повторите пароль"
-              className={`w-full h-full pl-[44px] pr-[44px] bg-transparent text-[15px] text-[#0F1B2D] placeholder:text-[#0F1B2D]/40 rounded-[14px] outline-none ring-2 ${
-                errors.confirmPassword ? "ring-red-400" : "ring-transparent focus:ring-[#9BB7C9]"
+              className={`w-full h-full pl-[44px] pr-[44px] bg-transparent text-[15px] text-[#12161b] placeholder:text-[#12161b]/40 rounded-[14px] outline-none ring-2 ${
+                errors.confirmPassword ? "ring-red-400" : "ring-transparent focus:ring-[#34347c]/35"
               } transition-all`}
             />
             <button
               type="button"
               onClick={() => setShowConfirm((v) => !v)}
               aria-label={showConfirm ? "Скрыть пароль" : "Показать пароль"}
-              className="absolute right-[14px] top-1/2 -translate-y-1/2 text-[#0F1B2D]/60 hover:text-[#0F1B2D] transition-colors"
+              className="absolute right-[14px] top-1/2 -translate-y-1/2 text-[#12161b]/60 hover:text-[#12161b] transition-colors"
             >
               {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
@@ -255,10 +255,10 @@ export default function RegisterForm({ onClose, onSwitchToLogin }: FormContainer
         <button
           type="submit"
           disabled={!canSubmit}
-          className={`h-[52px] rounded-[14px] font-semibold text-[15px] flex items-center justify-center gap-[8px] transition-all ${
+          className={`h-[52px] rounded-[35px] font-semibold text-[15px] flex items-center justify-center gap-[8px] transition-all ${
             canSubmit
-              ? "bg-[#5A8FB5] text-white hover:bg-[#4A7EA3]"
-              : "bg-[#D6E3EF] text-[#0F1B2D]/50 cursor-not-allowed"
+              ? "bg-[radial-gradient(circle_at_50%_0%,#34347c_0%,#2d2d6c_100%)] text-white hover:opacity-90"
+              : "bg-[#e8e7ed] text-[#12161b]/50 cursor-not-allowed"
           }`}
         >
           {submitting ? "Регистрируем…" : "Зарегистрироваться"}
@@ -266,11 +266,11 @@ export default function RegisterForm({ onClose, onSwitchToLogin }: FormContainer
         </button>
 
         <div className="flex items-center justify-center gap-[6px]">
-          <p className="text-[14px] text-[#6B7280]">Уже есть аккаунт?</p>
+          <p className="text-[14px] text-[rgba(18,22,27,0.6)]">Уже есть аккаунт?</p>
           <button
             type="button"
             onClick={() => onSwitchToLogin()}
-            className="text-[14px] font-semibold text-[#3B82F6] hover:text-[#2563EB] transition-colors"
+            className="text-[14px] font-semibold text-[#34347c] hover:opacity-80 transition-colors"
           >
             Войти
           </button>

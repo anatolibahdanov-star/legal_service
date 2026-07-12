@@ -14,6 +14,7 @@ import { submitRatingFormAction } from '@/src/app/components/forms/action/rating
 import { submitRequestFormAction } from '@/src/app/components/forms/action/request'
 import { uploadQuestionAttachmentsAction } from '@/src/app/components/forms/action/attachments'
 import { CustomGetRequest } from '@/src/libs/request'
+import { useBodyScrollLock } from '@/src/app/hooks/useBodyScrollLock'
 import styles from './case-modal.module.css'
 
 const statusClassName: Record<QuestionStatusesE, string> = {
@@ -96,16 +97,7 @@ export function V2CaseModal({
     }
   }, [isOpen])
 
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = 'unset'
-    }
-    return () => {
-      document.body.style.overflow = 'unset'
-    }
-  }, [isOpen])
+  useBodyScrollLock(isOpen)
 
   if (!isOpen) return null
 

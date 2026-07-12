@@ -9,6 +9,7 @@ import { AttachmentList } from '@/src/app/components/data/AttachmentList'
 import { FileUpload } from '@/src/app/components/forms/FileUpload'
 import { uploadQuestionAttachmentsAction } from '@/src/app/components/forms/action/attachments'
 import { CustomGetRequest } from '@/src/libs/request'
+import { useBodyScrollLock } from '@/src/app/hooks/useBodyScrollLock'
 import styles from './upload-documents-modal.module.css'
 
 type UploadDocumentsModalProps = {
@@ -50,14 +51,7 @@ export function UploadDocumentsModal({
     load()
   }, [isOpen, caseItem?.id])
 
-  useEffect(() => {
-    if (!isOpen) return
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.body.style.overflow = prev
-    }
-  }, [isOpen])
+  useBodyScrollLock(isOpen)
 
   if (!isOpen || !caseItem) return null
 

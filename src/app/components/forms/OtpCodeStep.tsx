@@ -10,7 +10,7 @@ import {
 
 export type { OtpStepResult };
 
-const FIELD_BG = "bg-[#EFE7D8]";
+const FIELD_BG = "bg-[#f7f6f9] border border-[rgba(18,22,27,0.1)]";
 const CODE_LENGTH = 4;
 
 interface Props {
@@ -52,19 +52,19 @@ export default function OtpCodeStep({
   return (
     <>
       <div className="mb-[24px] pr-[24px]">
-        <h1 className="font-bold text-[26px] leading-[32px] text-[#0F1B2D] mb-[10px]">
+        <h1 className="font-bold text-[26px] leading-[32px] text-[#12161b] mb-[10px]">
           Подтверждение
         </h1>
-        <p className="text-[14px] leading-[22px] text-[#6B7280]">
+        <p className="text-[14px] leading-[22px] text-[rgba(18,22,27,0.6)]">
           Мы отправили SMS-код на указанный номер. Введите его ниже.
         </p>
-        <p className="text-[14px] leading-[22px] text-[#6B7280] mt-[6px]">
-          Код отправлен на <span className="text-[#0F1B2D] font-medium">{phone}</span>.{" "}
+        <p className="text-[14px] leading-[22px] text-[rgba(18,22,27,0.6)] mt-[6px]">
+          Код отправлен на <span className="text-[#12161b] font-medium">{phone}</span>.{" "}
           <button
             type="button"
             onClick={onChangePhone}
             disabled={!canChangePhone}
-            className="text-[#3B82F6] hover:text-[#2563EB] font-semibold transition-colors disabled:text-[#0F1B2D]/40 disabled:cursor-not-allowed"
+            className="text-[#34347c] hover:opacity-80 font-semibold transition-colors disabled:text-[#12161b]/40 disabled:cursor-not-allowed"
           >
             Изменить номер
           </button>
@@ -93,7 +93,7 @@ export default function OtpCodeStep({
         noValidate
       >
         <div className="flex flex-col gap-[8px]">
-          <label className="font-semibold text-[14px] text-[#0F1B2D]">Код из SMS</label>
+          <label className="font-semibold text-[14px] text-[#12161b]">Код из SMS</label>
           <div className={`relative h-[52px] rounded-[14px] ${FIELD_BG}`}>
             <input
               ref={inputRef}
@@ -105,14 +105,14 @@ export default function OtpCodeStep({
               disabled={otp.inputDisabled}
               onChange={(e) => otp.onCodeChange(e.target.value)}
               placeholder={"•".repeat(CODE_LENGTH)}
-              className={`w-full h-full px-[16px] bg-transparent text-[20px] tracking-[8px] text-center text-[#0F1B2D] placeholder:text-[#0F1B2D]/30 rounded-[14px] outline-none ring-2 ${
+              className={`w-full h-full px-[16px] bg-transparent text-[20px] tracking-[8px] text-center text-[#12161b] placeholder:text-[#12161b]/30 rounded-[14px] outline-none ring-2 ${
                 otp.error && !otp.blockBanner
                   ? "ring-red-400"
-                  : "ring-transparent focus:ring-[#9BB7C9]"
+                  : "ring-transparent focus:ring-[#34347c]/35"
               } transition-all disabled:opacity-60 disabled:cursor-not-allowed`}
             />
           </div>
-          <p className="text-[12px] text-[#6B7280] ml-[4px]">
+          <p className="text-[12px] text-[rgba(18,22,27,0.6)] ml-[4px]">
             {otp.expiryRemainingSec > 0
               ? `Код действителен ещё ${formatOtpDuration(otp.expiryRemainingSec)}`
               : "Срок действия кода истёк. Запросите новый."}
@@ -121,8 +121,8 @@ export default function OtpCodeStep({
             <p className="text-[12px] text-red-500 ml-[4px]">{otp.error}</p>
           )}
           {!otp.blockBanner && otp.attemptsLeft !== null && otp.attemptsLeft > 0 && (
-            <p className="text-[12px] text-[#6B7280] ml-[4px]">
-              Осталось попыток: <span className="font-bold text-[#0F1B2D]">{otp.attemptsLeft}</span>
+            <p className="text-[12px] text-[rgba(18,22,27,0.6)] ml-[4px]">
+              Осталось попыток: <span className="font-bold text-[#12161b]">{otp.attemptsLeft}</span>
             </p>
           )}
         </div>
@@ -130,10 +130,10 @@ export default function OtpCodeStep({
         <button
           type="submit"
           disabled={!otp.canSubmit}
-          className={`h-[52px] rounded-[14px] font-semibold text-[15px] flex items-center justify-center gap-[8px] transition-all ${
+          className={`h-[52px] rounded-[35px] font-semibold text-[15px] flex items-center justify-center gap-[8px] transition-all ${
             otp.canSubmit
-              ? "bg-[#5A8FB5] text-white hover:bg-[#4A7EA3]"
-              : "bg-[#D6E3EF] text-[#0F1B2D]/50 cursor-not-allowed"
+              ? "bg-[radial-gradient(circle_at_50%_0%,#34347c_0%,#2d2d6c_100%)] text-white hover:opacity-90"
+              : "bg-[#e8e7ed] text-[#12161b]/50 cursor-not-allowed"
           }`}
         >
           {otp.verifying ? "Проверяем…" : "Подтвердить"}
@@ -145,7 +145,7 @@ export default function OtpCodeStep({
             type="button"
             onClick={() => void otp.resend()}
             disabled={!otp.canResend}
-            className="text-[14px] font-semibold text-[#3B82F6] hover:text-[#2563EB] transition-colors disabled:text-[#0F1B2D]/40 disabled:cursor-not-allowed"
+            className="text-[14px] font-semibold text-[#34347c] hover:opacity-80 transition-colors disabled:text-[#12161b]/40 disabled:cursor-not-allowed"
           >
             {otp.resendRemainingSec > 0
               ? `Отправить код повторно (${formatOtpDuration(otp.resendRemainingSec)})`

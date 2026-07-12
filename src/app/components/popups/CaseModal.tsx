@@ -12,8 +12,10 @@ import { submitRatingFormAction } from "../forms/action/rating";
 import { format } from 'date-fns';
 import { ChatMessage } from "@/src/app/components/data/ChatMessage";
 import { AttachmentDTO } from "@/src/interfaces/db";
+import { useBodyScrollLock } from "@/src/app/hooks/useBodyScrollLock";
 
 export function CaseModal({ caseItem, isOpen, onClose, openRatingSection, user, openNewQuestionWindow }: CaseModalProps) {
+  useBodyScrollLock(isOpen);
   const [isRatingExpanded, setIsRatingExpanded] = useState(false);
   const [rating, setRating] = useState(caseItem.rating || 0);
   const [hoveredRating, setHoveredRating] = useState(0);
@@ -72,18 +74,6 @@ export function CaseModal({ caseItem, isOpen, onClose, openRatingSection, user, 
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [isOpen]);
-
-  // Lock background scroll
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "unset";
-    }
-    return () => {
-      document.body.style.overflow = "unset";
-    };
   }, [isOpen]);
 
   if(data === null) return (<>Не найдено...</>)

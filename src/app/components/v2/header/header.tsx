@@ -122,7 +122,7 @@ export const Header: React.FC<HeaderProps> = ({
             <Link
               href="/"
               id="logo"
-              className="text-[#12161B] font-semibold text-[22px] md:text-[28px] leading-none tracking-tight transition-opacity duration-200 hover:opacity-70 active:opacity-50"
+              className="flex items-center pb-0.5 text-[#12161B] font-semibold text-[22px] md:text-[28px] leading-none tracking-tight transition-opacity duration-200 hover:opacity-70 active:opacity-50"
             >
               ЭНКИ
             </Link>
@@ -131,13 +131,13 @@ export const Header: React.FC<HeaderProps> = ({
             <nav id="navigation" className={`${styles.navigation} hidden lg:flex items-center gap-4`}>
                 <ul className="flex items-center gap-1">
                     {NAV_LINKS.map(({ label, href }) => (
-                      <li key={label}>
+                      <li key={label} className="flex items-center">
                         <Link
                           href={href}
-                          className="relative px-3 py-2 text-[18px] font-medium leading-[23px] tracking-tight text-[#12161B] transition-colors duration-200 hover:text-[#34347C] active:text-[#1a1a5e] group"
+                          className="relative flex items-center px-3 h-10 pb-0.5 text-[18px] font-medium leading-none tracking-tight text-[#12161B] transition-colors duration-200 hover:text-[#34347C] active:text-[#1a1a5e] group"
                         >
                           {label}
-                          <span className="absolute bottom-0 left-3 right-3 h-[1.5px] bg-[#34347C] scale-x-0 group-hover:scale-x-100 transition-transform duration-200 origin-left rounded-full" />
+                          <span className="absolute bottom-1 left-3 right-3 h-[1.5px] bg-[#34347C] scale-x-0 group-hover:scale-x-100 transition-transform duration-200 origin-left rounded-full" />
                         </Link>
                       </li>
                     ))}
