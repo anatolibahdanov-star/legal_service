@@ -171,11 +171,11 @@ export function CaseModal({ caseItem, isOpen, onClose, openRatingSection, user, 
     openNewQuestionWindow()
   }
 
-  const handleAskClarification = async (questionOrId: string, files?: File[]) => {
+  const handleAskClarification = async (questionOrId: string, files?: File[]): Promise<boolean> => {
     // Empty string — close the form
     if (questionOrId === "") {
       setAskClarificationMessageId("");
-      return;
+      return true;
     }
 
     // Otherwise it's the clarification text. Follow-up questions have no length
@@ -213,6 +213,7 @@ export function CaseModal({ caseItem, isOpen, onClose, openRatingSection, user, 
 
     // Scroll to the new message
     setTimeout(() => {messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });}, 100);
+    return true;
   };
 
   if (!isOpen) return null;
