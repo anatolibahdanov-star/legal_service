@@ -389,7 +389,7 @@ export async function sendNewRequestEmail(emailData: EmailDataNewRequestI, isNew
     return null;
   }
   const siteName = process.env.NEXTAUTH_URL ?? 'https://enki.legal'
-  const questionEditUrl = siteName + '/en/admin#/requests/' + emailData.id
+  const questionEditUrl = siteName + '/admin/requests/' + emailData.id
 
   const adminFilter: DBFilterAdministrators = {status: 1}
   if(emailData.admin_id) {

@@ -48,7 +48,7 @@ export const getAdminChoices = <T extends Record<string, string | number>>(enumO
 
 export const getAdminQuestionUrl = (id: string): string => {
   const domainUrl = process.env.NEXT_PUBLIC_URL
-  return domainUrl + '/admin#/requests/' + id + '/show'
+  return domainUrl + '/admin/requests/' + id
 }
 
 export const getAdminAdminUrl = (id: number): string => {

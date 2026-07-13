@@ -20,8 +20,9 @@ interface ProfileContentProps {
   data?: DBUser | null
   user?: User | null
   setData?: (data: DBUser) => void
-  /** Increment to open profile edit and focus the email field. */
   editEmailSignal?: number
+  apiBase?: '/users' | '/administrators'
+  hidePhone?: boolean
 }
 
 const emptyValue = 'Не указано'
@@ -37,6 +38,8 @@ export function ProfileContent({
   user = null,
   setData,
   editEmailSignal = 0,
+  apiBase = '/users',
+  hidePhone = false,
 }: ProfileContentProps) {
   const [editingProfile, setEditingProfile] = useState(false)
   const [savingProfile, setSavingProfile] = useState(false)
@@ -104,11 +107,15 @@ export function ProfileContent({
       label: 'EMAIL',
       value: editingProfile ? profileDraft.email : email || emptyValue,
     },
-    {
-      key: 'phone',
-      label: 'ТЕЛЕФОН',
-      value: phoneValue || emptyValue,
-    },
+    ...(!hidePhone
+      ? [
+          {
+            key: 'phone' as const,
+            label: 'ТЕЛЕФОН',
+            value: phoneValue || emptyValue,
+          },
+        ]
+      : []),
   ]
 
   const handlePhoneChanged = (newPhone: string) => {
@@ -125,11 +132,12 @@ export function ProfileContent({
       .map((part) => part.trim())
       .filter(Boolean)
       .join(' ')
-    const response = await CustomRequest(`/users/${user.id}`, {
+    const response = await CustomRequest(`${apiBase}/${user.id}`, {
       ...data,
       name: combinedName,
       email: profileDraft.email,
       phone: profileDraft.phone,
+      username: data.username ?? user.username,
       status: data.status,
       is_super: data.is_super,
     }, 'PUT')
@@ -154,7 +162,7 @@ export function ProfileContent({
     }
 
     setSavingPassword(true)
-    const response = await CustomRequest(`/users/${user.id}`, {
+    const response = await CustomRequest(`${apiBase}/${user.id}`, {
       ...data,
       name: data.name,
       username: data.username,
@@ -300,12 +308,14 @@ export function ProfileContent({
         </div>
       </div>
 
-      <ChangePhoneWindow
-        isOpen={changePhoneOpen}
-        currentPhone={phoneValue}
-        onClose={() => setChangePhoneOpen(false)}
-        onChanged={handlePhoneChanged}
-      />
+      {!hidePhone && (
+        <ChangePhoneWindow
+          isOpen={changePhoneOpen}
+          currentPhone={phoneValue}
+          onClose={() => setChangePhoneOpen(false)}
+          onChanged={handlePhoneChanged}
+        />
+      )}
     </div>
   )
 }

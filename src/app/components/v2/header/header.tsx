@@ -1,6 +1,7 @@
 "use client";
-import React, { useLayoutEffect, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import styles from "./header.module.css";
 
 import { NAV_LINKS } from "./header.data";
@@ -41,8 +42,9 @@ export const Header: React.FC<HeaderProps> = ({
     closeAll,
   } = useHeader({ isAuthenticated, userName, userInitials });
 
+  const pathname = usePathname();
+  const headerRef = useRef<HTMLElement>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  /** On mobile home hero: transparent dark header; after scroll → light frosted. */
   const [overDarkHero, setOverDarkHero] = useState(false);
 
   useLayoutEffect(() => {
@@ -55,7 +57,6 @@ export const Header: React.FC<HeaderProps> = ({
         return
       }
       const heroBottom = hero.getBoundingClientRect().bottom
-      // Stay in dark style while most of the hero is still under the header.
       setOverDarkHero(heroBottom > 120)
     }
 
@@ -66,12 +67,39 @@ export const Header: React.FC<HeaderProps> = ({
       window.removeEventListener('scroll', update)
       window.removeEventListener('resize', update)
     }
-  }, []);
+  }, [pathname]);
+
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+
+    const onPointerDown = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as Node | null;
+      if (!target) return;
+      if (headerRef.current?.contains(target)) return;
+      setMobileMenuOpen(false);
+    };
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMobileMenuOpen(false);
+    };
+
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('touchstart', onPointerDown, { passive: true });
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('touchstart', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [mobileMenuOpen]);
 
   const scrollToSection = (href: string) => {
     const id = href.split("#")[1];
     if (!id) return false;
-    // На мобиле секции landing имеют префикс m-; десктопные скрыты.
     const target =
       document.getElementById(`m-${id}`) ?? document.getElementById(id);
     if (!target) return false;
@@ -85,7 +113,6 @@ export const Header: React.FC<HeaderProps> = ({
   ) => {
     if (!scrollToSection(href)) return;
     e.preventDefault();
-    // Keep URL in sync even when hash is already set (re-click same section).
     if (window.location.hash !== `#${href.split("#")[1]}`) {
       window.history.pushState(null, "", href.startsWith("/") ? href : `/${href}`);
     }
@@ -117,13 +144,22 @@ export const Header: React.FC<HeaderProps> = ({
               Личный кабинет
             </Link>
           ) : (
-            <Link
-              href="/admin/"
-              onClick={isMenu ? closeMobileMenu : undefined}
-              className={className}
-            >
-              Кабинет
-            </Link>
+            <>
+              <Link
+                href="/admin/requests"
+                onClick={isMenu ? closeMobileMenu : undefined}
+                className={className}
+              >
+                Заявки
+              </Link>
+              <Link
+                href="/profile/?tab=account"
+                onClick={isMenu ? closeMobileMenu : undefined}
+                className={className}
+              >
+                Аккаунт
+              </Link>
+            </>
           )}
           <button
             type="button"
@@ -155,8 +191,8 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <>
-    {/* Header */}
     <header
+      ref={headerRef}
       id="header"
       className={`${styles.header} ${styles[mode]} ${underAppBar ? styles.underAppBar : ''} ${hideNav ? styles.hideNav : ''} ${overDarkHero ? styles.headerOverHero : ''}`}
     >
@@ -166,6 +202,7 @@ export const Header: React.FC<HeaderProps> = ({
               href="/"
               id="logo"
               className={styles.logo}
+              onClick={closeMobileMenu}
             >
               ЭНКИ
             </Link>
@@ -233,8 +270,7 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         )}
     </header>
-    
-    {/* Modals */}
+
     <AuthFormWindow
       isOpen={activeForm === "login"}
       onClose={closeAll}
