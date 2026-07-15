@@ -69,8 +69,14 @@ export function V2ProfilePage() {
     if (status === 'loading') return
     if (!userId) {
       router.replace('/')
+      return
     }
-  }, [status, userId, router])
+    if (userRole === 'admin') {
+      window.location.replace('/admin#/requests')
+    } else if (userRole === 'lowyer') {
+      router.replace('/admin/requests')
+    }
+  }, [status, userId, userRole, router])
 
   useEffect(() => {
     if (!userId) return
@@ -108,7 +114,7 @@ export function V2ProfilePage() {
     emitBalanceRefresh()
   }
 
-  if (status === 'loading' || !user) {
+  if (status === 'loading' || !user || isStaff) {
     return (
       <main className={`v2-header-bleed ${styles.page}`}>
         <section className={styles.container}>

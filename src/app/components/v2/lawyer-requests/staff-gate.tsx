@@ -11,6 +11,7 @@ export function isStaffRole(role: string | undefined | null): boolean {
 export function StaffGate({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const role = session?.user?.role
 
   useEffect(() => {
     if (status === 'loading') return
@@ -18,12 +19,16 @@ export function StaffGate({ children }: { children: React.ReactNode }) {
       router.replace('/')
       return
     }
-    if (!isStaffRole(session?.user?.role)) {
+    if (role === 'admin') {
+      window.location.replace('/admin#/requests')
+      return
+    }
+    if (role !== 'lowyer') {
       router.replace('/profile')
     }
-  }, [status, session?.user?.role, router])
+  }, [status, role, router])
 
-  if (status === 'loading' || status === 'unauthenticated') {
+  if (status === 'loading' || status === 'unauthenticated' || role === 'admin') {
     return (
       <main className="v2-header-bleed" style={{ padding: '120px 24px', textAlign: 'center' }}>
         <p>Загрузка…</p>
@@ -31,7 +36,7 @@ export function StaffGate({ children }: { children: React.ReactNode }) {
     )
   }
 
-  if (!isStaffRole(session?.user?.role)) {
+  if (role !== 'lowyer') {
     return (
       <main className="v2-header-bleed" style={{ padding: '120px 24px', textAlign: 'center' }}>
         <p>Нет доступа</p>

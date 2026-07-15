@@ -39,7 +39,7 @@ import {
   resendInquiryPhoneOtp,
 } from './inquiry-section.verify'
 
-type InquiryPanel = 'quiz' | 'profile' | 'payment' | 'success'
+export type InquiryPanel = 'quiz' | 'profile' | 'payment' | 'success'
 
 const emptyErrors = (): FormDataObjectT => ({
   name: "",

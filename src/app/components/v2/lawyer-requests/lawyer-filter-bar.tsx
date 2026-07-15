@@ -19,7 +19,6 @@ type Props = {
   categories: CategoryOption[]
   onChange: (next: LawyerRequestFilters) => void
   onActiveKeysChange: (keys: OptionalFilterKey[]) => void
-  onReset: () => void
 }
 
 export function LawyerFilterBar({
@@ -28,7 +27,6 @@ export function LawyerFilterBar({
   categories,
   onChange,
   onActiveKeysChange,
-  onReset,
 }: Props) {
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -56,32 +54,18 @@ export function LawyerFilterBar({
   const removeFilter = (key: OptionalFilterKey) => {
     onActiveKeysChange(activeKeys.filter((k) => k !== key))
     const next = { ...filters }
-    delete next[key]
+    if (key === 'date_range') {
+      delete next.published_at_gte
+      delete next.published_at_lte
+    } else {
+      delete next[key]
+    }
     onChange(next)
   }
 
   return (
     <div className={styles.filterBar}>
       <div className={styles.filterAlwaysOn}>
-        <label className={styles.filterInline}>
-          <span className={styles.filterInlineLabel}>С</span>
-          <input
-            type="date"
-            className={styles.filterInlineInput}
-            value={filters.published_at_gte ?? ''}
-            onChange={(e) => set('published_at_gte', e.target.value)}
-          />
-        </label>
-        <label className={styles.filterInline}>
-          <span className={styles.filterInlineLabel}>До</span>
-          <input
-            type="date"
-            className={styles.filterInlineInput}
-            value={filters.published_at_lte ?? ''}
-            onChange={(e) => set('published_at_lte', e.target.value)}
-          />
-        </label>
-
         <div className={styles.addFilterWrap} ref={menuRef}>
           <button
             type="button"
@@ -108,10 +92,6 @@ export function LawyerFilterBar({
             </div>
           )}
         </div>
-
-        <button type="button" className={styles.ghostBtn} onClick={onReset}>
-          Сбросить
-        </button>
       </div>
 
       {activeKeys.length > 0 && (
@@ -124,9 +104,9 @@ export function LawyerFilterBar({
                 {def.kind === 'text' && (
                   <input
                     className={styles.filterChipInput}
-                    value={String(filters[key] ?? '')}
+                    value={String(filters[key as 'username' | 'email' | 'question'] ?? '')}
                     placeholder={def.label}
-                    onChange={(e) => set(key, e.target.value)}
+                    onChange={(e) => set(key as 'username' | 'email' | 'question', e.target.value)}
                     autoFocus
                   />
                 )}
@@ -171,6 +151,24 @@ export function LawyerFilterBar({
                       </option>
                     ))}
                   </select>
+                )}
+                {def.kind === 'date_range' && (
+                  <div className={styles.filterChipDateRange}>
+                    <input
+                      type="date"
+                      className={styles.filterChipDateInput}
+                      value={filters.published_at_gte ?? ''}
+                      onChange={(e) => set('published_at_gte', e.target.value)}
+                      autoFocus
+                    />
+                    <span className={styles.filterChipLabel}>—</span>
+                    <input
+                      type="date"
+                      className={styles.filterChipDateInput}
+                      value={filters.published_at_lte ?? ''}
+                      onChange={(e) => set('published_at_lte', e.target.value)}
+                    />
+                  </div>
                 )}
                 <button
                   type="button"

@@ -1,3 +1,5 @@
+import { formatDistanceToNowStrict } from 'date-fns'
+import { ru } from 'date-fns/locale'
 import { QuestionStatusesE, EmailStatusesE, statusesDesign } from '@/src/interfaces/data'
 import type { AttachmentDTO, DBQuestion } from '@/src/interfaces/db'
 
@@ -23,6 +25,7 @@ export type OptionalFilterKey =
   | 'category'
   | 'status'
   | 'email_status'
+  | 'date_range'
 
 export const OPTIONAL_FILTER_KEYS: OptionalFilterKey[] = [
   'username',
@@ -31,11 +34,12 @@ export const OPTIONAL_FILTER_KEYS: OptionalFilterKey[] = [
   'category',
   'status',
   'email_status',
+  'date_range',
 ]
 
 export const FILTER_FIELD_DEFS: Record<
   OptionalFilterKey,
-  { label: string; kind: 'text' | 'category' | 'status' | 'email_status' }
+  { label: string; kind: 'text' | 'category' | 'status' | 'email_status' | 'date_range' }
 > = {
   username: { label: 'Пользователь', kind: 'text' },
   email: { label: 'E-mail', kind: 'text' },
@@ -43,6 +47,7 @@ export const FILTER_FIELD_DEFS: Record<
   category: { label: 'Категория', kind: 'category' },
   status: { label: 'Статус', kind: 'status' },
   email_status: { label: 'Отправка', kind: 'email_status' },
+  date_range: { label: 'Дата', kind: 'date_range' },
 }
 
 export type CategoryOption = { id: number | string; name: string }
@@ -77,14 +82,15 @@ export function emailStatusLabel(status?: number | null): string {
   return EMAIL_STATUS_OPTIONS.find((o) => o.value === status)?.label ?? '—'
 }
 
-export function defaultDateFrom(): string {
-  return new Date().toISOString().slice(0, 10)
-}
-
-export function defaultDateTo(): string {
-  const d = new Date()
-  d.setMonth(d.getMonth() + 1)
-  return d.toISOString().slice(0, 10)
+/**
+ * Human-readable time elapsed since a request was submitted, e.g. "3 дня",
+ * "5 часов", "12 минут" — how long the client has been waiting.
+ */
+export function elapsedSince(date?: string | Date | null): string {
+  if (!date) return '—'
+  const value = new Date(date)
+  if (Number.isNaN(value.getTime())) return '—'
+  return formatDistanceToNowStrict(value, { locale: ru, addSuffix: false })
 }
 
 export function csvEscape(value: unknown): string {

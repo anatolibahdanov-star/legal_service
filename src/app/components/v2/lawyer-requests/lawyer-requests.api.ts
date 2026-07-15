@@ -29,19 +29,27 @@ function buildFilterPayload(filters: LawyerRequestFilters): Record<string, unkno
   return filter
 }
 
+export type RequestSort = { field: string; dir: 'ASC' | 'DESC' }
+
 export async function fetchLawyerRequests(opts: {
   page: number
   pageSize?: number
   filters: LawyerRequestFilters
+  sort?: RequestSort
+  /** Scopes the list to a single lawyer's own cases (the "Мои дела" tab). */
+  adminId?: string | number
 }): Promise<{ rows: RequestRow[]; total: number; error?: string }> {
   const pageSize = opts.pageSize ?? PAGE_SIZE
   const start = (opts.page - 1) * pageSize
   const end = start + pageSize - 1
+  const sort = opts.sort ?? { field: 'id', dir: 'DESC' }
+  const filterPayload = buildFilterPayload(opts.filters)
+  if (opts.adminId !== undefined) filterPayload.admin_id = Number(opts.adminId)
 
   const params = new URLSearchParams({
     range: JSON.stringify([start, end]),
-    sort: JSON.stringify(['id', 'DESC']),
-    filter: JSON.stringify(buildFilterPayload(opts.filters)),
+    sort: JSON.stringify([sort.field, sort.dir]),
+    filter: JSON.stringify(filterPayload),
   })
 
   try {
@@ -141,6 +149,37 @@ export async function saveRequest(
   const res = await CustomRequest(`/requests/${id}`, body, 'PUT')
   if (!res.status) return { ok: false, error: res.error || 'Не удалось сохранить.' }
   return { ok: true, data: res.data as DBQuestion }
+}
+
+async function changeRequestAssignment(
+  id: string | number,
+  method: 'POST' | 'DELETE',
+): Promise<{ ok: boolean; data?: DBQuestion; error?: string; status?: number }> {
+  try {
+    const res = await fetch(`/api/request-assignments/${id}`, {
+      method,
+      credentials: 'include',
+    })
+    const payload = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      return {
+        ok: false,
+        error: payload?.message || 'Не удалось изменить назначение.',
+        status: res.status,
+      }
+    }
+    return { ok: true, data: payload.data as DBQuestion }
+  } catch {
+    return { ok: false, error: 'Не удалось изменить назначение.' }
+  }
+}
+
+export function claimRequest(id: string | number) {
+  return changeRequestAssignment(id, 'POST')
+}
+
+export function releaseRequest(id: string | number) {
+  return changeRequestAssignment(id, 'DELETE')
 }
 
 export async function deleteRequest(

@@ -876,6 +876,14 @@ export function ProfileScreen({is_user = false}: ProfileScreenPropsI) {
         <div className="mb-6">
           <div className="border-b border-[#e0e0e0]">
             <div className="flex gap-8">
+              {!is_user && (
+                <Link
+                  href={user.role === "admin" ? "/admin#/requests" : "/admin/requests"}
+                  className="pb-3 px-1 text-sm relative text-[#757575] hover:text-[#333]"
+                >
+                  Заявки
+                </Link>
+              )}
               <button onClick={() => setActiveTab("cases")}
                 className={`pb-3 px-1 text-sm relative ${activeTab === "cases" ? "text-[#2196f3]" : "text-[#757575] hover:text-[#333]"}`}
               >{requestTabName} {activeTab === "cases" && (<div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#2196f3]"></div>)}</button>

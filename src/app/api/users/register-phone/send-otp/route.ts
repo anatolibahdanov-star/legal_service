@@ -68,11 +68,6 @@ export async function POST(request: NextRequest) {
   }
 
   const existing = await getUserByPhone(normalized.e164);
-  // If the phone is already registered we transition the user to the login
-  // flow seamlessly: issue an OTP under the shared OTP store so the verify
-  // step (via login-phone/verify-otp) can sign them in. The `existingUser`
-  // flag in the response tells the client to switch to the login OTP step
-  // instead of continuing the register flow.
   if (existing && existing.status !== undefined && existing.status !== UserStatusesE.Activated) {
     logger.warn(msg + 'user banned, refusing to issue OTP', {
       user_id: existing.id,
@@ -82,6 +77,21 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       { success: false, code: 'phone_blocked', message: BLOCKED_MESSAGE },
       { status: 403 },
+    );
+  }
+  if (existing) {
+    logger.info(msg + 'phone already registered, refusing registration OTP', {
+      user_id: existing.id,
+      phone_tail: normalized.digits.slice(-4),
+    });
+    return NextResponse.json(
+      {
+        success: false,
+        code: 'phone_exists',
+        message: 'Аккаунт с таким номером уже зарегистрирован.',
+        phone: normalized.e164,
+      },
+      { status: 409 },
     );
   }
 
@@ -149,7 +159,6 @@ export async function POST(request: NextRequest) {
       success: true,
       phone: normalized.e164,
       expiresInSec: result.expiresInSec,
-      existingUser: !!existing,
       ...(isDryRun() ? { devCode: result.code } : {}),
     },
     { status: 200 },
