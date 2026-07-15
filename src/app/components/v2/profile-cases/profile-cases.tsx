@@ -195,7 +195,7 @@ export function V2ProfileCases({ user }: V2ProfileCasesProps) {
               </span>
               <span className={styles.createText}>
                 <span className={styles.createTitle}>Создать новое обращение</span>
-                <span className={styles.createSubtitle}>Опытный юрист ответит в течение 24 часов</span>
+                <span className={styles.createSubtitle}>Опытный юрист ответит в течение 3 часов</span>
               </span>
             </button>
           )}

@@ -25,9 +25,10 @@ import {
   type LegalConsentsValue,
 } from '@/src/app/components/LegalConsents'
 import { YandexSmartCaptcha } from "@/src/app/components/forms/YandexSmartCaptcha"
-import { useInquirySection } from './inquiry-section.hook'
+import { useInquirySection, type InquiryPanel } from './inquiry-section.hook'
 import { useFileUpload } from './file-upload.hook'
 import { InquiryOtpModal } from './inquiry-verification-modals'
+import { type VerificationModal } from './inquiry-section.verify'
 import RequestStepProfile from '@/src/app/components/forms/RequestStepProfile'
 import RequestStepPayment from '@/src/app/components/forms/RequestStepPayment'
 import type { SuccessVariant } from '@/src/app/components/forms/RequestStepSuccess'
@@ -495,9 +496,30 @@ function StepIndicator({ current }: { current: number }) {
 
 // ─── animated progress panel ──────────────────────────────────────────────────
 
-function ProgressPanel({ step, direction }: { step: number; direction: number }) {
+function ProgressPanel({
+  step,
+  direction,
+  panel,
+  verificationModal,
+}: {
+  step: number
+  direction: number
+  panel: InquiryPanel
+  verificationModal: VerificationModal
+}) {
   const meta = STEPS[step - 1] as StepMeta
-  const displayProgress = step === 1 ? 20 : meta.progress
+  // Progress reflects what the user has already completed, not the current
+  // step: 0% while filling in the question, 20% once it's submitted and the
+  // phone step is shown, 40% while confirming the OTP code, 60% once verified
+  // (profile/payment step).
+  const displayProgress =
+    panel === 'profile' || panel === 'payment'
+      ? 60
+      : verificationModal === 'otp'
+        ? 40
+        : step >= 2
+          ? 20
+          : 0
   const isLastStep = step === TOTAL_VISIBLE_STEPS
 
   return (
@@ -638,7 +660,11 @@ export function InquirySection({
                 <div className={styles.colGap12}>
                   <div className={styles.colGap6}>
                     <div className={styles.colGap3}>
-                      <h2 className={styles.title28}>Получите  юридическое заключение бесплатно</h2>
+                      <h2 className={styles.title28}>
+                        {isEmbedded
+                          ? 'Получите юридическое заключение'
+                          : 'Получите юридическое заключение бесплатно'}
+                      </h2>
                       <p className={styles.text16}>
                         Опишите вашу ситуацию и мы подготовим ответ в течение 3 часов
                       </p>
@@ -752,7 +778,7 @@ export function InquirySection({
                 )}
               </div>
 
-              <ProgressPanel step={step} direction={direction} />
+              <ProgressPanel step={step} direction={direction} panel={panel} verificationModal={verificationModal} />
             </motion.div>
           )}
         </AnimatePresence>

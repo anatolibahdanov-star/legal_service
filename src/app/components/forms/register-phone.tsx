@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertCircle, ArrowRight, Phone } from "lucide-react";
 import { FormContainerProps } from "@/src/interfaces/form";
@@ -27,9 +27,11 @@ const FIELD_BG = "bg-[#f7f6f9] border border-[rgba(18,22,27,0.1)]";
 export default function RegisterPhoneForm({ onClose, onSwitchToLogin }: FormContainerProps) {
   const router = useRouter();
   const { execute: executeCaptcha } = useYandexInvisibleCaptcha();
+  const phoneInputRef = useRef<HTMLInputElement>(null);
 
   const [step, setStep] = useState<Step>("phone");
   const [phone, setPhone] = useState("");
+  const [existingPhone, setExistingPhone] = useState("");
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [normalizedPhone, setNormalizedPhone] = useState<string>("");
   const [otpExpiresInSec, setOtpExpiresInSec] = useState<number>(0);
@@ -66,6 +68,11 @@ export default function RegisterPhoneForm({ onClose, onSwitchToLogin }: FormCont
       const errData = response.data as
         | { code?: string; phone?: string; lockedUntil?: string | null; cooldownUntil?: string | null }
         | null;
+      if (errData?.code === "phone_exists") {
+        setExistingPhone(errData.phone || phone);
+        setErrors({ phone: "", common: "" });
+        return;
+      }
       // If the server returned a deadline (lockedUntil / cooldownUntil),
       // feed it into the countdown so the UI shows MM:SS instead of
       // raw server text. The error banner falls back to the plain message
@@ -78,16 +85,8 @@ export default function RegisterPhoneForm({ onClose, onSwitchToLogin }: FormCont
       phone: string;
       expiresInSec: number;
       devCode?: string;
-      existingUser?: boolean;
     };
     if (data.devCode) console.info("[DEV] OTP code:", data.devCode);
-    if (data.existingUser) {
-      // Phone is already registered — the server issued a login-compatible
-      // OTP for us. Hand off to the login form's code step so verifying the
-      // SMS code signs the user in instead of trying to register again.
-      onSwitchToLogin({ phone: data.phone, otpAlreadySent: true, expiresInSec: data.expiresInSec });
-      return;
-    }
     setNormalizedPhone(data.phone);
     setOtpExpiresInSec(data.expiresInSec ?? 0);
     setStep("code");
@@ -108,6 +107,10 @@ export default function RegisterPhoneForm({ onClose, onSwitchToLogin }: FormCont
         const errData = response.data as
           | { code?: string; cooldownUntil?: string | null; lockedUntil?: string | null; phone?: string }
           | null;
+        if (errData?.code === "phone_exists") {
+          setExistingPhone(errData.phone || targetPhone);
+          setStep("phone");
+        }
         return {
           ok: false,
           message: response.error,
@@ -119,29 +122,31 @@ export default function RegisterPhoneForm({ onClose, onSwitchToLogin }: FormCont
         phone: string;
         expiresInSec: number;
         devCode?: string;
-        existingUser?: boolean;
       };
       if (data.devCode) console.info("[DEV] OTP code:", data.devCode);
-      if (data.existingUser) {
-        // Edge case: the phone became registered between the initial send
-        // and the resend. Bail to the login OTP step instead of letting the
-        // register verify endpoint reject it later.
-        onSwitchToLogin({ phone: data.phone, otpAlreadySent: true, expiresInSec: data.expiresInSec });
-        return { ok: true };
-      }
       setNormalizedPhone(data.phone);
       return { ok: true, expiresInSec: data.expiresInSec };
     } catch {
       return { ok: false, message: "Не удалось отправить код. Попробуйте позже." };
     }
-  }, [executeCaptcha, normalizedPhone, phone, onSwitchToLogin]);
+  }, [executeCaptcha, normalizedPhone, phone]);
 
   const handleVerify = async (otpCode: string): Promise<OtpStepResult> => {
     const response = await verifyPhoneOtpAction({ phone: normalizedPhone, code: otpCode });
     if (!response.status) {
       const errData = response.data as
-        | { cooldownUntil?: string | null; lockedUntil?: string | null; attemptsLeft?: number | null }
+        | {
+            code?: string;
+            phone?: string;
+            cooldownUntil?: string | null;
+            lockedUntil?: string | null;
+            attemptsLeft?: number | null;
+          }
         | null;
+      if (errData?.code === "phone_exists") {
+        setExistingPhone(errData.phone || normalizedPhone);
+        setStep("phone");
+      }
       return {
         ok: false,
         message: response.error,
@@ -168,6 +173,15 @@ export default function RegisterPhoneForm({ onClose, onSwitchToLogin }: FormCont
     setStep("phone");
     setErrors({ phone: "", common: "" });
     return { ok: true };
+  };
+
+  const chooseAnotherPhone = () => {
+    setPhone("");
+    setNormalizedPhone("");
+    setExistingPhone("");
+    setErrors({ phone: "", common: "" });
+    block.reset();
+    window.requestAnimationFrame(() => phoneInputRef.current?.focus());
   };
 
   if (step === "code") {
@@ -206,11 +220,44 @@ export default function RegisterPhoneForm({ onClose, onSwitchToLogin }: FormCont
             </div>
           )}
 
+          {existingPhone && (
+            <div className="px-[16px] py-[14px] rounded-[12px] bg-amber-50 border border-amber-200">
+              <div className="flex items-start gap-[10px]">
+                <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-px" />
+                <div>
+                  <p className="font-semibold text-[14px] text-amber-800 leading-[18px]">
+                    Номер уже зарегистрирован
+                  </p>
+                  <p className="text-[13px] text-amber-700 leading-[18px] mt-[2px]">
+                    Аккаунт с таким номером уже есть. Войдите или укажите другой номер.
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-[8px] mt-[12px]">
+                <button
+                  type="button"
+                  onClick={() => onSwitchToLogin({ phone: existingPhone })}
+                  className="h-[38px] px-[18px] rounded-full bg-[#34347c] text-white text-[13px] font-semibold hover:opacity-90 transition-opacity"
+                >
+                  Войти
+                </button>
+                <button
+                  type="button"
+                  onClick={chooseAnotherPhone}
+                  className="h-[38px] px-[18px] rounded-full border border-amber-300 text-amber-800 text-[13px] font-semibold hover:bg-amber-100 transition-colors"
+                >
+                  Указать другой номер
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="flex flex-col gap-[8px]">
             <label className="font-semibold text-[14px] text-[#12161b]">Номер телефона</label>
             <div className={`relative h-[52px] rounded-[14px] ${FIELD_BG}`}>
               <Phone className="w-4 h-4 absolute left-[16px] top-1/2 -translate-y-1/2 text-[#12161b]/60" />
               <input
+                ref={phoneInputRef}
                 type="tel"
                 inputMode="tel"
                 autoComplete="tel"
@@ -218,6 +265,7 @@ export default function RegisterPhoneForm({ onClose, onSwitchToLogin }: FormCont
                 onChange={(e) => {
                   const formatted = formatPhoneInput(e.target.value);
                   setPhone(formatted);
+                  setExistingPhone("");
                   setErrors((prev) => ({
                     ...prev,
                     phone:

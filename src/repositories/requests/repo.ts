@@ -232,7 +232,7 @@ export function getAdminQuestionOrder(orderBy:string[]): string {
         "username": "u.name",
         "question": "q.question",
         "category": "c.name",
-        "lawyer": "ad.name",
+        "lawyer": "adi.name",
         "reply": "r.reply",
         "final_reply": "fr.final_reply",
         "status": "q.status",
@@ -657,6 +657,48 @@ export async function updateEmailStatus(id: string, email_status: number, requir
     }
     
     return getQuestionsByIds([id])
+}
+
+export async function claimQuestion(
+    id: string | number,
+    adminId: string | number,
+): Promise<DBQuestion | null> {
+    const msg = msgGlobal + "claimQuestion - ";
+    const query = `UPDATE question
+        SET admin_id=?, updated_at=NOW()
+        WHERE id=? AND parent_id IS NULL AND admin_id IS NULL`;
+    const updateFunc = update({ query, values: [adminId, id] });
+    const executed = await executeTransactionWrapper<ResultSetHeader>([updateFunc], msg);
+    if (!executed) {
+        logger.error(msg + "SQL not results from execution", { id, adminId });
+        return null;
+    }
+    const questions = await getQuestionsByIds([String(id)]);
+    return questions?.[0] ?? null;
+}
+
+export async function releaseQuestion(
+    id: string | number,
+    adminId: string | number,
+    canReleaseAny: boolean,
+): Promise<DBQuestion | null> {
+    const msg = msgGlobal + "releaseQuestion - ";
+    let query = `UPDATE question
+        SET admin_id=NULL, updated_at=NOW()
+        WHERE id=? AND parent_id IS NULL`;
+    const values: Array<string | number> = [id];
+    if (!canReleaseAny) {
+        query += ` AND admin_id=?`;
+        values.push(adminId);
+    }
+    const updateFunc = update({ query, values });
+    const executed = await executeTransactionWrapper<ResultSetHeader>([updateFunc], msg);
+    if (!executed) {
+        logger.error(msg + "SQL not results from execution", { id, adminId, canReleaseAny });
+        return null;
+    }
+    const questions = await getQuestionsByIds([String(id)]);
+    return questions?.[0] ?? null;
 }
 
 export async function saveQuestion(id: string, questionIn: DBQuestion, adminId: string|null = null): Promise<DBQuestion | null> {

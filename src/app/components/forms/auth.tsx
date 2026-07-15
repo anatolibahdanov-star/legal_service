@@ -223,7 +223,9 @@ export default function AuthForm({
     const session = await getSession();
     const user = session?.user;
     onClose();
-    if (user && user.role !== "user") {
+    if (user?.role === "admin") {
+      router.push("/admin#/requests");
+    } else if (user?.role === "lowyer") {
       router.push("/admin/requests");
     } else {
       router.push("/profile");

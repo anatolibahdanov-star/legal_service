@@ -55,6 +55,25 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  if (!body.wizardMode) {
+    const existing = await getUserByPhone(normalized.e164);
+    if (existing) {
+      logger.info(msg + 'phone appeared before OTP verification', {
+        user_id: existing.id,
+        phone_tail: normalized.digits.slice(-4),
+      });
+      return NextResponse.json(
+        {
+          success: false,
+          code: 'phone_exists',
+          message: 'Аккаунт с таким номером уже зарегистрирован.',
+          phone: normalized.e164,
+        },
+        { status: 409 },
+      );
+    }
+  }
+
   const phoneStatus = await getPhoneStatus(normalized.e164);
   if (phoneStatus.locked) {
     logger.warn(msg + 'phone locked, rejecting', {
@@ -181,12 +200,29 @@ export async function POST(request: NextRequest) {
       {
         success: false,
         code: 'phone_exists',
-        message: 'Пользователь с таким номером уже зарегистрирован.',
+        message: 'Аккаунт с таким номером уже зарегистрирован.',
+        phone: normalized.e164,
       },
       { status: 409 },
     );
   }
   if (user === null) {
+    const racedUser = await getUserByPhone(normalized.e164);
+    if (racedUser) {
+      logger.warn(msg + 'race: duplicate insert rejected', {
+        user_id: racedUser.id,
+        phone_tail: normalized.digits.slice(-4),
+      });
+      return NextResponse.json(
+        {
+          success: false,
+          code: 'phone_exists',
+          message: 'Аккаунт с таким номером уже зарегистрирован.',
+          phone: normalized.e164,
+        },
+        { status: 409 },
+      );
+    }
     logger.error(msg + 'failed to create user', { phone_tail: normalized.digits.slice(-4) });
     return NextResponse.json(
       {

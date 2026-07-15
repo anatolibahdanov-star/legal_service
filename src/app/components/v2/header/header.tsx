@@ -135,7 +135,7 @@ export const Header: React.FC<HeaderProps> = ({
     if (actuallyAuthenticated) {
       return (
         <>
-          {session?.user?.role === 'user' ? (
+          {session?.user?.role === 'user' && (
             <Link
               href="/profile/?tab=cases"
               onClick={isMenu ? closeMobileMenu : undefined}
@@ -143,23 +143,6 @@ export const Header: React.FC<HeaderProps> = ({
             >
               Личный кабинет
             </Link>
-          ) : (
-            <>
-              <Link
-                href="/admin/requests"
-                onClick={isMenu ? closeMobileMenu : undefined}
-                className={className}
-              >
-                Заявки
-              </Link>
-              <Link
-                href="/profile/?tab=account"
-                onClick={isMenu ? closeMobileMenu : undefined}
-                className={className}
-              >
-                Аккаунт
-              </Link>
-            </>
           )}
           <button
             type="button"

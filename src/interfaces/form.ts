@@ -30,8 +30,7 @@ export interface AuthFormPropsI {
   onClose: () => void;
   prefillPhone?: string;
   /** When true (with `prefillPhone`), the form mounts directly in the OTP
-   * code-entry step — used when the OTP was already issued upstream
-   * (e.g. user tried to register a number that's already taken). */
+   * code-entry step when an OTP was already issued upstream. */
   prefillPhoneOtpSent?: boolean;
   prefillExpiresInSec?: number;
 }

@@ -3,6 +3,7 @@ import heroImage from '@/public/design/v2-main-page/hero-image.jpg'
 import heroImageMobile from '@/public/design/v2-main-page/hero-image-mobile.png'
 
 import { InquirySection } from '@/src/app/components/v2/inquiry-section/inquiry-section'
+import { Subscriptions } from '@/src/app/components/v2/subscriptions/subscriptions'
 import { HowItWorks } from '@/src/app/components/v2/how-it-works/how-it-works'
 import { WhyUs } from '@/src/app/components/v2/why-us/why-us'
 import styles from './page.module.css'
@@ -53,6 +54,7 @@ export default function Home() {
       </section>
 
       <InquirySection />
+      <Subscriptions />
       <HowItWorks />
       <WhyUs />
     </main>

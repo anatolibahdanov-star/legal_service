@@ -1,0 +1,357 @@
+.subscriptions {
+  width: 100%;
+  min-height: 799px;
+  padding: 100px 0 76px;
+  overflow: hidden;
+  background: #f9f9f9;
+  color: #12161b;
+}
+
+.container {
+  width: 100%;
+  max-width: 1440px;
+  margin-inline: auto;
+  padding-inline: 100px;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.title {
+  margin: 0;
+  font-size: 48px;
+  font-weight: 600;
+  line-height: 56px;
+  letter-spacing: -0.01em;
+}
+
+.subtitle {
+  margin: 0;
+  font-size: 22px;
+  line-height: 28px;
+  letter-spacing: -0.01em;
+}
+
+.cardsViewport {
+  margin-top: 64px;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  height: 400px;
+  padding: 24px;
+  border: 1px solid rgba(18, 22, 27, 0.05);
+  border-radius: 24px;
+  background: #fff;
+  box-shadow:
+    0 3px 36px rgba(0, 0, 0, 0.04),
+    0 -102px 250px rgba(0, 0, 0, 0.035);
+}
+
+.featuredCard {
+  border-color: #34347c;
+  background: #f8f8ff;
+}
+
+.featuredLabel {
+  position: absolute;
+  top: -13px;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 25px;
+  padding-inline: 26px;
+  border-radius: 999px;
+  background: #34347c;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 24px;
+  letter-spacing: -0.01em;
+}
+
+.cardDescription {
+  min-height: 54px;
+  margin: 4px 0 0;
+  color: #737780;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.price {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  margin: 16px 0 0;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 30px;
+  white-space: nowrap;
+}
+
+.oldPrice {
+  color: #12161b;
+  text-decoration: line-through;
+  text-decoration-color: #dd3f37;
+  text-decoration-thickness: 2px;
+}
+
+.priceSuffix {
+  margin-left: -6px;
+  color: #969aa2;
+  font-weight: 400;
+}
+
+.benefit {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-height: 76px;
+  margin-top: 16px;
+  padding: 12px;
+  border-radius: 16px;
+  background: #ebfaf1;
+}
+
+.featuredCard .benefit {
+  background: #ededf7;
+}
+
+.checkIcon {
+  display: flex;
+  flex: 0 0 20px;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  background: #24bd67;
+}
+
+.checkIcon svg {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: #fff;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.benefitTitle {
+  margin: 0;
+  color: #656a72;
+  font-size: 11px;
+  line-height: 14px;
+}
+
+.benefitText {
+  margin: 3px 0 0;
+  color: #858991;
+  font-size: 10px;
+  line-height: 13px;
+}
+
+.cardFooter {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.note {
+  margin: 0;
+  color: #8f929a;
+  font-size: 10px;
+  line-height: 14px;
+  text-align: center;
+}
+
+.primaryButton,
+.secondaryButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 56px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1;
+  text-decoration: none;
+  transition:
+    transform 0.15s ease,
+    opacity 0.15s ease;
+}
+
+.primaryButton {
+  background: #34347c;
+  color: #fff;
+}
+
+.secondaryButton {
+  height: 44px;
+  border: 1px solid rgba(18, 22, 27, 0.1);
+  background: #fff;
+  color: #12161b;
+}
+
+.primaryButton:hover,
+.secondaryButton:hover {
+  opacity: 0.88;
+}
+
+.primaryButton:active,
+.secondaryButton:active {
+  transform: scale(0.98);
+}
+
+.businessList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 22px 0 0;
+  padding: 0;
+  list-style: none;
+  color: #343840;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.businessList li {
+  position: relative;
+  padding-left: 16px;
+}
+
+.businessList li::before {
+  position: absolute;
+  top: 0;
+  left: 1px;
+  color: #34347c;
+  font-size: 17px;
+  line-height: 17px;
+  content: '›';
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .subscriptions {
+    min-height: auto;
+    padding-block: 64px;
+  }
+
+  .container {
+    padding-inline: 32px;
+  }
+
+  .title {
+    font-size: 40px;
+    line-height: 46px;
+  }
+
+  .subtitle {
+    font-size: 18px;
+    line-height: 24px;
+  }
+
+  .cardsViewport {
+    margin-right: -32px;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: none;
+    scroll-snap-type: inline proximity;
+  }
+
+  .cardsViewport::-webkit-scrollbar {
+    display: none;
+  }
+
+  .cards {
+    display: flex;
+    gap: 16px;
+    width: max-content;
+    padding-top: 13px;
+    padding-right: 32px;
+  }
+
+  .card {
+    flex: 0 0 295px;
+    scroll-snap-align: start;
+  }
+}
+
+@media (max-width: 767px) {
+  .subscriptions {
+    min-height: auto;
+    padding-block: 48px;
+    overflow: visible;
+  }
+
+  .container {
+    padding-inline: 16px;
+  }
+
+  .header {
+    gap: 12px;
+  }
+
+  .title {
+    font-size: 28px;
+    line-height: 34px;
+  }
+
+  .subtitle {
+    font-size: 16px;
+    line-height: 22px;
+  }
+
+  .cardsViewport {
+    margin-top: 40px;
+  }
+
+  .cards {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .card {
+    width: 100%;
+    height: 400px;
+  }
+
+  .featuredCard {
+    margin-top: 13px;
+  }
+}
+
+@media (max-width: 389px) {
+  .card {
+    padding: 20px;
+  }
+
+  .price {
+    font-size: 22px;
+  }
+}

@@ -12,6 +12,7 @@ export interface DocumentLink {
 
 export const QUICK_LINKS: QuickLink[] = [
   { label: 'Задать вопрос',    href: '/#inquiry' },
+  { label: 'Тарифы',           href: '/#subscriptions' },
   { label: 'Почему мы',        href: '/#why-us' },
   { label: 'Как мы работаем', href: '/#how-it-works' },
 ]

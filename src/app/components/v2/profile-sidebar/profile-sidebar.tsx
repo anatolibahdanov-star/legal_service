@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { signOut } from 'next-auth/react'
 import type { User } from 'next-auth'
 import { toast } from 'sonner'
@@ -45,19 +45,66 @@ export function ProfileSidebar({
   onEditEmail,
 }: ProfileSidebarProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const avatarObjectUrlRef = useRef<string | null>(null)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const [avatarSaving, setAvatarSaving] = useState(false)
   const [changePhoneOpen, setChangePhoneOpen] = useState(false)
 
-  const handleAvatarSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+  useEffect(() => {
+    let active = true
+    const loadAvatar = async () => {
+      const response = await fetch('/api/profile/avatar', { cache: 'no-store' })
+      if (!active || !response.ok) return
+      const objectUrl = URL.createObjectURL(await response.blob())
+      if (!active) {
+        URL.revokeObjectURL(objectUrl)
+        return
+      }
+      avatarObjectUrlRef.current = objectUrl
+      setAvatarUrl(objectUrl)
+    }
+    void loadAvatar()
+    return () => {
+      active = false
+      if (avatarObjectUrlRef.current) URL.revokeObjectURL(avatarObjectUrlRef.current)
+    }
+  }, [user?.id])
+
+  const handleAvatarSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
-    const reader = new FileReader()
-    reader.onloadend = () => {
-      setAvatarUrl(reader.result as string)
-      toast.success('Фото профиля добавлено')
-    }
-    reader.readAsDataURL(file)
     event.target.value = ''
+
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      toast.error('Поддерживаются только JPEG, PNG и WebP')
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Размер изображения должен быть не больше 5 МБ')
+      return
+    }
+
+    setAvatarSaving(true)
+    try {
+      const body = new FormData()
+      body.append('avatar', file)
+      const response = await fetch('/api/profile/avatar', { method: 'PUT', body })
+      const result = await response.json() as { message?: string }
+      if (!response.ok) {
+        toast.error(result.message || 'Не удалось сохранить фото')
+        return
+      }
+
+      if (avatarObjectUrlRef.current) URL.revokeObjectURL(avatarObjectUrlRef.current)
+      const objectUrl = URL.createObjectURL(file)
+      avatarObjectUrlRef.current = objectUrl
+      setAvatarUrl(objectUrl)
+      toast.success('Фото профиля сохранено')
+    } catch {
+      toast.error('Не удалось сохранить фото')
+    } finally {
+      setAvatarSaving(false)
+    }
   }
 
   const handlePhoneChanged = (newPhone: string) => {
@@ -166,6 +213,7 @@ export function ProfileSidebar({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
+              disabled={avatarSaving}
               className={styles.editPhotoBtn}
             >
               <div className={styles.editPhotoIcon}>
@@ -174,13 +222,14 @@ export function ProfileSidebar({
                   <path fillRule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5v11z"/>
                 </svg>
               </div>
-              <span>{avatarUrl ? 'Заменить фото' : 'Изменить фото'}</span>
+              <span>{avatarSaving ? 'Сохраняем...' : avatarUrl ? 'Заменить фото' : 'Изменить фото'}</span>
             </button>
             <input
               ref={fileInputRef}
               type="file"
               accept="image/*"
               onChange={handleAvatarSelect}
+              disabled={avatarSaving}
               className={styles.hiddenInput}
             />
           </div>
