@@ -1,4 +1,4 @@
-import { formatDistanceToNowStrict } from 'date-fns'
+import { formatDistanceStrict, formatDistanceToNowStrict } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { QuestionStatusesE, EmailStatusesE, statusesDesign } from '@/src/interfaces/data'
 import type { AttachmentDTO, DBQuestion } from '@/src/interfaces/db'
@@ -83,9 +83,32 @@ export function emailStatusLabel(status?: number | null): string {
 }
 
 /**
- * Human-readable time elapsed since a request was submitted, e.g. "3 дня",
- * "5 часов", "12 минут" — how long the client has been waiting.
+ * Human-readable wait time for a request.
+ * For completed consultations (answer received) the clock stops at
+ * final_reply_date / updated_at; otherwise it runs until now.
  */
+export function waitingElapsed(row: {
+  created_at?: string | Date | null
+  updated_at?: string | Date | null
+  final_reply_date?: string | Date | null
+  job_status?: number | null
+}): string {
+  if (!row.created_at) return '—'
+  const start = new Date(row.created_at)
+  if (Number.isNaN(start.getTime())) return '—'
+
+  const answerReceived = row.job_status === QuestionStatusesE.Approved
+  const endSource = answerReceived
+    ? (row.final_reply_date ?? row.updated_at ?? null)
+    : null
+  const end = endSource ? new Date(endSource) : new Date()
+  if (Number.isNaN(end.getTime())) return '—'
+
+  const later = end < start ? start : end
+  return formatDistanceStrict(later, start, { locale: ru })
+}
+
+/** @deprecated Prefer waitingElapsed(row) so completed cases stop the clock. */
 export function elapsedSince(date?: string | Date | null): string {
   if (!date) return '—'
   const value = new Date(date)

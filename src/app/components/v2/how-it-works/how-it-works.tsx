@@ -5,6 +5,7 @@ import Image from 'next/image'
 import illustration from '@/public/design/v2-main-page/how-it-works-illustration.png'
 import styles from './how-it-works.module.css'
 import { TABS, STEPS, PROCESS_STEPS } from './how-it-works.data'
+import { WhyUs } from '@/src/app/components/v2/why-us/why-us'
 
 export function HowItWorks() {
   return (
@@ -13,14 +14,14 @@ export function HowItWorks() {
       <div className={styles.howItWorksContainer}>
         <div className={styles.howItWorksInner}>
           <div className={styles.howItWorksHeader}>
-            <h2 className={styles.sectionTitleLg}>Как мы работаем</h2>
+            <h2 className={styles.sectionTitleLg}>Как это работает</h2>
             <p className={styles.sectionSubtitleLg}>
-              Профессиональный правовой аудит{' '}
-              <span className={styles.accentViolet}>без лишних звонков</span>
+              <span className={styles.accentViolet}>ЭНКИ</span>{' '}
+              строится на работе практикующих юристов, где технологии используются для ускорения процесса, а ключевую роль в результате играет специалист
             </p>
           </div>
 
-          <div className={styles.tabs}>
+          {/* <div className={styles.tabs}>
             {TABS.map((tab, index) => {
               const isActive = index === 0
 
@@ -55,7 +56,7 @@ export function HowItWorks() {
                 </div>
               )
             })}
-          </div>
+          </div> */}
 
           <div className={styles.howItWorksBody}>
             <div className={styles.stepsList}>
@@ -85,10 +86,11 @@ export function HowItWorks() {
 
       <div className={styles.mobileBlock}>
         <div className={styles.mobileHeader}>
-          <h2 className={styles.mobileTitle}>Как мы работаем</h2>
+          <h2 className={styles.mobileTitle}>Как это работает</h2>
           <p className={styles.mobileSubtitle}>
-            Профессиональный правовой аудит{' '}
-            <span className={styles.accentViolet}>без лишних звонков</span>
+            <span className={styles.accentViolet}>ЭНКИ</span>{' '}
+            строится на работе практикующих юристов, где технологии используются
+            для ускорения процесса, а ключевую роль в результате играет специалист
           </p>
         </div>
 
@@ -116,6 +118,8 @@ export function HowItWorks() {
           ))}
         </div>
       </div>
+
+      <WhyUs />
     </section>
   )
 }

@@ -226,7 +226,7 @@ export function ProfileContent({
                       onClick={() => setChangePhoneOpen(true)}
                       className={styles.changePhoneBtn}
                     >
-                      Сменить номер
+                      {phoneValue ? 'Сменить номер' : 'Привязать телефон'}
                     </button>
                   </div>
                 ) : editingProfile ? (

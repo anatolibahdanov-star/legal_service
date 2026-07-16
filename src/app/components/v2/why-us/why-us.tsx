@@ -11,6 +11,7 @@ function WhyUsMobileCarousel() {
     align: 'start',
     containScroll: 'trimSnaps',
     dragFree: false,
+    slidesToScroll: 1,
   })
   const [selectedIndex, setSelectedIndex] = useState(0)
 
@@ -24,9 +25,14 @@ function WhyUsMobileCarousel() {
     onSelect()
     emblaApi.on('select', onSelect)
     emblaApi.on('reInit', onSelect)
+
+    const onResize = () => emblaApi.reInit()
+    window.addEventListener('resize', onResize)
+
     return () => {
       emblaApi.off('select', onSelect)
       emblaApi.off('reInit', onSelect)
+      window.removeEventListener('resize', onResize)
     }
   }, [emblaApi, onSelect])
 
@@ -85,20 +91,9 @@ function WhyUsMobileCarousel() {
 
 export function WhyUs() {
   return (
-    <section id="why-us" className={styles.whyUs}>
+    <div className={styles.whyUs}>
       <div className={styles.desktopBlock}>
         <div className={styles.whyUsContainer}>
-          <div className={styles.whyUsHeaderRow}>
-            <div className={styles.whyUsHeader}>
-              <h2 className={styles.sectionTitleLg}>Почему мы?</h2>
-              <p className={`${styles.sectionSubtitleLg} ${styles.whyUsIntro}`}>
-                Опытная команда штатных юристов онлайн 24/7 . Вы получите полноценную
-                юридическую консультацию онлайн без звонков и визитов в офис.
-                Ответственность за результат застрахована
-              </p>
-            </div>
-          </div>
-
           <div className={styles.whyUsGrid}>
             {CARDS.map((card, i) => (
               <div
@@ -127,43 +122,10 @@ export function WhyUs() {
       </div>
 
       <div className={styles.mobileBlock}>
-        <div className={styles.mobileHeader}>
-          <h2 className={styles.mobileTitle}>Почему мы?</h2>
-          <p className={styles.mobileSubtitle}>
-            Опытная команда штатных юристов онлайн 24/7 . Вы получите полноценную
-            юридическую консультацию онлайн без звонков и визитов в офис.
-            Ответственность за результат застрахована
-          </p>
-        </div>
-
         <div className={styles.mobileCarouselWrap}>
           <WhyUsMobileCarousel />
         </div>
-
-        <div className={styles.tabletGrid}>
-          {CARDS.map((card) => (
-            <div
-              key={card.title}
-              className={styles.mobileCard}
-              style={
-                {
-                  '--card-bg': card.bg,
-                  '--card-icon-bg': card.iconBg,
-                  '--card-text': card.textColor,
-                } as React.CSSProperties
-              }
-            >
-              <div className={styles.mobileCardIcon}>
-                <Image src={card.icon} alt="" width={48} height={48} />
-              </div>
-              <div className={styles.mobileCardBody}>
-                <p className={styles.mobileCardTitle}>{card.title}</p>
-                <p className={styles.mobileCardDesc}>{card.desc}</p>
-              </div>
-            </div>
-          ))}
-        </div>
       </div>
-    </section>
+    </div>
   )
 }

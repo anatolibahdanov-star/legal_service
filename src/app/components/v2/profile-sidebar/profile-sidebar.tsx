@@ -89,6 +89,10 @@ export function ProfileSidebar({
       const body = new FormData()
       body.append('avatar', file)
       const response = await fetch('/api/profile/avatar', { method: 'PUT', body })
+      if (response.status === 503) {
+        // Avatar upload to DB is temporarily disabled — no toast.
+        return
+      }
       const result = await response.json() as { message?: string }
       if (!response.ok) {
         toast.error(result.message || 'Не удалось сохранить фото')
@@ -142,22 +146,24 @@ export function ProfileSidebar({
           ? 'Email подтверждён'
           : email
             ? 'Email не подтверждён'
-            : 'Email не указан',
-        description: email || 'Добавьте email',
+            : 'Привязать email',
+        description: email || 'Привязать email',
         completed: emailVerified,
       }
     }
     if (item.key === 'phone') {
       return {
         ...item,
-        description: phone || 'Добавьте телефон',
+        title: phone ? 'Телефон привязан' : 'Привязать телефон',
+        description: phone || 'Привязать телефон',
         completed: !!phone,
       }
     }
     if (item.key === 'photo') {
       return {
         ...item,
-        description: avatarUrl ? 'Фото добавлено' : 'Добавьте фото',
+        title: avatarUrl ? 'Фото привязано' : 'Привязать фото',
+        description: avatarUrl ? 'Фото добавлено' : 'Привязать фото',
         completed: !!avatarUrl,
       }
     }
@@ -290,7 +296,7 @@ export function ProfileSidebar({
                             className={styles.itemAddBtn}
                             onClick={() => handleCompletionAction(item.key)}
                           >
-                            {item.key === 'email' && email ? 'Изменить' : 'Добавить'}
+                            {item.key === 'email' && email ? 'Сменить' : 'Привязать'}
                           </button>
                         </div>
                       )}

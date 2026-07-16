@@ -8,7 +8,7 @@ import { Footer as LegacyFooter } from "@/src/app/components/Footer";
 import { Header } from "@/src/app/components/v2/header/header";
 import { Footer } from "@/src/app/components/v2/footer/footer";
 // import { CookieConsent } from "@/src/app/components/CookieConsent";
-import { SmartCaptchaLegalBadge } from "@/src/app/components/SmartCaptchaLegalBadge";
+// import { SmartCaptchaLegalBadge } from "@/src/app/components/SmartCaptchaLegalBadge";
 import { NextAuthProvider } from "@/src/app/providers/NextAuthProvider";
 import { YandexCaptchaProvider } from "@/src/app/providers/YandexCaptchaProvider";
 import { Toaster } from "@/src/app/components/ui/sonner";
@@ -39,7 +39,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <LegacyHeader />
           {children}
           <LegacyFooter />
-          <SmartCaptchaLegalBadge />
+          {/* <SmartCaptchaLegalBadge /> */}
           <Toaster richColors position="top-right" />
         </YandexCaptchaProvider>
       </NextAuthProvider>
@@ -53,7 +53,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className={contentClass}>{children}</div>
         <Footer />
         {/* <CookieConsent /> */}
-        <SmartCaptchaLegalBadge />
+        {/* <SmartCaptchaLegalBadge /> */}
         <Toaster richColors position="top-right" />
       </YandexCaptchaProvider>
     </NextAuthProvider>

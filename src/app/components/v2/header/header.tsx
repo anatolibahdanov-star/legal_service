@@ -128,6 +128,12 @@ export const Header: React.FC<HeaderProps> = ({
 
   const closeMobileMenu = () => setMobileMenuOpen(false);
 
+  const role = session?.user?.role
+  const isStaff = role === 'admin' || role === 'lowyer'
+  const showNav = !hideNav && !isStaff
+  const cabinetHref =
+    role === 'admin' ? '/admin#/requests' : role === 'lowyer' ? '/admin/requests' : '/profile/?tab=cases'
+
   const renderAuthActions = (placement: 'header' | 'menu') => {
     const isMenu = placement === 'menu';
     const className = isMenu ? styles.menuAuthBtn : styles.navBtn;
@@ -135,15 +141,13 @@ export const Header: React.FC<HeaderProps> = ({
     if (actuallyAuthenticated) {
       return (
         <>
-          {session?.user?.role === 'user' && (
-            <Link
-              href="/profile/?tab=cases"
-              onClick={isMenu ? closeMobileMenu : undefined}
-              className={className}
-            >
-              Личный кабинет
-            </Link>
-          )}
+          <Link
+            href={cabinetHref}
+            onClick={isMenu ? closeMobileMenu : undefined}
+            className={className}
+          >
+            Личный кабинет
+          </Link>
           <button
             type="button"
             onClick={() => {
@@ -177,7 +181,7 @@ export const Header: React.FC<HeaderProps> = ({
     <header
       ref={headerRef}
       id="header"
-      className={`${styles.header} ${styles[mode]} ${underAppBar ? styles.underAppBar : ''} ${hideNav ? styles.hideNav : ''} ${overDarkHero ? styles.headerOverHero : ''}`}
+      className={`${styles.header} ${styles[mode]} ${underAppBar ? styles.underAppBar : ''} ${hideNav || isStaff ? styles.hideNav : ''} ${overDarkHero ? styles.headerOverHero : ''}`}
     >
         <div id="container" className={styles.container}>
 
@@ -190,7 +194,7 @@ export const Header: React.FC<HeaderProps> = ({
               ЭНКИ
             </Link>
 
-            {!hideNav && (
+            {showNav && (
             <nav id="navigation" className={`${styles.navigation} hidden lg:flex items-center gap-4`}>
                 <ul className="flex items-center gap-1">
                     {NAV_LINKS.map(({ label, href }) => (
@@ -232,7 +236,7 @@ export const Header: React.FC<HeaderProps> = ({
 
         {mobileMenuOpen && (
           <div className={styles.mobileMenu}>
-            {!hideNav && (
+            {showNav && (
               <nav className={styles.mobileMenuNav}>
                 {NAV_LINKS.map(({ label, href }) => (
                   <a
@@ -247,7 +251,7 @@ export const Header: React.FC<HeaderProps> = ({
               </nav>
             )}
 
-            <div className={`${styles.mobileMenuAuth} ${hideNav ? styles.mobileMenuAuthOnly : ''}`}>
+            <div className={`${styles.mobileMenuAuth} ${!showNav ? styles.mobileMenuAuthOnly : ''}`}>
               {renderAuthActions('menu')}
             </div>
           </div>

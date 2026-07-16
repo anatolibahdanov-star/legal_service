@@ -3,8 +3,11 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { useSession } from 'next-auth/react'
 import { motion, AnimatePresence } from 'motion/react'
 import { Clock, FileText, Globe } from 'lucide-react'
+
+import { isStaffRole } from '@/src/app/components/v2/lawyer-requests/staff-gate'
 
 import finalCubeImg from '@/public/design/v2-main-page/progress-final.png'
 import inquiryCubeImg from '@/public/design/v2-main-page/inquiry-cube-mobile.png'
@@ -583,6 +586,8 @@ export function InquirySection({
   variant = 'page',
   onClose,
 }: { variant?: 'page' | 'inline'; onClose?: () => void } = {}) {
+  const { data: session, status: sessionStatus } = useSession()
+  const isStaff = isStaffRole(session?.user?.role)
   const isEmbedded = variant === 'inline'
   const [showQuizMobile, setShowQuizMobile] = useState(false)
   const {
@@ -632,6 +637,26 @@ export function InquirySection({
   } = useInquirySection({ isProfile: isEmbedded })
 
   const effectiveClose = isEmbedded ? onClose : () => setShowQuizMobile(false)
+
+  if (sessionStatus !== 'loading' && isStaff) {
+    if (isEmbedded) return null
+    const cabinetHref =
+      session?.user?.role === 'admin' ? '/admin#/requests' : '/admin/requests'
+    return (
+      <section id="inquiry" className={styles.inquirySection}>
+        <div className={styles.inquiryContainer}>
+          <div className={styles.staffBlocked}>
+            <p className={styles.staffBlockedText}>
+              Создание обращений недоступно для сотрудников. Работайте с заявками в личном кабинете.
+            </p>
+            <Link href={cabinetHref} className={styles.staffBlockedLink}>
+              Перейти к заявкам
+            </Link>
+          </div>
+        </div>
+      </section>
+    )
+  }
 
   const wizardCard = (
     <div className={styles.inquiryCard}>

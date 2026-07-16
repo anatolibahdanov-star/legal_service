@@ -14,7 +14,7 @@ import styles from './lawyer-requests.module.css'
 type LawyerPageTab = 'requests' | 'my-cases' | 'account'
 
 const TITLES: Record<LawyerPageTab, string> = {
-  requests: 'Заявки юриста',
+  requests: 'Заявки',
   'my-cases': 'Мои дела',
   account: 'Аккаунт',
 }

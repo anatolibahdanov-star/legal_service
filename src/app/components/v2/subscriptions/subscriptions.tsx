@@ -1,26 +1,43 @@
+'use client'
+
+import { useSession } from 'next-auth/react'
+import { isStaffRole } from '@/src/app/components/v2/lawyer-requests/staff-gate'
 import styles from './subscriptions.module.css'
 
-const plans = [
+type Plan = {
+  name: string
+  description: string
+  price: string
+  priceSuffix?: string
+  oldPrice?: string
+  note?: string
+  featured?: boolean
+}
+
+const plans: Plan[] = [
   {
-    name: 'Разовая консультация',
-    description: 'Полноценная онлайн юридическая консультация по вашему вопросу',
-    oldPrice: '5600 ₽',
-    price: '1000 ₽',
+    name: 'Разовый запрос',
+    description: 'Разовая оплата 1 вопроса',
+    price: '2 000 ₽',
+  },
+  {
+    name: 'Старт',
+    description: 'Ежемесячная подписка: 5 вопросов',
+    price: '7 000 ₽',
+    priceSuffix: '/мес',
   },
   {
     name: 'Стандарт',
-    description: 'Пакет из 5 консультаций с профессиональными юристами',
-    price: '4600 ₽',
+    description: 'Ежемесячная подписка: 10 вопросов',
+    price: '15 000 ₽',
     priceSuffix: '/мес',
-    note: 'за 9 000 ₽/мес',
     featured: true,
   },
   {
-    name: 'Профи',
-    description: 'Пакет из 10 консультаций с профессиональными юристами',
-    price: '8 500 ₽',
+    name: 'Максимум',
+    description: 'Ежемесячная подписка: 30 вопросов',
+    price: '35 000 ₽',
     priceSuffix: '/мес',
-    note: 'за 11 500 ₽/мес',
   },
 ]
 
@@ -35,6 +52,9 @@ function CheckIcon() {
 }
 
 export function Subscriptions() {
+  const { data: session } = useSession()
+  const isStaff = isStaffRole(session?.user?.role)
+
   return (
     <section id="subscriptions" className={styles.subscriptions}>
       <div className={styles.container}>
@@ -44,7 +64,19 @@ export function Subscriptions() {
             <br />
             юридические консультации
           </h2>
-          <p className={styles.subtitle}>За одного пользователя</p>
+          <div className={styles.subtitleBlock}>
+            <p className={styles.subtitle}>
+              {/* <strong>Подписки</strong> */}
+              {/* <br /> */}
+              Ежемесячные подписки с разным количеством вопросов. В случае если
+              Пользователь не исчерпал лимит вопросов за месяц их остаток не
+              сгорает и переносится на следующий месяц при условии продолжения
+              подписки.
+            </p>
+            <p className={styles.subtitle}>
+              Лицензия на месяц предоставляется для 1 пользователя.
+            </p>
+          </div>
         </header>
 
         <div className={styles.cardsViewport}>
@@ -87,36 +119,21 @@ export function Subscriptions() {
 
                 <div className={styles.cardFooter}>
                   {plan.note ? <p className={styles.note}>{plan.note}</p> : null}
-                  <a className={styles.primaryButton} href="#inquiry">
-                    Купить
-                  </a>
+                  {isStaff ? (
+                    <span
+                      className={`${styles.primaryButton} ${styles.primaryButtonDisabled}`}
+                      aria-disabled="true"
+                    >
+                      Недоступно
+                    </span>
+                  ) : (
+                    <a className={styles.primaryButton} href="#inquiry">
+                      Купить
+                    </a>
+                  )}
                 </div>
               </article>
             ))}
-
-            <article className={`${styles.card} ${styles.businessCard}`}>
-              <div>
-                <h3 className={styles.cardTitle}>Бизнес тарифы</h3>
-                <p className={styles.cardDescription}>
-                  Установка on-premises, расширенные пакеты или подключение групп
-                </p>
-              </div>
-
-              <ul className={styles.businessList}>
-                <li>Работа в контуре компании</li>
-                <li>Кастомные доработки продукта</li>
-                <li>Покупка лицензий на группу</li>
-              </ul>
-
-              <div className={styles.cardFooter}>
-                <a className={styles.secondaryButton} href="#inquiry">
-                  Оставить заявку
-                </a>
-                <a className={styles.primaryButton} href="#inquiry">
-                  Купить
-                </a>
-              </div>
-            </article>
           </div>
         </div>
       </div>

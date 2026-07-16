@@ -2,15 +2,21 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
+import { useSession } from 'next-auth/react'
 import footerLogo from '@/public/design/v2-main-page/icons/footer-logo.svg'
 import { QUICK_LINKS, DOCUMENTS, COMPANY_INFO } from './footer.data'
 import { useFooter } from './footer.hook'
+import { isStaffRole } from '@/src/app/components/v2/lawyer-requests/staff-gate'
 import styles from './footer.module.css'
 
 const LETTERS = ['Э', 'Н', 'К', 'И'] as const
 
 export const Footer = () => {
   const { handleScrollToTop } = useFooter()
+  const { data: session } = useSession()
+  const quickLinks = isStaffRole(session?.user?.role)
+    ? QUICK_LINKS.filter((link) => link.href !== '/#inquiry')
+    : QUICK_LINKS
 
   return (
     <footer id="footer" className={styles.footer}>
@@ -53,7 +59,7 @@ export const Footer = () => {
 
                 <div className={styles.linksColumn}>
                   <div className={styles.linksList}>
-                    {QUICK_LINKS.map((link) => (
+                    {quickLinks.map((link) => (
                       <div key={link.label} className={styles.linkItem}>
                         <Link href={link.href} className={styles.footerLink}>
                           {link.label}
@@ -129,7 +135,7 @@ export const Footer = () => {
           </div>
 
           <div className={styles.mobileLinks}>
-            {QUICK_LINKS.map((link) => (
+            {quickLinks.map((link) => (
               <div key={link.label} className={styles.mobileLinkItem}>
                 <Link href={link.href} className={styles.mobileLink}>
                   {link.label}
