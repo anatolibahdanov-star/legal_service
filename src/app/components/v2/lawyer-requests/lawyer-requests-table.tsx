@@ -10,7 +10,7 @@ import { LawyerFilterBar } from './lawyer-filter-bar'
 import { TruncatedText } from './truncated-text'
 import {
   PAGE_SIZE,
-  elapsedSince,
+  waitingElapsed,
   statusColor,
   statusLabel,
   type CategoryOption,
@@ -232,7 +232,7 @@ export function LawyerRequestsTable({ scope, isSuper, adminId }: Props) {
                         ? format(new Date(row.created_at), 'dd.MM.yyyy HH:mm')
                         : '—'}
                     </td>
-                    <td>{elapsedSince(row.created_at)}</td>
+                    <td>{waitingElapsed(row)}</td>
                     <td>
                       <div className={styles.actions}>
                         <button
@@ -288,7 +288,7 @@ export function LawyerRequestsTable({ scope, isSuper, adminId }: Props) {
                   </span>
                 </div>
                 <div className={styles.mobileMeta}>
-                  <span>{elapsedSince(row.created_at)}</span>
+                  <span>{waitingElapsed(row)}</span>
                   {row.owner ? <span>{row.owner}</span> : null}
                 </div>
                 <div className={styles.mobileActions}>

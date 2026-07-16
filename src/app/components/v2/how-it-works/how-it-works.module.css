@@ -1,11 +1,10 @@
 .howItWorks {
   display: flex;
   flex-direction: column;
-  gap: 64px;
+  gap: 72px;
   width: 100%;
   background: #f9f9f9;
   padding-block: 46px;
-  min-height: 779px;
 }
 
 /* ─── Desktop / Mobile HTML toggle ──────────────────────────────────────── */
@@ -19,7 +18,7 @@
 
 @media (max-width: 1023px) {
   .howItWorks {
-    gap: 0;
+    gap: 32px;
     min-height: auto;
     padding-block: 32px;
   }
@@ -41,7 +40,7 @@
 
 @media (min-width: 768px) and (max-width: 1023px) {
   .mobileBlock {
-    gap: 40px;
+    gap: 32px;
     padding-inline: 32px;
   }
 }
@@ -56,7 +55,7 @@
 .howItWorksInner {
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: 72px;
 }
 
 .howItWorksHeader {
@@ -166,7 +165,7 @@
 .stepRow {
   display: flex;
   align-items: flex-start;
-  gap: 16px;
+  gap: 32px;
 }
 
 .stepNumber {
@@ -216,6 +215,26 @@
 @media (min-width: 1024px) {
   .howItWorksIllustration {
     width: 560px;
+    height: auto;
+  }
+}
+
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .howItWorksContainer {
+    padding-inline: 40px;
+  }
+
+  .howItWorksIllustration {
+    width: 420px;
+  }
+
+  .stepNumber {
+    font-size: 56px;
+    line-height: 64px;
+    width: 36px;
+  }
+
+  .stepDesc {
     height: auto;
   }
 }

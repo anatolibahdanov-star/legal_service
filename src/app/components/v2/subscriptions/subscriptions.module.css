@@ -28,11 +28,24 @@
   letter-spacing: -0.01em;
 }
 
+.subtitleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 920px;
+}
+
 .subtitle {
   margin: 0;
-  font-size: 22px;
-  line-height: 28px;
+  font-size: 18px;
+  line-height: 26px;
   letter-spacing: -0.01em;
+  color: #4a4f57;
+}
+
+.subtitle strong {
+  color: #12161b;
+  font-weight: 600;
 }
 
 .cardsViewport {
@@ -209,6 +222,12 @@
 .primaryButton {
   background: #34347c;
   color: #fff;
+}
+
+.primaryButtonDisabled {
+  opacity: 0.45;
+  pointer-events: none;
+  cursor: not-allowed;
 }
 
 .secondaryButton {

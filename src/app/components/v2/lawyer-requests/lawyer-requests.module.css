@@ -74,11 +74,8 @@
   transition: background-color 0.15s;
 }
 
-.tab:hover {
-  background: rgba(18, 22, 27, 0.05);
-}
-
-.tabActive {
+.tabActive,
+.tabActive:hover {
   color: #fff;
   background: linear-gradient(135deg, #34347c, #34537c);
 }

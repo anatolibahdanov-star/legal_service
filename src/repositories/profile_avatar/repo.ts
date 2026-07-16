@@ -24,24 +24,26 @@ export async function getProfileAvatar(
 }
 
 export async function saveProfileAvatar(
-  ownerType: ProfileAvatarOwner,
-  ownerId: string,
-  contentType: string,
-  imageData: Buffer,
+  _ownerType: ProfileAvatarOwner,
+  _ownerId: string,
+  _contentType: string,
+  _imageData: Buffer,
 ): Promise<boolean> {
-  const query = `
-    INSERT INTO profile_avatar(owner_type, owner_id, content_type, image_data)
-    VALUES(?, ?, ?, ?)
-    ON DUPLICATE KEY UPDATE
-      content_type = VALUES(content_type),
-      image_data = VALUES(image_data),
-      updated_at = CURRENT_TIMESTAMP
-  `
-  const [result] = await db.query<ResultSetHeader>(
-    query,
-    [ownerType, ownerId, contentType, imageData],
-  )
-  return result.affectedRows > 0
+  // Temporarily disabled: do not write avatars to DB.
+  // const query = `
+  //   INSERT INTO profile_avatar(owner_type, owner_id, content_type, image_data)
+  //   VALUES(?, ?, ?, ?)
+  //   ON DUPLICATE KEY UPDATE
+  //     content_type = VALUES(content_type),
+  //     image_data = VALUES(image_data),
+  //     updated_at = CURRENT_TIMESTAMP
+  // `
+  // const [result] = await db.query<ResultSetHeader>(
+  //   query,
+  //   [ownerType, ownerId, contentType, imageData],
+  // )
+  // return result.affectedRows > 0
+  return false
 }
 
 export async function deleteProfileAvatar(

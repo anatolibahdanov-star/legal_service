@@ -10,19 +10,19 @@ export const COMPLETION_ITEMS: CompletionItem[] = [
   {
     key: 'email',
     title: 'Email',
-    description: 'Добавьте email',
+    description: 'Привязать email',
     completed: false
   },
   {
     key: 'phone',
-    title: 'Телефон привязан',
-    description: '+7 (900) 000-00-00',
-    completed: true
+    title: 'Привязать телефон',
+    description: 'Привязать телефон',
+    completed: false
   },
   {
     key: 'photo',
     title: 'Фото профиля',
-    description: 'Добавьте фото',
+    description: 'Привязать фото',
     completed: false
   }
 ]
