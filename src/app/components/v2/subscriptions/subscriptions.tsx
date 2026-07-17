@@ -12,6 +12,8 @@ type Plan = {
   oldPrice?: string
   note?: string
   featured?: boolean
+  /** Bright badge tint (same family as why-us cards) */
+  tone: 'orange' | 'yellow' | 'purple' | 'green'
 }
 
 const plans: Plan[] = [
@@ -19,12 +21,14 @@ const plans: Plan[] = [
     name: 'Разовый запрос',
     description: 'Разовая оплата 1 вопроса',
     price: '2 000 ₽',
+    tone: 'orange',
   },
   {
     name: 'Старт',
     description: 'Ежемесячная подписка: 5 вопросов',
     price: '7 000 ₽',
     priceSuffix: '/мес',
+    tone: 'yellow',
   },
   {
     name: 'Стандарт',
@@ -32,14 +36,23 @@ const plans: Plan[] = [
     price: '15 000 ₽',
     priceSuffix: '/мес',
     featured: true,
+    tone: 'purple',
   },
   {
     name: 'Максимум',
     description: 'Ежемесячная подписка: 30 вопросов',
     price: '35 000 ₽',
     priceSuffix: '/мес',
+    tone: 'green',
   },
 ]
+
+const BADGE_TONE_CLASS: Record<Plan['tone'], string> = {
+  orange: styles.benefit_orange,
+  yellow: styles.benefit_yellow,
+  purple: styles.benefit_purple,
+  green: styles.benefit_green,
+}
 
 function CheckIcon() {
   return (
@@ -105,7 +118,7 @@ export function Subscriptions() {
                   ) : null}
                 </p>
 
-                <div className={styles.benefit}>
+                <div className={`${styles.benefit} ${BADGE_TONE_CLASS[plan.tone]}`}>
                   <CheckIcon />
                   <div>
                     <p className={styles.benefitTitle}>Доступ к источникам</p>
