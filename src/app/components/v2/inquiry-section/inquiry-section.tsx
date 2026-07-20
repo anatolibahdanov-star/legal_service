@@ -585,7 +585,12 @@ function ProgressPanel({
 export function InquirySection({
   variant = 'page',
   onClose,
-}: { variant?: 'page' | 'inline'; onClose?: () => void } = {}) {
+  onCreated,
+}: {
+  variant?: 'page' | 'inline'
+  onClose?: () => void
+  onCreated?: (question: { id: string | number; uuid: string | null }) => void
+} = {}) {
   const { data: session, status: sessionStatus } = useSession()
   const isStaff = isStaffRole(session?.user?.role)
   const isEmbedded = variant === 'inline'
@@ -634,7 +639,7 @@ export function InquirySection({
     setCaptchaToken,
     setQuestionTouched,
     validateQuestionText,
-  } = useInquirySection({ isProfile: isEmbedded })
+  } = useInquirySection({ isProfile: isEmbedded, onCreated })
 
   const effectiveClose = isEmbedded ? onClose : () => setShowQuizMobile(false)
 

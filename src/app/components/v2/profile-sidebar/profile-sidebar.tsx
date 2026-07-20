@@ -154,7 +154,7 @@ export function ProfileSidebar({
     if (item.key === 'phone') {
       return {
         ...item,
-        title: phone ? 'Телефон привязан' : 'Привязать телефон',
+        title: phone ? 'Телефон привязан' : 'Телефон не подтверждён',
         description: phone || 'Привязать телефон',
         completed: !!phone,
       }
@@ -162,8 +162,8 @@ export function ProfileSidebar({
     if (item.key === 'photo') {
       return {
         ...item,
-        title: avatarUrl ? 'Фото привязано' : 'Привязать фото',
-        description: avatarUrl ? 'Фото добавлено' : 'Привязать фото',
+        title: avatarUrl ? 'Фото привязано' : 'Нет фото',
+        description: avatarUrl ? 'Фото добавлено' : 'Добавить фото',
         completed: !!avatarUrl,
       }
     }
@@ -296,7 +296,11 @@ export function ProfileSidebar({
                             className={styles.itemAddBtn}
                             onClick={() => handleCompletionAction(item.key)}
                           >
-                            {item.key === 'email' && email ? 'Сменить' : 'Привязать'}
+                            {item.key === 'photo'
+                              ? 'Добавить'
+                              : item.key === 'email' && email
+                                ? 'Сменить'
+                                : 'Привязать'}
                           </button>
                         </div>
                       )}
