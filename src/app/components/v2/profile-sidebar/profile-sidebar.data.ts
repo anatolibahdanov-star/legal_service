@@ -15,14 +15,14 @@ export const COMPLETION_ITEMS: CompletionItem[] = [
   },
   {
     key: 'phone',
-    title: 'Привязать телефон',
+    title: 'Телефон не подтверждён',
     description: 'Привязать телефон',
     completed: false
   },
   {
     key: 'photo',
-    title: 'Фото профиля',
-    description: 'Привязать фото',
+    title: 'Нет фото',
+    description: 'Добавить фото',
     completed: false
   }
 ]

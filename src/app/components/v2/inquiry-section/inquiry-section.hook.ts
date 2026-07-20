@@ -50,14 +50,26 @@ const emptyErrors = (): FormDataObjectT => ({
   common: "",
 })
 
-type UseInquirySectionOptions = {
-  isProfile?: boolean
+export type InquiryCreatedQuestion = {
+  id: string | number
+  uuid: string | null
 }
 
-export const useInquirySection = ({ isProfile = false }: UseInquirySectionOptions = {}) => {
+type UseInquirySectionOptions = {
+  isProfile?: boolean
+  /** When set (profile flow), skip the landing success screen and hand off the created question. */
+  onCreated?: (question: InquiryCreatedQuestion) => void
+}
+
+export const useInquirySection = ({
+  isProfile = false,
+  onCreated,
+}: UseInquirySectionOptions = {}) => {
   const { data: session, status: sessionStatus } = useSession()
   const { execute: executeCaptcha } = useYandexInvisibleCaptcha({ variant: "light" })
   const phoneBlock = usePhoneBlockCountdown()
+  const onCreatedRef = useRef(onCreated)
+  onCreatedRef.current = onCreated
 
   const [step, setStep] = useState(1)
   const [direction, setDirection] = useState(1)
@@ -344,6 +356,17 @@ export const useInquirySection = ({ isProfile = false }: UseInquirySectionOption
     return { ok: true }
   }
 
+  const finishWithSuccess = (kind: SuccessVariant, amount = 0) => {
+    setSuccessKind(kind)
+    setSuccessAmount(amount)
+    const id = questionIdRef.current
+    if (isProfile && onCreatedRef.current && id != null) {
+      onCreatedRef.current({ id, uuid: questionUuidRef.current })
+      return
+    }
+    setPanel('success')
+  }
+
   const submitFreeAndShowSuccess = async (): Promise<{ ok: boolean; message?: string }> => {
     const ensured = await ensureUnpaidQuestionExists()
     if (!ensured.ok) return { ok: false, message: ensured.message }
@@ -359,9 +382,7 @@ export const useInquirySection = ({ isProfile = false }: UseInquirySectionOption
       return { ok: false, message: response.error || 'Не удалось сохранить вопрос.' }
     }
 
-    setSuccessKind('free')
-    setSuccessAmount(0)
-    setPanel('success')
+    finishWithSuccess('free')
     return { ok: true }
   }
 
@@ -380,9 +401,7 @@ export const useInquirySection = ({ isProfile = false }: UseInquirySectionOption
       return { ok: false, message: response.error || 'Не удалось сохранить вопрос.' }
     }
 
-    setSuccessKind('later')
-    setSuccessAmount(0)
-    setPanel('success')
+    finishWithSuccess('later')
     return { ok: true }
   }
 
@@ -605,10 +624,11 @@ export const useInquirySection = ({ isProfile = false }: UseInquirySectionOption
     }
 
     const data = response.data as { amount?: number; freeUsed?: boolean }
-    setSuccessKind(data?.freeUsed ? 'bonus' : 'balance')
-    setSuccessAmount(typeof data.amount === 'number' ? data.amount : questionPrice)
     emitBalanceRefresh()
-    setPanel('success')
+    finishWithSuccess(
+      data?.freeUsed ? 'bonus' : 'balance',
+      typeof data.amount === 'number' ? data.amount : questionPrice,
+    )
     return { ok: true }
   }
 

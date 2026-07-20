@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { User } from 'next-auth'
 import { format } from 'date-fns'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import { ArrowRight, CreditCard, Eye, FileText, Paperclip, Plus, Share2, Star } from 'lucide-react'
 
@@ -52,6 +53,11 @@ const getJobStatus = (item: DBQuestion): QuestionStatusesE =>
   Number(item.job_status) as QuestionStatusesE
 
 export function V2ProfileCases({ user }: V2ProfileCasesProps) {
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const questionParam = searchParams.get('question')
+  const openedFromQueryRef = useRef<string | null>(null)
   const listTopRef = useRef<HTMLDivElement>(null)
   const [jobs, setJobs] = useState<DBQuestion[]>([])
   const [currentPage, setCurrentPage] = useState(1)
@@ -72,6 +78,15 @@ export function V2ProfileCases({ user }: V2ProfileCasesProps) {
   } | null>(null)
   const domainUrl = process.env.NEXT_PUBLIC_URL ?? ''
 
+  const clearQuestionQuery = useCallback(() => {
+    if (!searchParams.get('question')) return
+    const params = new URLSearchParams(searchParams.toString())
+    params.delete('question')
+    if (params.get('tab') === 'cases') params.delete('tab')
+    const qs = params.toString()
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
+  }, [pathname, router, searchParams])
+
   const openCase = (caseItem: DBQuestion, withRating = false) => {
     setSelectedCase(caseItem)
     setOpenRatingSection(withRating)
@@ -81,6 +96,7 @@ export function V2ProfileCases({ user }: V2ProfileCasesProps) {
   const closeCase = () => {
     setIsCaseModalOpen(false)
     setOpenRatingSection(false)
+    clearQuestionQuery()
     refresh()
     setTimeout(() => setSelectedCase(null), 300)
   }
@@ -121,6 +137,31 @@ export function V2ProfileCases({ user }: V2ProfileCasesProps) {
       active = false
     }
   }, [user.id, refreshToken])
+
+  // Deep-link from balance history: /profile/?tab=cases&question=<id>
+  useEffect(() => {
+    if (!questionParam || loading) return
+    if (openedFromQueryRef.current === questionParam) return
+
+    const fromList = jobs.find((item) => String(item.id) === String(questionParam))
+    if (fromList) {
+      openedFromQueryRef.current = questionParam
+      openCase(fromList)
+      return
+    }
+
+    let active = true
+    void (async () => {
+      const res = await CustomGetRequest(`/requests/${questionParam}`)
+      if (!active || !res.status || !res.data) return
+      openedFromQueryRef.current = questionParam
+      openCase(res.data as DBQuestion)
+    })()
+
+    return () => {
+      active = false
+    }
+  }, [questionParam, loading, jobs])
 
   const refresh = () => setRefreshToken((value) => value + 1)
 
@@ -182,6 +223,14 @@ export function V2ProfileCases({ user }: V2ProfileCasesProps) {
               onClose={() => {
                 setActiveForm(null)
                 refresh()
+              }}
+              onCreated={async ({ id }) => {
+                setActiveForm(null)
+                refresh()
+                const res = await CustomGetRequest(`/requests/${id}`)
+                if (res.status && res.data) {
+                  openCase(res.data as DBQuestion)
+                }
               }}
             />
           ) : (
@@ -259,9 +308,6 @@ export function V2ProfileCases({ user }: V2ProfileCasesProps) {
                       >
                         {caseItem.question}
                       </button>
-                      <p className={styles.caseDescription}>
-                        {caseItem.question}
-                      </p>
                       {caseItem.category_name?.trim() ? (
                         <span className={styles.caseCategory}>
                           {caseItem.category_name}

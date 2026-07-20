@@ -3,8 +3,32 @@
 import { useCallback, useEffect, useState } from 'react'
 import Image from 'next/image'
 import useEmblaCarousel from 'embla-carousel-react'
+import { LEGAL_DOCUMENTS } from '@/src/app/components/legalDocuments'
 import styles from './why-us.module.css'
 import { CARDS } from './why-us.data'
+
+const INSURANCE_POLICY_HREF = LEGAL_DOCUMENTS['insurance-policy'].src
+const INSURANCE_POLICY_LABEL = '(полис к страховке)'
+
+function CardDesc({ text }: { text: string }) {
+  const idx = text.indexOf(INSURANCE_POLICY_LABEL)
+  if (idx === -1) return text
+
+  return (
+    <>
+      {text.slice(0, idx)}
+      <a
+        href={INSURANCE_POLICY_HREF}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={styles.policyLink}
+      >
+        {INSURANCE_POLICY_LABEL}
+      </a>
+      {text.slice(idx + INSURANCE_POLICY_LABEL.length)}
+    </>
+  )
+}
 
 function WhyUsMobileCarousel() {
   const [emblaRef, emblaApi] = useEmblaCarousel({
@@ -64,7 +88,9 @@ function WhyUsMobileCarousel() {
                 </div>
                 <div className={styles.mobileCardBody}>
                   <p className={styles.mobileCardTitle}>{card.title}</p>
-                  <p className={styles.mobileCardDesc}>{card.desc}</p>
+                  <p className={styles.mobileCardDesc}>
+                    <CardDesc text={card.desc} />
+                  </p>
                 </div>
               </div>
             </div>
@@ -113,7 +139,9 @@ export function WhyUs() {
 
                 <div className={styles.whyUsCardBody}>
                   <p className={styles.whyUsCardTitle}>{card.title}</p>
-                  <p className={styles.whyUsCardDesc}>{card.desc}</p>
+                  <p className={styles.whyUsCardDesc}>
+                    <CardDesc text={card.desc} />
+                  </p>
                 </div>
               </div>
             ))}

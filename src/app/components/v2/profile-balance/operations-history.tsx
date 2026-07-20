@@ -60,15 +60,13 @@ export function OperationsHistory() {
   const renderSubtitle = (op: AdminBalanceOperationI) => {
     if (op.questionId) {
       const label = `Вопрос №${op.questionId}`
-      return op.questionUuid ? (
+      return (
         <Link
-          href={`/consultation/${op.questionUuid}/`}
+          href={`/profile/?tab=cases&question=${op.questionId}`}
           className={styles.subtitleLink}
         >
           {label}
         </Link>
-      ) : (
-        <span className={styles.subtitleText}>{label}</span>
       )
     }
     return <span className={styles.subtitleText}>{op.comment ?? op.actor}</span>

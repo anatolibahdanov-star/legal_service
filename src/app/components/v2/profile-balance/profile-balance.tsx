@@ -67,6 +67,7 @@ export function V2ProfileBalance({ data, setUserBalance }: V2ProfileBalanceProps
   const [dealsActive, setDealsActive] = useState(0)
   const [dealsCompleted, setDealsCompleted] = useState(0)
   const balance = data?.balance ?? 0
+  const freeQuestions = data?.free_questions ?? 0
   const topupKop = Math.round(minTopupRub * 100)
 
   useEffect(() => {
@@ -191,12 +192,13 @@ export function V2ProfileBalance({ data, setUserBalance }: V2ProfileBalanceProps
   const renderOperationSubtitle = (op: AdminBalanceOperationI) => {
     if (op.questionId) {
       const label = `Вопрос №${op.questionId}`
-      return op.questionUuid ? (
-        <Link href={`/consultation/${op.questionUuid}/`} className={styles.subtitleLink}>
+      return (
+        <Link
+          href={`/profile/?tab=cases&question=${op.questionId}`}
+          className={styles.subtitleLink}
+        >
           {label}
         </Link>
-      ) : (
-        <span className={styles.subtitleText}>{label}</span>
       )
     }
     return <span className={styles.subtitleText}>{op.comment ?? op.actor}</span>
@@ -205,37 +207,58 @@ export function V2ProfileBalance({ data, setUserBalance }: V2ProfileBalanceProps
   return (
     <div className={styles.root}>
       <div className={styles.topRow}>
-        {/* Доступный баланс */}
-        <div className={styles.balanceCard}>
-          <div className={styles.balanceInner}>
-            <div className={styles.balanceTop}>
-              <div className={styles.balanceStatus}>
-                <span className={styles.statusDot} />
-                <span className={styles.statusLabel}>Доступный баланс</span>
-              </div>
-              <div className={styles.balanceAmountWrap}>
-                <div className={styles.balanceAmountRow}>
-                  <span className={styles.balanceAmount}>{formatRub(balance)}</span>
-                  <span className={styles.balanceCurrency}>₽</span>
+        <div className={styles.balanceCol}>
+          {/* Доступный баланс */}
+          <div className={styles.balanceCard}>
+            <div className={styles.balanceInner}>
+              <div className={styles.balanceTop}>
+                <div className={styles.balanceStatus}>
+                  <span className={styles.statusDot} />
+                  <span className={styles.statusLabel}>Доступный баланс</span>
                 </div>
-                <span className={styles.balanceHint}>
-                  {lastTopup
-                    ? `Пополнено ${formatDateTime(lastTopup.createdAt)}`
-                    : 'Доступно для оплаты вопросов и услуг'}
-                </span>
+                <div className={styles.balanceAmountWrap}>
+                  <div className={styles.balanceAmountRow}>
+                    <span className={styles.balanceAmount}>{formatRub(balance)}</span>
+                    <span className={styles.balanceCurrency}>₽</span>
+                  </div>
+                  <span className={styles.balanceHint}>
+                    {lastTopup
+                      ? `Пополнено ${formatDateTime(lastTopup.createdAt)}`
+                      : 'Доступно для оплаты вопросов и услуг'}
+                  </span>
+                </div>
               </div>
+              <button
+                type="button"
+                onClick={handleCreateOrder}
+                disabled={creatingOrder}
+                className={styles.topupBtn}
+              >
+                <Plus className={styles.topupIcon} />
+                {creatingOrder ? 'Создаём...' : 'Пополнить'}
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={handleCreateOrder}
-              disabled={creatingOrder}
-              className={styles.topupBtn}
-            >
-              <Plus className={styles.topupIcon} />
-              {creatingOrder ? 'Создаём...' : 'Пополнить'}
-            </button>
+            <div className={styles.balanceBlur} />
           </div>
-          <div className={styles.balanceBlur} />
+
+          {/* Бесплатные вопросы (подписка / начисления админом) */}
+          <div className={styles.freeQuestionsCard}>
+            <div className={styles.balanceStatus}>
+              <span className={`${styles.statusDot} ${styles.statusDotPurple}`} />
+              <span className={styles.statusLabel}>Бесплатные вопросы</span>
+            </div>
+            <div className={styles.balanceAmountWrap}>
+              <div className={styles.balanceAmountRow}>
+                <span className={styles.freeQuestionsAmount}>{freeQuestions}</span>
+                <span className={styles.balanceCurrency}>шт.</span>
+              </div>
+              <span className={styles.balanceHint}>
+                {freeQuestions > 0
+                  ? 'Списываются в первую очередь при отправке вопроса'
+                  : 'Появятся при активной подписке или начислении'}
+              </span>
+            </div>
+          </div>
         </div>
 
         {/* История операций — превью */}
