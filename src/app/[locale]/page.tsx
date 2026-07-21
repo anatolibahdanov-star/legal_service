@@ -34,20 +34,18 @@ export default function Home() {
         <div className={styles.heroContent}>
           <div className={styles.heroText}>
             <h1 className={styles.heroTitle}>
-              ЭНКИ – ваш
-              <br />
-              персональный
+              Ваш персональный
               <br />
               юрист в кармане
             </h1>
-            {/* <p className={styles.heroSubtitle}>
+            <p className={styles.heroSubtitle}>
               ИИ подбирает решение, практикующий юрист проверяет и формирует
               официальное заключение.
             </p>
             <p className={styles.heroSubtitle}>
               Пользователь получает ответ в пределах 3-х часов с момента
-              отправки запроса
-            </p> */}
+              отправки запроса.
+            </p>
           </div>
         </div>
       </section>

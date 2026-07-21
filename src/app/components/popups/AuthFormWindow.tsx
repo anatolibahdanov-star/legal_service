@@ -15,12 +15,15 @@ export function AuthFormWindow({
 }: AuthWindowProps) {
   useBodyScrollLock(isOpen);
 
-  if (!isOpen) return null;
-
+  // Keep mounted while closed so email/password/OTP draft is not wiped
+  // when the user dismisses the overlay and reopens later.
   return (
     <div
-      className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-[1400]"
+      className={`fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-[1400] ${
+        isOpen ? "" : "hidden"
+      }`}
       onClick={onClose}
+      aria-hidden={!isOpen}
     >
       <div
         className="bg-white rounded-[24px] p-[32px] w-full max-w-[520px] relative max-h-[92vh] overflow-y-auto shadow-2xl"

@@ -14,12 +14,14 @@ export function RegisterFormWindow({ isOpen, onClose, onSwitchToLogin }: FormWin
   const [mode, setMode] = useState<Mode>("phone");
   useBodyScrollLock(isOpen);
 
-  if (!isOpen) return null;
-
+  // Keep mounted while closed so draft fields survive overlay dismiss / reopen.
   return (
     <div
-      className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-[1400]"
+      className={`fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-[1400] ${
+        isOpen ? "" : "hidden"
+      }`}
       onClick={onClose}
+      aria-hidden={!isOpen}
     >
       <div
         className="bg-white rounded-[24px] pt-[64px] px-[32px] pb-[32px] w-full max-w-[520px] relative max-h-[92vh] overflow-y-auto shadow-2xl"
@@ -67,11 +69,13 @@ export function RegisterFormWindow({ isOpen, onClose, onSwitchToLogin }: FormWin
           </button>
         </div>
 
-        {mode === "phone" ? (
+        {/* Keep both modes mounted so switching phone/email does not wipe drafts. */}
+        <div className={mode === "phone" ? "" : "hidden"}>
           <RegisterPhoneForm onSwitchToLogin={onSwitchToLogin} onClose={onClose} />
-        ) : (
+        </div>
+        <div className={mode === "email" ? "" : "hidden"}>
           <RegisterForm onSwitchToLogin={onSwitchToLogin} onClose={onClose} />
-        )}
+        </div>
       </div>
     </div>
   );

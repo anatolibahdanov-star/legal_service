@@ -23,17 +23,19 @@ export function ResetPasswordFormWindow({ isOpen, onClose, onSwitchToLogin }: Fo
   const [headerless, setHeaderless] = useState(false);
   useBodyScrollLock(isOpen);
 
-  if (!isOpen) return null;
-
   const switchMode = (next: Mode) => {
     setMode(next);
     setHeaderless(false);
   };
 
+  // Keep mounted while closed so draft fields survive overlay dismiss / reopen.
   return (
     <div
-      className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-[1400]"
+      className={`fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-[1400] ${
+        isOpen ? "" : "hidden"
+      }`}
       onClick={onClose}
+      aria-hidden={!isOpen}
     >
       <div
         className="bg-white rounded-[24px] p-[32px] w-full max-w-[520px] relative max-h-[92vh] overflow-y-auto shadow-2xl"
@@ -83,17 +85,18 @@ export function ResetPasswordFormWindow({ isOpen, onClose, onSwitchToLogin }: Fo
           </>
         )}
 
-        {mode === "phone" ? (
+        <div className={mode === "phone" ? "" : "hidden"}>
           <ForgotPhoneForm
             onSwitchToLogin={onSwitchToLogin}
-            onHeaderlessChange={setHeaderless}
+            onHeaderlessChange={mode === "phone" ? setHeaderless : undefined}
           />
-        ) : (
+        </div>
+        <div className={mode === "email" ? "" : "hidden"}>
           <ForgotEmailForm
             onSwitchToLogin={onSwitchToLogin}
-            onHeaderlessChange={setHeaderless}
+            onHeaderlessChange={mode === "email" ? setHeaderless : undefined}
           />
-        )}
+        </div>
       </div>
     </div>
   );
