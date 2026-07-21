@@ -12,6 +12,8 @@ type Plan = {
   oldPrice?: string
   note?: string
   featured?: boolean
+  /** Short line inside the colored benefit badge */
+  badge: string
   /** Bright badge tint (same family as why-us cards) */
   tone: 'orange' | 'yellow' | 'purple' | 'green'
 }
@@ -21,6 +23,7 @@ const plans: Plan[] = [
     name: 'Разовый запрос',
     description: 'Разовая оплата 1 вопроса',
     price: '2 000 ₽',
+    badge: 'Один вопрос – один ответ, без подписки',
     tone: 'orange',
   },
   {
@@ -28,6 +31,7 @@ const plans: Plan[] = [
     description: 'Ежемесячная подписка: 5 вопросов',
     price: '7 000 ₽',
     priceSuffix: '/мес',
+    badge: '5 запросов в месяц для базовых задач',
     tone: 'yellow',
   },
   {
@@ -36,6 +40,7 @@ const plans: Plan[] = [
     price: '15 000 ₽',
     priceSuffix: '/мес',
     featured: true,
+    badge: '10 вопросов в месяц – оптимальный баланс',
     tone: 'purple',
   },
   {
@@ -43,6 +48,7 @@ const plans: Plan[] = [
     description: 'Ежемесячная подписка: 30 вопросов',
     price: '35 000 ₽',
     priceSuffix: '/мес',
+    badge: '30 вопросов в месяц для максимальной поддержки',
     tone: 'green',
   },
 ]
@@ -120,14 +126,7 @@ export function Subscriptions() {
 
                 <div className={`${styles.benefit} ${BADGE_TONE_CLASS[plan.tone]}`}>
                   <CheckIcon />
-                  <div>
-                    <p className={styles.benefitTitle}>Доступ к источникам</p>
-                    <p className={styles.benefitText}>
-                      Бесплатно первый месяц, далее
-                      <br />
-                      +3 000 ₽/мес за Гарант Лайт
-                    </p>
-                  </div>
+                  <p className={styles.benefitTitle}>{plan.badge}</p>
                 </div>
 
                 <div className={styles.cardFooter}>

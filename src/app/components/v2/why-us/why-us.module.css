@@ -149,7 +149,7 @@
 .whyUsCardDesc {
   flex: 1;
   font-size: 16px;
-  line-height: 22px;
+  line-height: 24px;
   letter-spacing: -0.01em;
   color: var(--card-text);
   white-space: pre-line;
@@ -259,7 +259,7 @@
 
 .mobileCardDesc {
   font-size: 14px;
-  line-height: 20px;
+  line-height: 22px;
   color: var(--card-text);
   white-space: pre-line;
 }

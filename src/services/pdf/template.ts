@@ -71,6 +71,8 @@ export interface QuarkdownTemplateInput {
   thread: DBQuestion[];
   /** Absolute filesystem path to the logo PNG/SVG used in the page header. */
   logoPath: string;
+  /** Absolute filesystem path to the facsimile signature PNG. */
+  facsimilePath: string;
   fontPath: string;
 }
 
@@ -80,11 +82,11 @@ export interface QuarkdownTemplateInput {
  * Layout (per requirements):
  *  - Page header (every page): logo top-left + company details top-right
  *  - Body: date, recipient, subject, dialog in chronological order
- *  - End-of-doc closing: lawyer name + position
+ *  - End-of-doc closing: lawyer name + position + facsimile signature
  *  - Footer (every page): «ЭНКИ • enki.legal • Конфиденциально»
  */
 export function buildQuarkdownSource(input: QuarkdownTemplateInput): string {
-  const { root, thread, logoPath, fontPath } = input;
+  const { root, thread, logoPath, facsimilePath, fontPath } = input;
 
   const recipientName = (root.username ?? '').trim();
   const subject = (root.category_name ?? '').trim();
@@ -158,11 +160,12 @@ export function buildQuarkdownSource(input: QuarkdownTemplateInput): string {
     ``,
     `---`,
     ``,
-    `С уважением,`,
+    `.row alignment:{start} cross:{center} gap:{0.8cm}`,
+    `    .container`,
+    `        .text {С уважением,}.br .text {${escapeInline(lawyerName || '—')}}.br _${escapeInline(DEFAULT_LAWYER_POSITION)}_`,
     ``,
-    escapeInline(lawyerName || '—'),
-    ``,
-    `_${escapeInline(DEFAULT_LAWYER_POSITION)}_`,
+    `    .container width:{5cm}`,
+    `        ![Подпись](${escapeInline(facsimilePath)})`,
     ``,
   ]
     .filter((line) => line !== null && line !== undefined)

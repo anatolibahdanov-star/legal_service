@@ -36,8 +36,6 @@ export const Footer = () => {
 
               <div className={styles.desktopColumns}>
                 <div className={styles.sectionBlock} style={{ gap: 32, maxWidth: 320 }}>
-                  <p className={styles.description}>{COMPANY_INFO.description}</p>
-
                   <div className={styles.sectionBlock}>
                     <div className={styles.sectionBlock} style={{ gap: 12 }}>
                       <span className={styles.sectionHeading}>Реквизиты</span>
@@ -68,7 +66,7 @@ export const Footer = () => {
                     ))}
                   </div>
 
-                  <p className={styles.copyright}>© 2026 All rights reserved.</p>
+                  <p className={styles.copyright}>© 2026 Все права защищены</p>
                 </div>
 
                 <div className={styles.documentsColumn}>
@@ -130,8 +128,7 @@ export const Footer = () => {
 
         <div className={styles.mobileInfo}>
           <div className={styles.mobileTextBlock}>
-            <p className={styles.mobileDescription}>{COMPANY_INFO.description}</p>
-            <p className={styles.mobileCopyright}>© 2026 All rights reserved.</p>
+            <p className={styles.mobileCopyright}>© 2026 Все права защищены</p>
           </div>
 
           <div className={styles.mobileLinks}>

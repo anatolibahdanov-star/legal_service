@@ -34,7 +34,7 @@ const statusClassName: Record<QuestionStatusesE, string> = {
 const FILTERS = [
   { id: 'all', label: 'Все' },
   { id: 'work', label: 'В работе' },
-  { id: 'wait', label: 'Ожидает ответа' },
+  { id: 'wait', label: 'Ожидает оплаты' },
   { id: 'done', label: 'Завершено' },
 ] as const
 
@@ -244,7 +244,7 @@ export function V2ProfileCases({ user }: V2ProfileCasesProps) {
               </span>
               <span className={styles.createText}>
                 <span className={styles.createTitle}>Создать новое обращение</span>
-                <span className={styles.createSubtitle}>Опытный юрист ответит в течение 3 часов</span>
+                <span className={styles.createSubtitle}>Юрист ответит в течение 3 часов</span>
               </span>
             </button>
           )}
@@ -381,15 +381,6 @@ export function V2ProfileCases({ user }: V2ProfileCasesProps) {
                       type="button"
                       onClick={() => openCase(caseItem)}
                       className={`${styles.ctaBtn} ${styles.ctaWaiting}`}
-                    >
-                      Открыть
-                      <ArrowRight className={styles.ctaBtnIcon} />
-                    </button>
-                  ) : isDone ? (
-                    <button
-                      type="button"
-                      onClick={() => openCase(caseItem)}
-                      className={`${styles.ctaBtn} ${styles.ctaDone}`}
                     >
                       Открыть
                       <ArrowRight className={styles.ctaBtnIcon} />
