@@ -126,11 +126,19 @@
 
   .heroImageMobile {
     display: block;
-    object-position: center 35%;
+    /* Figma Mobile/Landing «Container Image»: scaleMode STRETCH 100% 100%
+       (glass sits low; dark area stays under the title). */
+    object-fit: cover;
+    object-position: center center;
   }
 
   .heroOverlay {
     display: block;
+    /* Match Figma Container Image overlays */
+    background:
+      linear-gradient(180deg, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0) 53%),
+      linear-gradient(0deg, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0) 64%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0) 89%, #f9f9f9 100%);
   }
 
   .heroContent {

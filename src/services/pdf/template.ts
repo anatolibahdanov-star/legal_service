@@ -6,8 +6,30 @@ import { toClientReply } from '@/src/libs/grokReply';
 const COMPANY_NAME = 'ООО «ЭНКИ-Л»';
 const COMPANY_OGRN = 'ОГРН 1267700058130';
 const COMPANY_ADDRESS = '119435, город Москва, Саввинская наб, д. 9, помещ. 1/1';
-const FOOTER_TEXT = 'ЭНКИ • enki.legal • Конфиденциально';
 const DEFAULT_LAWYER_POSITION = 'Юрист';
+
+/** Footer: brand + lawyer admin id (no personal name). */
+function footerText(lawyerAdminId: string | number | null | undefined): string {
+  const base = 'ЭНКИ • enki.legal • Конфиденциально';
+  if (lawyerAdminId == null || lawyerAdminId === '') return base;
+  return `${base} • Юрист #${lawyerAdminId}`;
+}
+
+/**
+ * Prefer the admin who authored the latest non-empty final_reply,
+ * else the lawyer assigned to the root question (`admin_id`).
+ */
+function resolveLawyerAdminId(root: DBQuestion, thread: DBQuestion[]): string | number | null {
+  for (let i = thread.length - 1; i >= 0; i -= 1) {
+    const m = thread[i];
+    if (m.final_reply?.trim() && m.lawyer_admin_id != null) {
+      return m.lawyer_admin_id;
+    }
+  }
+  if (root.lawyer_admin_id != null) return root.lawyer_admin_id;
+  if (root.admin_id != null) return root.admin_id;
+  return null;
+}
 
 // Quarkdown is markdown-with-functions. Lines starting with `.` are parsed as
 // function calls — for user-supplied content we must avoid that and also strip
@@ -55,13 +77,25 @@ function stripHtml(html: string): string {
     .trim();
 }
 
-function formatDate(value: string | Date | null | undefined): string {
+/** Date + time for SLA visibility (ответ за 3 часа). */
+function formatDateTime(value: string | Date | null | undefined): string {
   if (!value) return '';
   try {
-    return format(new Date(value), 'd MMMM yyyy', { locale: ru });
+    return format(new Date(value), "d MMMM yyyy 'в' HH:mm", { locale: ru });
   } catch {
     return '';
   }
+}
+
+/** «Имя · дата/время · email · телефон» — пропускает пустые части. */
+function formatRecipientLine(root: DBQuestion): string {
+  const parts = [
+    (root.username ?? '').trim(),
+    formatDateTime(root.created_at as unknown as string),
+    (root.email ?? '').trim(),
+    (root.phone ?? '').trim(),
+  ].filter(Boolean);
+  return parts.join(' · ');
 }
 
 export interface QuarkdownTemplateInput {
@@ -81,28 +115,18 @@ export interface QuarkdownTemplateInput {
  *
  * Layout (per requirements):
  *  - Page header (every page): logo top-left + company details top-right
- *  - Body: date, recipient, subject, dialog in chronological order
- *  - End-of-doc closing: lawyer name + position + facsimile signature
- *  - Footer (every page): «ЭНКИ • enki.legal • Конфиденциально»
+ *  - Body: request datetime, recipient (+ email/phone), subject, dialog
+ *  - No personal lawyer names in the body — only generic «Ответ юриста»
+ *  - End-of-doc closing: position + facsimile (no lawyer name)
+ *  - Footer (every page): brand + lawyer admin id (system reference)
  */
 export function buildQuarkdownSource(input: QuarkdownTemplateInput): string {
   const { root, thread, logoPath, facsimilePath, fontPath } = input;
 
-  const recipientName = (root.username ?? '').trim();
+  const recipientLine = formatRecipientLine(root);
   const subject = (root.category_name ?? '').trim();
-  const issuedAt = formatDate(root.created_at as unknown as string);
-
-  // Lawyer who provided the final answer — take the most recent message with a
-  // non-empty `final_reply.lawyer`. Fall back to the parent `owner`.
-  const lawyerName = (() => {
-    for (let i = thread.length - 1; i >= 0; i -= 1) {
-      const m = thread[i];
-      if (m.final_reply && m.final_reply.trim() && m.lawyer && m.lawyer.trim()) {
-        return m.lawyer.trim();
-      }
-    }
-    return root.lawyer?.trim() || root.owner?.trim() || '';
-  })();
+  const consultationNumber = root.id;
+  const lawyerAdminId = resolveLawyerAdminId(root, thread);
 
   const dialogBlocks = thread
     .map((message) => renderDialogMessage(message))
@@ -128,7 +152,7 @@ export function buildQuarkdownSource(input: QuarkdownTemplateInput): string {
     `.doctype {paged}`,
     `.numbering`,
     `    - headings: none`,
-    `.docname {Ответ юриста #${root.id}}`,
+    `.docname {Юридическая консультация №${consultationNumber}}`,
     `.pageformat size:{A4} margin:{3cm}`,
     `.font {${escapeInline(fontPath)}} heading:{${escapeInline(fontPath)}} size:{11pt}`,
     ``,
@@ -144,13 +168,11 @@ export function buildQuarkdownSource(input: QuarkdownTemplateInput): string {
     `.footer`,
     `    .container width:{16cm}`,
     `        .align {center}`,
-    `            .text {${escapeInline(FOOTER_TEXT)}} size:{small}`,
+    `            .text {${escapeInline(footerText(lawyerAdminId))}} size:{small}`,
     ``,
-    `### Юридическая консультация №${root.id}`,
+    `### Юридическая консультация №${consultationNumber}`,
     ``,
-    `**Дата:** ${escapeInline(issuedAt)}`,
-    ``,
-    recipientName ? `**Получатель:** ${escapeInline(recipientName)}` : '',
+    recipientLine ? `**Получатель:** ${escapeInline(recipientLine)}` : '',
     ``,
     subject ? `**Тема:** ${escapeInline(subject)}` : '',
     ``,
@@ -162,7 +184,7 @@ export function buildQuarkdownSource(input: QuarkdownTemplateInput): string {
     ``,
     `.row alignment:{start} cross:{center} gap:{0.8cm}`,
     `    .container`,
-    `        .text {С уважением,}.br .text {${escapeInline(lawyerName || '—')}}.br _${escapeInline(DEFAULT_LAWYER_POSITION)}_`,
+    `        .text {С уважением,}.br _${escapeInline(DEFAULT_LAWYER_POSITION)}_`,
     ``,
     `    .container width:{5cm}`,
     `        ![Подпись](${escapeInline(facsimilePath)})`,
@@ -173,7 +195,7 @@ export function buildQuarkdownSource(input: QuarkdownTemplateInput): string {
 }
 
 function renderDialogMessage(message: DBQuestion): string {
-  const dt = formatDate(message.created_at as unknown as string);
+  const dt = formatDateTime(message.created_at as unknown as string);
   const lines: string[] = [];
 
   // Question text is plain text from the user (no HTML), reply may contain
@@ -186,14 +208,11 @@ function renderDialogMessage(message: DBQuestion): string {
   }
 
   // Client document: drop the internal "АНАЛИЗ ЗАПРОСА" section and the {{ }}
-  // edit-markup braces before rendering.
+  // edit-markup braces before rendering. Never expose the lawyer's personal name.
   const reply = toClientReply(stripHtml((message.final_reply ?? '').trim()));
   if (reply) {
     if (lines.length) lines.push('');
-    const lawyerLabel = message.lawyer?.trim()
-      ? `Ответ юриста — ${escapeInline(message.lawyer.trim())}`
-      : 'Ответ юриста';
-    lines.push(`**${lawyerLabel}:**`);
+    lines.push('**Ответ юриста:**');
     lines.push('');
     lines.push(escapeBlock(reply));
   }

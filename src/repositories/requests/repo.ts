@@ -99,7 +99,8 @@ export async function getQuestionsByIds(ids: string[], is_number: boolean = true
     const msg = msgGlobal + "getQuestionsByIds - ";
     let query =  `SELECT q.*, u.name username, r.reply reply, IF(fr.final_reply = '', r.reply, fr.final_reply) final_reply,
     r.id reply_id, fr.id final_reply_id, r.status reply_status, BIN_TO_UUID(q.uuid) uuid, q.short_id short_id, ad.name lawyer,
-    u.email as email, c.id category_id, c.name category_name, fr.updated_at final_reply_date, adi.name owner
+    fr.admin_id AS lawyer_admin_id,
+    u.email as email, u.phone as phone, c.id category_id, c.name category_name, fr.updated_at final_reply_date, adi.name owner
     FROM question q JOIN user u ON q.user_id=u.id
     LEFT JOIN administrator adi ON q.admin_id=adi.id
     LEFT JOIN reply r ON q.id=r.question_id
@@ -128,7 +129,8 @@ export async function getQuestionByShortId(shortId: string): Promise<DBQuestion 
     const msg = msgGlobal + "getQuestionByShortId - ";
     const query = `SELECT q.*, u.name username, r.reply reply, IF(fr.final_reply = '', r.reply, fr.final_reply) final_reply,
     r.id reply_id, fr.id final_reply_id, r.status reply_status, BIN_TO_UUID(q.uuid) uuid, q.short_id short_id, ad.name lawyer,
-    u.email as email, c.id category_id, c.name category_name, fr.updated_at final_reply_date, adi.name owner
+    fr.admin_id AS lawyer_admin_id,
+    u.email as email, u.phone as phone, c.id category_id, c.name category_name, fr.updated_at final_reply_date, adi.name owner
     FROM question q JOIN user u ON q.user_id=u.id
     LEFT JOIN administrator adi ON q.admin_id=adi.id
     LEFT JOIN reply r ON q.id=r.question_id
@@ -204,7 +206,8 @@ export async function getJobById(id: number): Promise<DBQuestion[] | null> {
     const msg = msgGlobal + "getJobById - ";
     const query =  `SELECT q.*, u.name username, r.reply reply, IF(fr.final_reply = '', r.reply, fr.final_reply) final_reply,
     r.id reply_id, fr.id final_reply_id, r.status reply_status, BIN_TO_UUID(q.uuid) uuid, q.short_id short_id, ad.name lawyer,
-    u.email as email, c.id category_id, c.name category_name, fr.updated_at final_reply_date, adi.name owner
+    fr.admin_id AS lawyer_admin_id,
+    u.email as email, u.phone as phone, c.id category_id, c.name category_name, fr.updated_at final_reply_date, adi.name owner
     FROM question q JOIN user u ON q.user_id=u.id
     LEFT JOIN administrator adi ON q.admin_id=adi.id
     LEFT JOIN reply r ON q.id=r.question_id

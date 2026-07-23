@@ -90,6 +90,9 @@ export function LawyerRequestDetailPage({ requestId }: Props) {
   const isAssigned = record?.admin_id != null
   const isMine = isAssigned && String(record?.admin_id) === String(currentAdminId)
   const canRelease = isMine || (isAssigned && isSuper)
+  const isAnswerReceived = record?.job_status === QuestionStatusesE.Approved
+  const isUnpaid = record?.job_status === QuestionStatusesE.Unpaid
+  const canSendAnswer = !isAnswerReceived && !isUnpaid
 
   const askConfirmation = (action: ConfirmationAction) => setConfirmation(action)
 
@@ -200,6 +203,14 @@ export function LawyerRequestDetailPage({ requestId }: Props) {
 
   const handleSendAnswer = async () => {
     if (!record) return
+    if (record.job_status === QuestionStatusesE.Approved) {
+      toast.warning('Ответ уже отправлен — дело завершено.')
+      return
+    }
+    if (record.job_status === QuestionStatusesE.Unpaid) {
+      toast.warning('Нельзя ответить на неоплаченный вопрос.')
+      return
+    }
     if (!plainText(finalReply)) {
       toast.warning('Добавьте ответ пользователю перед отправкой.')
       return
@@ -247,14 +258,8 @@ export function LawyerRequestDetailPage({ requestId }: Props) {
       viewer.document.close()
     }
 
-    const answerChanged = plainText(finalReply) !== plainText(lastMessage?.final_reply)
-    if (!answerChanged) {
-      const url = `/api/pdf/${pdfId}`
-      if (viewer) viewer.location.href = url
-      else window.open(url, '_blank', 'noopener,noreferrer')
-      return
-    }
-
+    // Always regenerate draft for preview so template/layout changes
+    // (dates, contacts, footer) are visible without editing the answer.
     setPdfLoading(true)
     try {
       const res = await fetch(`/api/pdf/${pdfId}/draft`, {
@@ -427,7 +432,7 @@ export function LawyerRequestDetailPage({ requestId }: Props) {
             </div>
             <div className={styles.heroMeta}>
               <span><CalendarDays size={17} />{format(new Date(record.created_at), 'dd.MM.yyyy, HH:mm')}</span>
-              <span><BriefcaseBusiness size={17} />{record.category_name || 'Без категории'}</span>
+              {/* <span><BriefcaseBusiness size={17} />{record.category_name || 'Без категории'}</span> */}
               <span><UserRound size={17} />{record.email || 'Email не указан'}</span>
             </div>
           </section>
@@ -590,7 +595,19 @@ export function LawyerRequestDetailPage({ requestId }: Props) {
                     confirmLabel: 'Отправить ответ',
                     run: handleSendAnswer,
                   })}
-                  disabled={sendLoading || assignmentLoading || !plainText(finalReply)}
+                  disabled={
+                    sendLoading
+                    || assignmentLoading
+                    || !plainText(finalReply)
+                    || !canSendAnswer
+                  }
+                  title={
+                    isAnswerReceived
+                      ? 'Дело завершено — ответ уже получен'
+                      : isUnpaid
+                        ? 'Нельзя ответить на неоплаченный вопрос'
+                        : undefined
+                  }
                 >
                   {sendLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                   Отправить ответ
