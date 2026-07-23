@@ -14,6 +14,9 @@ export interface DBQuestion extends RowDataPacket, User {
   user_id: number;
   username: string;
   email: string;
+  phone?: string | null;
+  /** Administrator.id of the lawyer who authored final_reply (PDF footer ref). */
+  lawyer_admin_id?: number | null;
   lawyer?: string;
   owner?: string;
   rating?: number;
