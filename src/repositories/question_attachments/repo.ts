@@ -100,6 +100,39 @@ export async function getAttachmentsByQuestionIds(
   return rows as DBQuestionAttachment[];
 }
 
+export interface DBQuestionAttachmentWithRoot extends DBQuestionAttachment {
+  root_id: number;
+}
+
+export async function getAttachmentsByRootIds(
+  rootIds: Array<number | string>,
+  source?: 'user' | 'lawyer',
+): Promise<DBQuestionAttachmentWithRoot[]> {
+  const msg = msgGlobal + 'getAttachmentsByRootIds - ';
+  if (!rootIds.length) return [];
+  let query = `SELECT qa.id, qa.question_id, qa.user_id, qa.source, qa.uploaded_by_admin_id,
+    qa.filename, qa.storage_key, qa.file_size, qa.extension, qa.mime, qa.created_at,
+    COALESCE(q.parent_id, q.id) AS root_id
+    FROM question_attachment qa
+    JOIN question q ON qa.question_id = q.id
+    WHERE COALESCE(q.parent_id, q.id) IN (?)`;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const values: any[] = [rootIds];
+  if (source) {
+    query += ' AND qa.source=?';
+    values.push(source);
+  }
+  query += ' ORDER BY qa.id ASC';
+  const findFunc = find({ query, values });
+  const executed = await queryTransactionWrapper<DBQuestionAttachmentWithRoot>([findFunc], msg);
+  if (!executed) {
+    logger.error(msg + 'no results from execution', { rootIds });
+    return [];
+  }
+  const [[rows]] = executed;
+  return rows as DBQuestionAttachmentWithRoot[];
+}
+
 export async function getAttachmentById(
   id: number | string,
 ): Promise<DBQuestionAttachment | null> {

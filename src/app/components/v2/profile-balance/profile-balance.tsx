@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
-import { ArrowDownLeft, ArrowRight, ArrowUpRight, Plus } from 'lucide-react'
+import { ArrowDownLeft, ArrowRight, ArrowUpRight, CreditCard, Plus, QrCode } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import type { DBOrder, DBQuestion, DBUser } from '@/src/interfaces/db'
 import {
@@ -26,6 +26,12 @@ interface V2ProfileBalanceProps {
   data: DBUser | null
   setUserBalance: (balance: number) => void
 }
+
+type TopupMethodT = 'form' | 'qr'
+
+// Платёжная сессия и QR у Альфы живут ~20 минут — более старый незавершённый
+// заказ не переиспользуем, вместо него создаём новый.
+const REUSABLE_ORDER_TTL_MS = 15 * 60 * 1000
 
 const formatRub = (value: number) =>
   new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 }).format(value)
@@ -61,7 +67,9 @@ const monthLabel = capitalize(
 export function V2ProfileBalance({ data, setUserBalance }: V2ProfileBalanceProps) {
   const [newOrder, setNewOrder] = useState<DBOrder | null>(null)
   const [minTopupRub, setMinTopupRub] = useState(100)
-  const [creatingOrder, setCreatingOrder] = useState(false)
+  const [methodPickerOpen, setMethodPickerOpen] = useState(false)
+  const [creatingMethod, setCreatingMethod] = useState<TopupMethodT | null>(null)
+  const [topupError, setTopupError] = useState('')
   const [operations, setOperations] = useState<AdminBalanceOperationI[]>([])
   const [showAllOperations, setShowAllOperations] = useState(false)
   const [dealsActive, setDealsActive] = useState(0)
@@ -157,13 +165,63 @@ export function V2ProfileBalance({ data, setUserBalance }: V2ProfileBalanceProps
     }
   }, [data?.id, balance])
 
-  const handleCreateOrder = async () => {
-    if (creatingOrder) return
-    setCreatingOrder(true)
-    const orderData = await CustomRequest('/orders/', { amount: topupKop })
-    setCreatingOrder(false)
-    if (orderData.status) {
-      setNewOrder(orderData.data)
+  const cancelRequestedRef = useRef(false)
+  const [pickerOpenedAt, setPickerOpenedAt] = useState(0)
+
+  const openMethodPicker = () => {
+    setTopupError('')
+    setPickerOpenedAt(Date.now())
+    setMethodPickerOpen(true)
+  }
+
+  const closeMethodPicker = () => {
+    if (creatingMethod) cancelRequestedRef.current = true
+    setTopupError('')
+    setMethodPickerOpen(false)
+  }
+
+  // Незавершённый заказ переиспользуем, только если он свежий и банк отдал
+  // и форму, и QR — полусозданный или протухший заказ игнорируем и создаём новый.
+  const getReusableOrder = (now: number): DBOrder | null =>
+    now > 0 &&
+    newOrder &&
+    !isAlphaStatusFinal(newOrder.alpha_status) &&
+    newOrder.alpha_form_url &&
+    newOrder.alpha_qr_url &&
+    now - new Date(newOrder.created_at as unknown as string).getTime() < REUSABLE_ORDER_TTL_MS
+      ? newOrder
+      : null
+
+  const reusableOrder = getReusableOrder(pickerOpenedAt)
+  const topupAmountRub = reusableOrder ? reusableOrder.amount / 100 : minTopupRub
+
+  // Заказ в Альфе создаётся только здесь — после явного выбора способа оплаты.
+  const handleSelectMethod = async (method: TopupMethodT) => {
+    if (creatingMethod) return
+    setTopupError('')
+
+    let order = getReusableOrder(Date.now())
+    if (!order) {
+      cancelRequestedRef.current = false
+      setCreatingMethod(method)
+      const orderData = await CustomRequest('/orders/', { amount: topupKop })
+      setCreatingMethod(null)
+      if (!orderData.status) {
+        if (!cancelRequestedRef.current) {
+          setTopupError(orderData.error || 'Не удалось создать платёж. Попробуйте ещё раз.')
+        }
+        return
+      }
+      order = orderData.data as DBOrder
+      setNewOrder(order)
+      if (cancelRequestedRef.current) return
+    }
+
+    // Состояние сбрасываем до редиректа: при возврате «Назад» браузер может
+    // восстановить страницу из bfcache с живым состоянием React.
+    setMethodPickerOpen(false)
+    if (method === 'form' && order.alpha_form_url) {
+      window.location.href = order.alpha_form_url
     }
   }
 
@@ -228,15 +286,53 @@ export function V2ProfileBalance({ data, setUserBalance }: V2ProfileBalanceProps
                   </span>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={handleCreateOrder}
-                disabled={creatingOrder}
-                className={styles.topupBtn}
-              >
-                <Plus className={styles.topupIcon} />
-                {creatingOrder ? 'Создаём...' : 'Пополнить'}
-              </button>
+              {!methodPickerOpen ? (
+                <button
+                  type="button"
+                  onClick={openMethodPicker}
+                  className={styles.topupBtn}
+                >
+                  <Plus className={styles.topupIcon} />
+                  Пополнить
+                </button>
+              ) : (
+                <div className={styles.methodPicker}>
+                  <div>
+                    <p className={styles.methodTitle}>Выберите способ оплаты</p>
+                    <p className={styles.methodHint}>
+                      Пополнение на {formatRub(topupAmountRub)} ₽ через Альфа-Банк
+                    </p>
+                  </div>
+                  <div className={styles.methodButtons}>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectMethod('form')}
+                      disabled={creatingMethod !== null}
+                      className={styles.methodBtn}
+                    >
+                      <CreditCard className={styles.methodIcon} />
+                      {creatingMethod === 'form' ? 'Создаём платёж…' : 'Через форму оплаты'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectMethod('qr')}
+                      disabled={creatingMethod !== null}
+                      className={styles.methodBtn}
+                    >
+                      <QrCode className={styles.methodIcon} />
+                      {creatingMethod === 'qr' ? 'Создаём платёж…' : 'По QR-коду'}
+                    </button>
+                  </div>
+                  {topupError && <p className={styles.methodError}>{topupError}</p>}
+                  <button
+                    type="button"
+                    onClick={closeMethodPicker}
+                    className={styles.methodCancel}
+                  >
+                    Отменить
+                  </button>
+                </div>
+              )}
             </div>
             <div className={styles.balanceBlur} />
           </div>

@@ -61,9 +61,9 @@ const questionsFromBalance = (balanceRub: number): number => {
     return Math.max(0, Math.floor(balanceRub / price))
 }
 
-const profileUrl = (): string => {
+const profileUrl = (tab: string): string => {
     const base = (process.env.NEXT_PUBLIC_URL ?? process.env.NEXTAUTH_URL ?? "https://enki.legal").replace(/\/+$/, "")
-    return `${base}/admin#/profile`
+    return `${base}/profile/?tab=${tab}`
 }
 
 const renderPlaceholders = (tpl: string, vars: Record<string, string>): string =>
@@ -114,7 +114,7 @@ async function notify(code: string, input: BalanceNotifyInput, success: boolean)
             subject: subjectRendered,
             bodyText: bodyRendered,
             buttonLabel,
-            buttonUrl: profileUrl(),
+            buttonUrl: profileUrl(success ? "payments" : "balance"),
             success,
         })
     } catch (err) {

@@ -130,7 +130,7 @@ export async function POST(request: Request) {
         if(!initOrderData.status) {
             logger.error(msg + "Error during add order", initOrderData.errors)
             return NextResponse.json(
-                { success: false, message: 'Error during init Order.' },
+                { success: false, message: 'Не удалось создать платёж. Попробуйте ещё раз.' },
                 { status: 404 }
             );
         }
@@ -139,7 +139,7 @@ export async function POST(request: Request) {
     } catch(err) {
         logger.error(msg + "Error during add order", (err as Error).message)
         return NextResponse.json(
-            { success: false, message: 'Error during init Order(2).' },
+            { success: false, message: 'Не удалось создать платёж. Попробуйте ещё раз.' },
             { status: 401 }
         );
     }

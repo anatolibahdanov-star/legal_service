@@ -136,6 +136,8 @@ const unisenderProvider: EmailProvider = {
       recipients: [{ email: recipient }],
       subject,
       from_email: fromEmail,
+      track_links: 0,
+      track_read: 0,
       body: {
         ...(message.html ? { html: message.html } : {}),
         ...(message.text ? { plaintext: message.text } : {}),

@@ -140,6 +140,96 @@
   height: 24px;
 }
 
+.methodPicker {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.methodTitle {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 20px;
+  color: #12161b;
+}
+
+.methodHint {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 17px;
+  color: rgba(18, 22, 27, 0.5);
+}
+
+.methodButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.methodBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 48px;
+  padding: 0 22px;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 20px;
+  background: radial-gradient(circle at 50% 0%, #34347c 0%, #2d2d6c 100%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 35px;
+  box-shadow: 0 4px 20px 0 rgba(47, 47, 113, 0.15);
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.methodBtn:hover {
+  opacity: 0.9;
+}
+
+.methodBtn:active {
+  opacity: 0.8;
+}
+
+.methodBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.methodIcon {
+  width: 20px;
+  height: 20px;
+}
+
+.methodError {
+  font-size: 13px;
+  line-height: 18px;
+  color: #dc2626;
+}
+
+.methodCancel {
+  width: fit-content;
+  padding: 0;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  color: rgba(18, 22, 27, 0.55);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.methodCancel:hover {
+  color: #34347c;
+}
+
+.methodCancel:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .balanceBlur {
   position: absolute;
   left: -48px;
@@ -531,6 +621,11 @@
 
   .orderCard {
     padding: 24px;
+  }
+
+  .methodBtn {
+    width: 100%;
+    justify-content: center;
   }
 
   .orderRow {
