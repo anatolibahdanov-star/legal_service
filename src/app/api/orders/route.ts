@@ -6,6 +6,7 @@ import logger from "@/src/libs/logger"
 import { authOptions } from '@/src/app/api/auth/[...nextauth]/route'
 import { getOrders, getTotalOrders } from '@/src/repositories/orders/repo';
 import { getWizardQuestionById } from '@/src/repositories/requests/repo';
+import { getPlanById } from '@/src/repositories/subscriptions/repo';
 import { UserBalanceRequest } from '@/src/interfaces/api';
 import { OrderTypeE } from '@/src/interfaces/payment';
 import { QuestionStatusesE } from '@/src/interfaces/data';
@@ -107,7 +108,32 @@ export async function POST(request: Request) {
         }
     }
 
-    if (balanceRequest.type !== OrderTypeE.OneTime) {
+    // Subscription orders: the charged amount is authoritative from the plan,
+    // never trusted from the client. amount is set here to plan.price_rub (rubles).
+    if (balanceRequest.type === OrderTypeE.Subscription) {
+        const planId = balanceRequest.data?.planId;
+        if (planId === undefined || planId === null || planId === '') {
+            return NextResponse.json(
+                { success: false, message: 'planId is required for Subscription orders.' },
+                { status: 400 }
+            );
+        }
+        const plan = await getPlanById(planId);
+        if (!plan || plan.is_active !== 1) {
+            logger.warn(msg + 'Subscription: plan not found or inactive', { user_id: user.id, plan_id: planId });
+            return NextResponse.json(
+                { success: false, message: 'Тариф не найден или недоступен.' },
+                { status: 404 }
+            );
+        }
+        balanceRequest.amount = plan.price_rub;
+        balanceRequest.data = { ...(balanceRequest.data ?? {}), planId: plan.id };
+    }
+
+    // Kopeck-denominated top-up floor applies to Balance top-ups (which are sent
+    // in kopecks), including the default (untyped) case. Subscription amount is
+    // rubles, validated above via the plan, so it is excluded here.
+    if (balanceRequest.type !== OrderTypeE.OneTime && balanceRequest.type !== OrderTypeE.Subscription) {
         const amountKop = Number(balanceRequest.amount)
         const minKop = Math.round(Math.max(0, getSettingNumber('min_topup_rub', 100)) * 100)
         if (!Number.isFinite(amountKop) || amountKop <= 0) {

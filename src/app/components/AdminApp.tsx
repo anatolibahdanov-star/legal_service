@@ -13,6 +13,7 @@ import { OrderList } from "@/src/repositories/orders/admin-resources";
 import {ContactList, ContactShow} from "@/src/repositories/contacts/admin-resources"
 import {EmailTemplateList, EmailTemplateEdit} from "@/src/repositories/emailTemplates/admin-resources"
 import {SettingsList, SettingsEdit, SettingsCreate, PromptVersionList, PromptVersionCreate, PromptVersionEdit, SettingAuditList} from "@/src/repositories/settings/admin-resources"
+import {SubscriptionsList, SubscriptionsCreate, SubscriptionsEdit} from "@/src/repositories/subscriptions/admin-resources"
 import AccountBoxIcon from '@mui/icons-material/AccountBox';
 import PaymentsIcon from '@mui/icons-material/Payments';
 import ContactMailIcon from '@mui/icons-material/ContactMail';
@@ -20,6 +21,7 @@ import MarkEmailReadIcon from '@mui/icons-material/MarkEmailRead';
 import SettingsIcon from '@mui/icons-material/Settings';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import HistoryIcon from '@mui/icons-material/History';
+import CardMembershipIcon from '@mui/icons-material/CardMembership';
 
 
 const api_url = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost/api';
@@ -42,6 +44,11 @@ const AdminApp = () => (
       ) : null,
       permissions === 'admin' ? (
           <Resource name="orders" icon={PaymentsIcon} options={{ label: 'Платежи' }} list={OrderList} />
+      ) : null,
+      permissions === 'admin' ? (
+          <Resource
+            name="subscriptions" icon={CardMembershipIcon} options={{ label: 'Подписки' }}
+            list={SubscriptionsList} create={SubscriptionsCreate} edit={SubscriptionsEdit} />
       ) : null,
       permissions === 'admin' ? (
           <Resource name="statistics" icon={StatisticAdminIcon} options={{ label: 'Статистика' }} list={StatisticList} />

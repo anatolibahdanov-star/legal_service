@@ -15,6 +15,7 @@ const operationLabels: Record<PaymentOperationE, string> = {
   [PaymentOperationE.Payment]: "Оплата",
   [PaymentOperationE.Topup]: "Пополнение баланса",
   [PaymentOperationE.Charge]: "Списание с баланса",
+  [PaymentOperationE.SubscriptionPayment]: "Оплата подписки",
 };
 
 const methodLabels: Record<PaymentMethodE, string> = {

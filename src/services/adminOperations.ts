@@ -14,6 +14,7 @@ import {
 const freeQuestionTypes = new Set<AdminOperationTypeE>([
     AdminOperationTypeE.FreeAccrual,
     AdminOperationTypeE.FreeCharge,
+    AdminOperationTypeE.FreeExpire,
 ])
 
 const msgGlobal = "SERVICE ADMIN-OPERATIONS "
@@ -35,6 +36,8 @@ const mapPorderOperation = (
             return { type: AdminOperationTypeE.Payment, amount, comment: null, actor: "Платёжная система", questionId, questionUuid }
         case PaymentOperationE.Topup:
             return { type: AdminOperationTypeE.Payment, amount, comment: "Пополнение баланса", actor: "Платёжная система", questionId: null, questionUuid: null }
+        case PaymentOperationE.SubscriptionPayment:
+            return { type: AdminOperationTypeE.SubscriptionPayment, amount, comment: "Ежемесячная подписка", actor: "Платёжная система", questionId: null, questionUuid: null }
         case PaymentOperationE.Charge:
             return { type: AdminOperationTypeE.Charge, amount, comment: null, actor: "Система", questionId, questionUuid }
         default:
@@ -79,14 +82,34 @@ export const getAdminUserOperations = async (
     }
 
     for (const row of freeRows) {
-        const isAccrual = row.op_type === FreeQuestionOpTypeE.Accrual
+        let type: AdminOperationTypeE
+        let actor: string
+        switch (row.op_type) {
+            case FreeQuestionOpTypeE.Accrual:
+                type = AdminOperationTypeE.FreeAccrual
+                actor = formatActor(row.admin_name, row.admin_username)
+                break
+            case FreeQuestionOpTypeE.SubscriptionAccrual:
+                type = AdminOperationTypeE.FreeAccrual
+                actor = "Подписка"
+                break
+            case FreeQuestionOpTypeE.Expire:
+                type = AdminOperationTypeE.FreeExpire
+                actor = "Система"
+                break
+            case FreeQuestionOpTypeE.Charge:
+            default:
+                type = AdminOperationTypeE.FreeCharge
+                actor = "Система"
+                break
+        }
         operations.push({
             id: `f-${row.id}`,
             createdAt: new Date(row.created_at).toISOString(),
-            type: isAccrual ? AdminOperationTypeE.FreeAccrual : AdminOperationTypeE.FreeCharge,
+            type,
             amount: Number(row.amount),
             comment: row.comment ?? null,
-            actor: isAccrual ? formatActor(row.admin_name, row.admin_username) : "Система",
+            actor,
             questionId: row.question_id ?? null,
             questionUuid: row.question_uuid ?? null,
         })

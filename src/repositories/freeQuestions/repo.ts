@@ -1,7 +1,7 @@
 import logger from "@/src/libs/logger"
 import pool, { find, queryTransactionWrapper } from '@/src/libs/db';
 import { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
-import { FreeQuestionOpTypeE } from "@/src/interfaces/payment";
+import { FreeQuestionOpTypeE, FreeQuestionSourceE } from "@/src/interfaces/payment";
 
 const msgGlobal = "REPO FREE-QUESTION "
 
@@ -34,21 +34,26 @@ export async function accrueFreeQuestions(
         logger.error(msg + 'invalid count', { user_id: userId, count });
         return { ok: false };
     }
-    const insertSQL = `
-        INSERT INTO free_question_operation(user_id, admin_id, question_id, op_type, amount, comment, created_at)
-        VALUES(?, ?, NULL, ?, ?, ?, NOW())
+    const grantSQL = `
+        INSERT INTO free_question_grant(user_id, source, remaining, initial, expires_at, subscription_id, created_at)
+        VALUES(?, ?, ?, ?, NULL, NULL, NOW())
     `;
-    const insertParams = [userId, adminId, FreeQuestionOpTypeE.Accrual, count, comment];
+    const insertSQL = `
+        INSERT INTO free_question_operation(user_id, admin_id, question_id, op_type, source, grant_id, amount, comment, created_at)
+        VALUES(?, ?, NULL, ?, ?, ?, ?, ?, NOW())
+    `;
     const updateSQL = `UPDATE user SET free_questions = free_questions + ? WHERE id = ?`;
 
     const conn = await pool.getConnection();
     try {
         await conn.beginTransaction();
-        const [insRes] = await conn.query<ResultSetHeader>(insertSQL, insertParams);
+        const [grantRes] = await conn.query<ResultSetHeader>(grantSQL, [userId, FreeQuestionSourceE.Admin, count, count]);
+        const grantId = grantRes.insertId;
+        const [insRes] = await conn.query<ResultSetHeader>(insertSQL, [userId, adminId, FreeQuestionOpTypeE.Accrual, FreeQuestionSourceE.Admin, grantId, count, comment]);
         await conn.query<ResultSetHeader>(updateSQL, [count, userId]);
         await conn.commit();
         const operationId = insRes.insertId;
-        logger.info(msg + 'accrued', { user_id: userId, count, admin_id: adminId, operation_id: operationId });
+        logger.info(msg + 'accrued', { user_id: userId, count, admin_id: adminId, operation_id: operationId, grant_id: grantId });
         return { ok: true, operationId };
     } catch (error) {
         await conn.rollback();
@@ -75,28 +80,39 @@ export async function chargeFreeQuestion(
     questionId: number | string | null,
 ): Promise<ChargeFreeQuestionResult> {
     const msg = msgGlobal + 'chargeFreeQuestion - ';
-    const deductSQL = `UPDATE user SET free_questions = free_questions - 1 WHERE id = ? AND free_questions >= 1`;
+    const pickSQL = `
+        SELECT id, source FROM free_question_grant
+        WHERE user_id = ? AND remaining >= 1 AND (expires_at IS NULL OR expires_at > NOW())
+        ORDER BY (source = ?) DESC, (expires_at IS NULL) ASC, expires_at ASC, id ASC
+        LIMIT 1
+        FOR UPDATE
+    `;
     const insertSQL = `
-        INSERT INTO free_question_operation(user_id, admin_id, question_id, op_type, amount, comment, created_at)
-        VALUES(?, NULL, ?, ?, ?, NULL, NOW())
+        INSERT INTO free_question_operation(user_id, admin_id, question_id, op_type, source, grant_id, amount, comment, created_at)
+        VALUES(?, NULL, ?, ?, ?, ?, ?, NULL, NOW())
     `;
     const conn = await pool.getConnection();
     try {
         await conn.beginTransaction();
-        const [deductRes] = await conn.query<ResultSetHeader>(deductSQL, [userId]);
-        if ((deductRes.affectedRows ?? 0) === 0) {
+        const [lots] = await conn.query<(RowDataPacket & { id: number; source: number })[]>(pickSQL, [userId, FreeQuestionSourceE.Subscription]);
+        if (lots.length === 0) {
             await conn.rollback();
             return { ok: false, reason: 'none_available' };
         }
+        const lot = lots[0];
+        await conn.query<ResultSetHeader>(`UPDATE free_question_grant SET remaining = remaining - 1 WHERE id = ?`, [lot.id]);
+        await conn.query<ResultSetHeader>(`UPDATE user SET free_questions = GREATEST(free_questions - 1, 0) WHERE id = ?`, [userId]);
         const [insRes] = await conn.query<ResultSetHeader>(insertSQL, [
             userId,
             questionId,
             FreeQuestionOpTypeE.Charge,
+            lot.source,
+            lot.id,
             1,
         ]);
         await conn.commit();
         const operationId = insRes.insertId;
-        logger.info(msg + 'charged', { user_id: userId, question_id: questionId, operation_id: operationId });
+        logger.info(msg + 'charged', { user_id: userId, question_id: questionId, operation_id: operationId, grant_id: lot.id, source: lot.source });
         return { ok: true, operationId };
     } catch (error) {
         await conn.rollback();

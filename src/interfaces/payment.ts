@@ -4,6 +4,32 @@ import { DBOrder } from "./db";
 export enum OrderTypeE {
   OneTime = 0,
   Balance = 1,
+  Subscription = 2,
+}
+
+export enum SubscriptionStatusE {
+  Pending = 0,
+  Active = 1,
+  Expired = 2,
+  Cancelled = 3,
+}
+
+export enum SubscriptionPeriodE {
+  Month = 1,
+}
+
+export enum SubscriptionEventE {
+  Purchase = 1,
+  Renew = 2,
+  Upgrade = 3,
+  Downgrade = 4,
+  Expire = 5,
+  Cancel = 6,
+}
+
+export enum FreeQuestionSourceE {
+  Admin = 1,
+  Subscription = 2,
 }
 
 export enum OrderStatusE {
@@ -94,6 +120,7 @@ export enum PaymentOperationE {
   Payment = "payment",
   Topup = "topup",
   Charge = "charge",
+  SubscriptionPayment = "subscription_payment",
 }
 
 export enum PaymentMethodE {
@@ -133,16 +160,20 @@ export interface PaymentHistoryResponseI {
 
 export enum AdminOperationTypeE {
   Payment = "payment",
+  SubscriptionPayment = "subscription_payment",
   Charge = "charge",
   Refund = "refund",
   Manual = "manual",
   FreeAccrual = "free_accrual",
   FreeCharge = "free_charge",
+  FreeExpire = "free_expire",
 }
 
 export enum FreeQuestionOpTypeE {
   Accrual = 1,
   Charge = 2,
+  SubscriptionAccrual = 3,
+  Expire = 4,
 }
 
 export interface AdminBalanceOperationI {
@@ -158,4 +189,22 @@ export interface AdminBalanceOperationI {
 
 export interface AdminOperationsResponseI {
   items: AdminBalanceOperationI[];
+}
+
+export interface SubscriptionHistoryItemI {
+  id: number;
+  createdAt: string;
+  eventType: SubscriptionEventE;
+  planName: string | null;
+  priceRub: number | null;
+  bvAmount: number | null;
+  bvDelta: number | null;
+  periodStart: string | null;
+  periodEnd: string | null;
+  statusAfter: SubscriptionStatusE | null;
+  comment: string | null;
+}
+
+export interface SubscriptionHistoryResponseI {
+  items: SubscriptionHistoryItemI[];
 }

@@ -7,10 +7,11 @@ import { DBOrder } from "@/src/interfaces/db"
 import { AlfaOrderStatusE, OrderStatusE, OrderTypeE, newOrderResponse, checkOrderResponse, BalanceI, BalanceTypeE, BalanceStatusE, TransactionI, TransStatusE, TransTypeE } from '@/src/interfaces/payment';
 import { QuestionStatusesE } from '@/src/interfaces/data';
 import { UserBalanceRequest, PaymentInfoRequest, PaymentStatusUpdateI } from "@/src/interfaces/api";
-import { createAlfaOrder, getAlfaOrderQR, getAlfaOrderStatus } from '@/src/libs/alfa.pay';
+import { createAlfaOrder, createAlfaBindingOrder, getAlfaOrderQR, getAlfaOrderStatus } from '@/src/libs/alfa.pay';
 import { balanceIncrement } from "./balance";
 import { notifyBalanceTopupSuccess, notifyBalanceTopupFailure } from "./balanceNotify";
 import { addTransaction } from "../repositories/transactions/repo";
+import { applySubscriptionOrder } from "./subscription";
 
 const msgGlobal = "SERVICE ORDER "
 
@@ -52,10 +53,12 @@ export const initNewOrder = async (balanceRequest: UserBalanceRequest, user: Use
             // OneTime приходит в рублях (getQuestionPrice/LK возвращают рубли) —
             // конвертим в копейки. Balance topup исторически уже идёт в копейках
             // (ProfileBalance отправляет «10000» → 100₽), его не трогаем.
-            const alfaAmount = balanceRequest.type === OrderTypeE.OneTime
+            const alfaAmount = (balanceRequest.type === OrderTypeE.OneTime || balanceRequest.type === OrderTypeE.Subscription)
                 ? Math.round(balanceRequest.amount * 100)
                 : balanceRequest.amount
-            const alfaCreatedOrder = await createAlfaOrder(alfaAmount, emptyOrder.id, user)
+            const alfaCreatedOrder = balanceRequest.type === OrderTypeE.Subscription
+                ? await createAlfaBindingOrder(alfaAmount, emptyOrder.id, user, user.id.toString())
+                : await createAlfaOrder(alfaAmount, emptyOrder.id, user)
             trans.data = alfaCreatedOrder.techical_data ?? null
             if (!alfaCreatedOrder.status) {
                 const error = "Error on order create in Alfa: "
@@ -87,24 +90,28 @@ export const initNewOrder = async (balanceRequest: UserBalanceRequest, user: Use
                 return result
             }
 
-            const alfaOrderWithQR = await getAlfaOrderQR(order.alpha_id, user)
-            trans.data = alfaOrderWithQR.techical_data ?? null
-            if (!alfaOrderWithQR.status) {
-                const error = "Error in get QR in Alfa: "
-                logger.error(msg + error + alfaOrderWithQR.error, user.id, balanceRequest)
-                result.errors = [error]
-                trans.status = TransStatusE.Error
+            // Subscription orders use a card form (formUrl), not an SBP QR —
+            // the card entry is what creates the recurring binding. Skip the QR fetch.
+            if (balanceRequest.type !== OrderTypeE.Subscription) {
+                const alfaOrderWithQR = await getAlfaOrderQR(order.alpha_id, user)
+                trans.data = alfaOrderWithQR.techical_data ?? null
+                if (!alfaOrderWithQR.status) {
+                    const error = "Error in get QR in Alfa: "
+                    logger.error(msg + error + alfaOrderWithQR.error, user.id, balanceRequest)
+                    result.errors = [error]
+                    trans.status = TransStatusE.Error
+                    await setDBTransaction(trans, user)
+                    return result
+                }
                 await setDBTransaction(trans, user)
-                return result
-            }
-            await setDBTransaction(trans, user)
 
-            order = await updateClientOrderQR(emptyOrder.id, alfaOrderWithQR.data.payload)
-            if(order === null) {
-                const error = "Empty response from updateClientOrderQR"
-                logger.error(msg + error + alfaOrderWithQR.error, updateOrder)
-                result.errors = [error]
-                return result
+                order = await updateClientOrderQR(emptyOrder.id, alfaOrderWithQR.data.payload)
+                if(order === null) {
+                    const error = "Empty response from updateClientOrderQR"
+                    logger.error(msg + error + alfaOrderWithQR.error, updateOrder)
+                    result.errors = [error]
+                    return result
+                }
             }
 
         } catch (error) {
@@ -167,6 +174,21 @@ export const checkOrderStatus = async (slug:string, user: User): Promise<checkOr
             }
         }
 
+        // Read planId from the durable column first; fall back to order.data
+        // only if the column is empty (older rows). order.data is unreliable
+        // here because updateOrderStatus overwrites it with transaction_info.
+        let subscriptionPlanId: number | null = order.plan_id ?? null;
+        if (order.ptype === OrderTypeE.Subscription && subscriptionPlanId === null && order.data) {
+            try {
+                const parsed = JSON.parse(order.data);
+                if (parsed?.planId !== undefined && parsed.planId !== null && parsed.planId !== '') {
+                    subscriptionPlanId = Number(parsed.planId);
+                }
+            } catch (e) {
+                logger.warn(msg + 'failed to parse Subscription order.data', { order_id: order.id, err: (e as Error).message });
+            }
+        }
+
         const transaction: TransactionI = {
             order_id: parseInt(order.id),
             status: TransStatusE.Success,
@@ -174,7 +196,7 @@ export const checkOrderStatus = async (slug:string, user: User): Promise<checkOr
             data: null,
         }
 
-        const alfaOrder = await getAlfaOrderStatus(order.alpha_id, user)
+        const alfaOrder = await getAlfaOrderStatus(order.alpha_id, user, order.ptype === OrderTypeE.Subscription)
         transaction.data = alfaOrder.techical_data ?? null
         if (!alfaOrder.status) {
             const errorMsg = "Error on get order status in Alfa: "
@@ -267,6 +289,37 @@ export const checkOrderStatus = async (slug:string, user: User): Promise<checkOr
                             order_id: updatedOrderStatus.id,
                             question_id: oneTimeQuestionId,
                             user_id: user.id,
+                        });
+                    }
+                }
+            } else if (updatedOrderStatus.ptype === OrderTypeE.Subscription) {
+                if (subscriptionPlanId === null) {
+                    logger.error(msg + 'Subscription order paid but planId missing', {
+                        order_id: updatedOrderStatus.id,
+                        user_id: user.id,
+                    });
+                } else {
+                    const alfaBindingId = alfaOrder.data?.bindingInfo?.bindingId ?? alfaOrder.data?.bindingId ?? null;
+                    const applied = await applySubscriptionOrder(
+                        updatedOrderStatus.user_id,
+                        subscriptionPlanId,
+                        parseInt(updatedOrderStatus.id),
+                        alfaBindingId,
+                    );
+                    if (applied.ok) {
+                        logger.info(msg + 'Subscription applied', {
+                            order_id: updatedOrderStatus.id,
+                            user_id: updatedOrderStatus.user_id,
+                            plan_id: subscriptionPlanId,
+                            event: applied.event,
+                            subscription_id: applied.subscriptionId,
+                        });
+                    } else {
+                        logger.error(msg + 'Subscription apply failed after payment', {
+                            order_id: updatedOrderStatus.id,
+                            user_id: updatedOrderStatus.user_id,
+                            plan_id: subscriptionPlanId,
+                            error: applied.error,
                         });
                     }
                 }

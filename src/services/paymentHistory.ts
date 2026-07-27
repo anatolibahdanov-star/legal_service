@@ -58,6 +58,7 @@ const resolveMethod = (row: DBPaymentRow): PaymentMethodE =>
     detectPaymentMethod(row.ptype, row.alpha_id, row.data)
 
 const resolveOperation = (row: DBPaymentRow, method: PaymentMethodE): PaymentOperationE => {
+    if (row.ptype === OrderTypeE.Subscription) return PaymentOperationE.SubscriptionPayment
     if (row.ptype === OrderTypeE.Balance) return PaymentOperationE.Topup
     if (method === PaymentMethodE.Balance) return PaymentOperationE.Charge
     return PaymentOperationE.Payment

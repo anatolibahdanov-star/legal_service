@@ -2,12 +2,15 @@ import { format } from "date-fns";
 import {
     AdminBalanceOperationI,
     AdminOperationTypeE,
+    SubscriptionEventE,
+    SubscriptionStatusE,
 } from "@/src/interfaces/payment";
 import { UserStatusesE } from "@/src/interfaces/data";
 
 const freeQuestionTypes: AdminOperationTypeE[] = [
     AdminOperationTypeE.FreeAccrual,
     AdminOperationTypeE.FreeCharge,
+    AdminOperationTypeE.FreeExpire,
 ];
 
 export const isFreeQuestionOperation = (type: AdminOperationTypeE): boolean =>
@@ -43,11 +46,29 @@ export const formatDateTime = (value: string | number | Date | null | undefined)
 
 export const operationTypeLabels: Record<AdminOperationTypeE, string> = {
     [AdminOperationTypeE.Payment]: "Оплата",
+    [AdminOperationTypeE.SubscriptionPayment]: "Оплата подписки",
     [AdminOperationTypeE.Charge]: "Списание с баланса",
     [AdminOperationTypeE.Refund]: "Возврат",
     [AdminOperationTypeE.Manual]: "Ручное изменение",
     [AdminOperationTypeE.FreeAccrual]: "Начисление бесплатных вопросов",
     [AdminOperationTypeE.FreeCharge]: "Списание бесплатных вопросов",
+    [AdminOperationTypeE.FreeExpire]: "Сгорание бесплатных вопросов",
+};
+
+export const subscriptionEventLabels: Record<SubscriptionEventE, string> = {
+    [SubscriptionEventE.Purchase]: "Покупка подписки",
+    [SubscriptionEventE.Renew]: "Продление",
+    [SubscriptionEventE.Upgrade]: "Повышение тарифа",
+    [SubscriptionEventE.Downgrade]: "Понижение тарифа",
+    [SubscriptionEventE.Expire]: "Окончание срока",
+    [SubscriptionEventE.Cancel]: "Отмена",
+};
+
+export const subscriptionStatusLabels: Record<SubscriptionStatusE, string> = {
+    [SubscriptionStatusE.Pending]: "Ожидает оплаты",
+    [SubscriptionStatusE.Active]: "Активна",
+    [SubscriptionStatusE.Expired]: "Истекла",
+    [SubscriptionStatusE.Cancelled]: "Отменена",
 };
 
 /**
@@ -57,7 +78,7 @@ export const operationTypeLabels: Record<AdminOperationTypeE, string> = {
 export const formatOperationValue = (op: AdminBalanceOperationI): string => {
     const abs = Math.abs(op.amount);
     if (isFreeQuestionOperation(op.type)) {
-        const sign = op.type === AdminOperationTypeE.FreeCharge ? "−" : "+";
+        const sign = op.type === AdminOperationTypeE.FreeCharge || op.type === AdminOperationTypeE.FreeExpire ? "−" : "+";
         return `${sign}${abs} ${pluralizeQuestions(abs)}`;
     }
     return `${formatAmount(abs)} ₽`;

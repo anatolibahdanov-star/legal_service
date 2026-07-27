@@ -4,6 +4,9 @@ import { lostResponse } from './cron/lostResponse';
 import { adminRating } from './cron/adminRating';
 import { cleanupAuthAttemptsDb, cleanupOtpStoreMemory } from './cron/cleanupAuthAttempts';
 import { unpaidReminder } from './cron/unpaidReminder';
+import { paymentRetry } from './cron/paymentRetry';
+import { expireSubscriptions } from './cron/expireSubscriptions';
+import { subscriptionRenewal } from './cron/subscriptionRenewal';
 import { warmSettings } from './services/settings';
 import { seedPromptVersionIfEmpty } from './repositories/settings/repo';
 
@@ -50,6 +53,24 @@ export async function register() {
     cron.schedule('0 3 * * *', async () => {
       console.log(`[${new Date().toISOString()}] Cron job running: Cleanup auth_attempts...`);
       await cleanupAuthAttemptsDb();
+    });
+
+    // Subscription expiry — flip lapsed subscriptions to Expired and burn their БВ.
+    cron.schedule('*/10 * * * *', async () => {
+      console.log(`[${new Date().toISOString()}] Cron job running: Expire subscriptions...`);
+      await expireSubscriptions();
+    });
+
+    // Subscription auto-renewal — recurring card-binding charge before period_end.
+    cron.schedule('0 * * * *', async () => {
+      console.log(`[${new Date().toISOString()}] Cron job running: Subscription auto-renewal...`);
+      await subscriptionRenewal();
+    });
+
+    // Payment reconcile — poll Alfa for pending orders that never confirmed via the browser.
+    cron.schedule('*/5 * * * *', async () => {
+      console.log(`[${new Date().toISOString()}] Cron job running: Payment retry reconcile...`);
+      await paymentRetry();
     });
   }
 }

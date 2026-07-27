@@ -152,9 +152,13 @@ export async function deleteOrder(id: string): Promise<DBOrder | null> {
 export async function createEmptyOrder(userId: string, userOrder: UserBalanceRequest): Promise<DBOrder | null> {
     const msg = msgGlobal + "createEmptyOrder - ";
     const dataJson = userOrder.data ? JSON.stringify(userOrder.data) : null;
-    const query = `INSERT INTO porder(user_id, amount, order_type, status, alpha_id, alpha_status, alpha_qr_url, alpha_form_url, data)
-    VALUES(?, ?, ?, ?, '', ?, '', '', ?)`
-    const params = [userId, userOrder.amount, userOrder.type, userOrder.status, AlfaOrderStatusE.New, dataJson]
+    // planId is stored in a durable column so it survives updateOrderStatus
+    // overwriting porder.data on later status polls (subscription activation
+    // and renewal reconcile depend on this).
+    const planId = userOrder.data?.planId ?? null;
+    const query = `INSERT INTO porder(user_id, amount, order_type, status, alpha_id, alpha_status, alpha_qr_url, alpha_form_url, data, plan_id)
+    VALUES(?, ?, ?, ?, '', ?, '', '', ?, ?)`
+    const params = [userId, userOrder.amount, userOrder.type, userOrder.status, AlfaOrderStatusE.New, dataJson, planId]
     const insertFunc = insert({ query, values: params});
     const executedQueries = await executeTransactionWrapper<ResultSetHeader>([insertFunc], msg);
     if (!executedQueries) {
