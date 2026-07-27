@@ -1,8 +1,15 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
+import { X } from 'lucide-react'
 import { isStaffRole } from '@/src/app/components/v2/lawyer-requests/staff-gate'
+import { useBodyScrollLock } from '@/src/app/hooks/useBodyScrollLock'
+import { CustomGetRequest, CustomRequest } from '@/src/libs/request'
+import { OrderTypeE } from '@/src/interfaces/payment'
 import styles from './subscriptions.module.css'
+
+type Tone = 'orange' | 'yellow' | 'purple' | 'green'
 
 type Plan = {
   name: string
@@ -15,17 +22,50 @@ type Plan = {
   /** Short line inside the colored benefit badge */
   badge: string
   /** Bright badge tint (same family as why-us cards) */
-  tone: 'orange' | 'yellow' | 'purple' | 'green'
+  tone: Tone
+  /** Subscription plan id when the card is a DB-backed monthly plan */
+  planId?: number
+  bvAmount?: number
 }
 
-const plans: Plan[] = [
-  {
-    name: 'Разовый запрос',
-    description: 'Разовая оплата 1 вопроса',
-    price: '2 000 ₽',
-    badge: 'Один вопрос – один ответ, без подписки',
-    tone: 'orange',
-  },
+type MySub = {
+  id: number
+  status: number
+  planId: number | null
+  planName: string | null
+  priceRub: number
+  bvAmount: number
+  periodStart: string | null
+  periodEnd: string | null
+  willRenew: boolean
+}
+
+type ConfirmData = {
+  plan: Plan
+  title: string
+  paragraphs: string[]
+}
+
+interface PublicPlanDTO {
+  id: number
+  name: string
+  description: string | null
+  price_rub: number
+  bv_amount: number
+  tone: string | null
+  badge: string | null
+  featured: boolean
+}
+
+const oneTimePlan: Plan = {
+  name: 'Разовый запрос',
+  description: 'Разовая оплата 1 вопроса',
+  price: '2 000 ₽',
+  badge: 'Один вопрос – один ответ, без подписки',
+  tone: 'orange',
+}
+
+const MONTHLY_FALLBACK: Plan[] = [
   {
     name: 'Старт',
     description: 'Ежемесячная подписка: 5 вопросов',
@@ -53,7 +93,35 @@ const plans: Plan[] = [
   },
 ]
 
-const BADGE_TONE_CLASS: Record<Plan['tone'], string> = {
+const TONES: Tone[] = ['orange', 'yellow', 'purple', 'green']
+
+const rubFormatter = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 })
+
+const toneOf = (tone: string | null): Tone =>
+  tone && (TONES as string[]).includes(tone) ? (tone as Tone) : 'purple'
+
+const mapDtoToPlan = (dto: PublicPlanDTO): Plan => ({
+  name: dto.name,
+  description: dto.description ?? '',
+  price: `${rubFormatter.format(dto.price_rub)} ₽`,
+  priceSuffix: '/мес',
+  featured: dto.featured,
+  badge: dto.badge ?? '',
+  tone: toneOf(dto.tone),
+  planId: dto.id,
+  bvAmount: dto.bv_amount,
+})
+
+const questionsWord = (n: number) => {
+  const tail = Math.abs(n) % 100
+  const last = tail % 10
+  if (tail > 10 && tail < 15) return 'вопросов'
+  if (last === 1) return 'вопрос'
+  if (last >= 2 && last <= 4) return 'вопроса'
+  return 'вопросов'
+}
+
+const BADGE_TONE_CLASS: Record<Tone, string> = {
   orange: styles.benefit_orange,
   yellow: styles.benefit_yellow,
   purple: styles.benefit_purple,
@@ -73,6 +141,143 @@ function CheckIcon() {
 export function Subscriptions() {
   const { data: session } = useSession()
   const isStaff = isStaffRole(session?.user?.role)
+  const [monthly, setMonthly] = useState<Plan[]>(MONTHLY_FALLBACK)
+  const [buyingId, setBuyingId] = useState<number | null>(null)
+  const [mySub, setMySub] = useState<MySub | null>(null)
+  const [subCheck, setSubCheck] = useState<'loading' | 'ready' | 'error'>('loading')
+  const [confirmData, setConfirmData] = useState<ConfirmData | null>(null)
+
+  useBodyScrollLock(confirmData !== null)
+
+  const buildConfirm = (plan: Plan): ConfirmData | null => {
+    if (!plan.planId) return null
+    if (subCheck === 'error') {
+      return {
+        plan,
+        title: 'Подтверждение покупки',
+        paragraphs: [
+          'Не удалось проверить вашу текущую подписку. Если она активна, оплата изменит её условия.',
+        ],
+      }
+    }
+    if (!mySub) return null
+    const end = mySub.periodEnd
+      ? ` до ${new Date(mySub.periodEnd).toLocaleDateString('ru-RU')}`
+      : ''
+    const rearm = mySub.willRenew ? [] : ['Автопродление будет включено снова.']
+    if (plan.planId === mySub.planId) {
+      return {
+        plan,
+        title: 'Продление подписки',
+        paragraphs: [
+          `У вас уже подключён тариф «${mySub.planName ?? plan.name}»${end}.`,
+          'Оплата продлит его ещё на месяц — неиспользованные вопросы сохранятся.',
+          ...rearm,
+        ],
+      }
+    }
+    const current = `Сейчас у вас «${mySub.planName ?? 'текущий тариф'}» (${mySub.bvAmount} ${questionsWord(mySub.bvAmount)}/мес)${end}.`
+    const delta = (plan.bvAmount ?? 0) - mySub.bvAmount
+    if (delta < 0) {
+      return {
+        plan,
+        title: 'Внимание: понижение тарифа',
+        paragraphs: [
+          current,
+          `После оплаты сразу активируется «${plan.name}»: ${-delta} ${questionsWord(delta)} будет списано с баланса подписки, а оставшийся оплаченный период сгорит.`,
+          ...rearm,
+        ],
+      }
+    }
+    const gain = delta > 0 ? `: добавится ${delta} ${questionsWord(delta)}` : ''
+    return {
+      plan,
+      title: 'Смена тарифа',
+      paragraphs: [
+        current,
+        `После оплаты сразу активируется «${plan.name}»${gain}, месячный период начнётся заново с сегодняшнего дня.`,
+        ...rearm,
+      ],
+    }
+  }
+
+  const handleBuy = (plan: Plan) => {
+    if (!plan.planId || buyingId !== null) return
+    const confirm = buildConfirm(plan)
+    if (confirm) {
+      setConfirmData(confirm)
+      return
+    }
+    void doBuy(plan)
+  }
+
+  const doBuy = async (plan: Plan) => {
+    if (!plan.planId || buyingId !== null) return
+    setBuyingId(plan.planId)
+    try {
+      const res = await CustomRequest('/orders/', {
+        type: OrderTypeE.Subscription,
+        amount: 0,
+        data: { planId: plan.planId },
+      })
+      if (res.status && res.data?.alpha_form_url) {
+        window.location.href = res.data.alpha_form_url
+        return
+      }
+      setBuyingId(null)
+      alert(res.error || 'Не удалось создать платёж. Попробуйте ещё раз.')
+    } catch {
+      setBuyingId(null)
+      alert('Техническая ошибка. Попробуйте ещё раз.')
+    }
+  }
+
+  useEffect(() => {
+    let cancelled = false
+    CustomGetRequest('/subscriptions/public')
+      .then((res) => {
+        const list = (res?.data?.plans ?? []) as PublicPlanDTO[]
+        if (!cancelled && Array.isArray(list) && list.length > 0) {
+          setMonthly(list.map(mapDtoToPlan))
+        }
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!session?.user || isStaff) {
+      setMySub(null)
+      setSubCheck('ready')
+      return
+    }
+    let cancelled = false
+    setSubCheck('loading')
+    CustomGetRequest('/subscriptions/me')
+      .then((res) => {
+        if (cancelled) return
+        if (res?.status) {
+          setMySub((res.data?.subscription as MySub | null) ?? null)
+          setSubCheck('ready')
+        } else {
+          setMySub(null)
+          setSubCheck('error')
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setMySub(null)
+          setSubCheck('error')
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [session?.user?.id, isStaff])
+
+  const plans: Plan[] = [oneTimePlan, ...monthly]
 
   return (
     <section id="subscriptions" className={styles.subscriptions}>
@@ -100,12 +305,18 @@ export function Subscriptions() {
 
         <div className={styles.cardsViewport}>
           <div className={styles.cards}>
-            {plans.map((plan) => (
+            {plans.map((plan) => {
+              const isCurrent = plan.planId != null && mySub?.planId === plan.planId
+              return (
               <article
-                key={plan.name}
-                className={`${styles.card} ${plan.featured ? styles.featuredCard : ''}`}
+                key={plan.planId ?? plan.name}
+                className={`${styles.card} ${plan.featured ? styles.featuredCard : ''} ${isCurrent ? styles.currentCard : ''}`}
               >
-                {plan.featured ? (
+                {isCurrent ? (
+                  <span className={`${styles.featuredLabel} ${styles.currentLabel}`}>
+                    Ваш тариф
+                  </span>
+                ) : plan.featured ? (
                   <span className={styles.featuredLabel}>Оптимальный</span>
                 ) : null}
 
@@ -138,6 +349,19 @@ export function Subscriptions() {
                     >
                       Недоступно
                     </span>
+                  ) : plan.planId && session?.user ? (
+                    <button
+                      type="button"
+                      className={styles.primaryButton}
+                      onClick={() => handleBuy(plan)}
+                      disabled={buyingId !== null || subCheck === 'loading'}
+                    >
+                      {buyingId === plan.planId
+                        ? 'Создаём платёж…'
+                        : isCurrent
+                          ? 'Продлить'
+                          : 'Купить'}
+                    </button>
                   ) : (
                     <a className={styles.primaryButton} href="#inquiry">
                       Купить
@@ -145,10 +369,60 @@ export function Subscriptions() {
                   )}
                 </div>
               </article>
-            ))}
+              )
+            })}
           </div>
         </div>
       </div>
+
+      {confirmData ? (
+        <div className={styles.modalOverlay} onClick={() => setConfirmData(null)}>
+          <div
+            className={styles.modalBox}
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="subscription-confirm-title"
+          >
+            <button
+              type="button"
+              className={styles.modalClose}
+              onClick={() => setConfirmData(null)}
+              aria-label="Закрыть"
+            >
+              <X className={styles.modalCloseIcon} />
+            </button>
+            <h3 id="subscription-confirm-title" className={styles.modalTitle}>
+              {confirmData.title}
+            </h3>
+            {confirmData.paragraphs.map((text) => (
+              <p key={text} className={styles.modalText}>
+                {text}
+              </p>
+            ))}
+            <div className={styles.modalActions}>
+              <button
+                type="button"
+                className={styles.modalCancelBtn}
+                onClick={() => setConfirmData(null)}
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                className={styles.modalConfirmBtn}
+                onClick={() => {
+                  const plan = confirmData.plan
+                  setConfirmData(null)
+                  void doBuy(plan)
+                }}
+              >
+                Продолжить
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   )
 }

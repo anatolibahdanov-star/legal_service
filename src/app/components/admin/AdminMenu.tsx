@@ -15,6 +15,7 @@ export const AdminMenu = (props: MenuProps) => {
             <Menu.ResourceItem name="requests" />
             <Menu.ResourceItem name="administrators" />
             <Menu.ResourceItem name="orders" />
+            <Menu.ResourceItem name="subscriptions" />
             <Menu.ResourceItem name="statistics" />
             <Menu.ResourceItem name="users" />
             <Menu.ResourceItem name="contacts" />

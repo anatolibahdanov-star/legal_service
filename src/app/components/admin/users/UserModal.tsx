@@ -4,19 +4,22 @@ import { X } from "lucide-react";
 import { DBUser } from "@/src/interfaces/db";
 import { GeneralTab } from "./GeneralTab";
 import { OperationsTab } from "./OperationsTab";
+import { SubscriptionsTab } from "./SubscriptionsTab";
 import { Overlay } from "./Overlay";
 import styles from "./users.module.css";
+
+type UserModalTab = "general" | "operations" | "subscriptions";
 
 interface UserModalProps {
     userId: string;
     apiBase: string;
-    initialTab?: "general" | "operations";
+    initialTab?: UserModalTab;
     onClose: () => void;
     onChanged: () => void;
 }
 
 export const UserModal = ({ userId, apiBase, initialTab = "general", onClose, onChanged }: UserModalProps) => {
-    const [tab, setTab] = useState<"general" | "operations">(initialTab);
+    const [tab, setTab] = useState<UserModalTab>(initialTab);
     const notify = useNotify();
     const { data, isLoading, refetch } = useGetOne<DBUser>("users", { id: userId });
     const [update, { isPending: saving }] = useUpdate();
@@ -71,14 +74,22 @@ export const UserModal = ({ userId, apiBase, initialTab = "general", onClose, on
                     >
                         История операций
                     </button>
+                    <button
+                        className={`${styles.tab} ${tab === "subscriptions" ? styles.tabActive : ""}`}
+                        onClick={() => setTab("subscriptions")}
+                    >
+                        История подписок
+                    </button>
                 </div>
 
                 {isLoading || !data ? (
                     <p className={styles.loadingRow}>Загружается...</p>
                 ) : tab === "general" ? (
                     <GeneralTab user={data} saving={saving} onSave={handleSave} />
-                ) : (
+                ) : tab === "operations" ? (
                     <OperationsTab user={data} apiBase={apiBase} onChanged={handleChanged} />
+                ) : (
+                    <SubscriptionsTab user={data} apiBase={apiBase} />
                 )}
             </div>
         </Overlay>

@@ -9,7 +9,7 @@ let isRunning = false
 
 const paymentUrl = (): string => {
     const base = (process.env.NEXT_PUBLIC_URL ?? process.env.NEXTAUTH_URL ?? "https://enki.legal").replace(/\/+$/, "")
-    return `${base}/admin#/profile`
+    return `${base}/profile/?tab=balance`
 }
 
 /**

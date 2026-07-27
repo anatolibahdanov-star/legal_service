@@ -35,7 +35,13 @@ interface BalanceViewState {
   paid: boolean;
 }
 
-type ViewState = OneTimeViewState | BalanceViewState;
+interface SubscriptionViewState {
+  kind: "subscription";
+  paid: boolean;
+  amount: number | null;
+}
+
+type ViewState = OneTimeViewState | BalanceViewState | SubscriptionViewState;
 
 const formatRub = (n: number): string => new Intl.NumberFormat("ru-RU").format(n);
 
@@ -120,6 +126,13 @@ export default function BalancePage() {
         // must stay on the page to see the "Платёж не прошёл" message
         // and decide whether to retry.
         if (paid) setSecondsLeft(REDIRECT_SECONDS);
+      } else if (lastOrder.ptype === OrderTypeE.Subscription) {
+        setView({
+          kind: "subscription",
+          paid,
+          amount: typeof lastOrder.amount === "number" ? lastOrder.amount : null,
+        });
+        if (paid) setSecondsLeft(REDIRECT_SECONDS);
       } else {
         setView({ kind: "balance", paid });
       }
@@ -142,9 +155,10 @@ export default function BalancePage() {
   // Авто-редирект в ЛК для OneTime: фоновый таймер. Юзер может ткнуть
   // кнопку и уйти раньше.
   useEffect(() => {
-    if (view.kind !== "one_time" || secondsLeft === null) return;
+    if (secondsLeft === null) return;
+    if (view.kind !== "one_time" && view.kind !== "subscription") return;
     if (secondsLeft <= 0) {
-      goToProfileTab("cases");
+      goToProfileTab(view.kind === "subscription" ? "balance" : "cases");
       return;
     }
     const t = setTimeout(() => setSecondsLeft((s) => (s === null ? null : s - 1)), 1000);
@@ -161,6 +175,10 @@ export default function BalancePage() {
 
   if (view.kind === "one_time") {
     return <OneTimeView paid={view.paid} amount={view.amount} secondsLeft={secondsLeft} onContinue={() => goToProfileTab("cases")} onRetry={() => goToProfileTab("cases")} />;
+  }
+
+  if (view.kind === "subscription") {
+    return <SubscriptionView paid={view.paid} amount={view.amount} secondsLeft={secondsLeft} onContinue={() => goToProfileTab("balance")} onRetry={() => goToProfileTab("balance")} />;
   }
 
   return <BalanceTopUpView paid={view.paid} onReturn={() => goToProfileTab("balance")} />;
@@ -236,6 +254,85 @@ function OneTimeView({ paid, amount, secondsLeft, onContinue, onRetry }: OneTime
               onClick={paid ? onContinue : onRetry}
             >
               {paid ? "Перейти к моим вопросам" : "Попробовать ещё раз"}
+            </Button>
+          </div>
+
+          {footnote && (
+            <p className="mt-6 text-center text-xs text-muted-foreground/60 tabular-nums">{footnote}</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Subscription purchase / renewal (Subscription order)                */
+/* ------------------------------------------------------------------ */
+
+interface SubscriptionViewProps {
+  paid: boolean;
+  amount: number | null;
+  secondsLeft: number | null;
+  onContinue: () => void;
+  onRetry: () => void;
+}
+
+function SubscriptionView({ paid, amount, secondsLeft, onContinue, onRetry }: SubscriptionViewProps) {
+  const image = paid ? "/assets/payment-success.png" : "/assets/payment-failed.png";
+  const imageAlt = paid ? "Успешная оплата" : "Ошибка при оплате";
+  const title = paid ? "Подписка оформлена" : "Платёж не прошёл";
+  const amountLine =
+    typeof amount === "number" && amount > 0
+      ? `С карты успешно списано ${formatRub(amount)} ₽`
+      : "Платёж картой прошёл успешно.";
+  const paragraphs = paid
+    ? [
+        amountLine,
+        "Тариф активирован, бесплатные вопросы начислены. Управлять подпиской можно в Личном кабинете.",
+      ]
+    : [
+        "Деньги не списаны — подписка не оформлена.",
+        "Вы можете попробовать оформить подписку ещё раз.",
+      ];
+  const badge = paid
+    ? { text: "✔ Подписка активна", type: "success" as const }
+    : { text: "✘ Платёж не выполнен", type: "error" as const };
+  const footnote = paid && secondsLeft !== null && secondsLeft > 0
+    ? `Автоматический переход через ${secondsLeft} с`
+    : "";
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-surface px-4 py-12">
+      <div className="w-full max-w-[890px]">
+        <div className="rounded-3xl bg-surface-elevated p-8 shadow-[0_4px_40px_-12px_oklch(0.5_0.02_260/0.12)] sm:p-12">
+          <div className="mx-auto mb-8 flex h-80 w-80 items-center justify-center sm:h-96 sm:w-96">
+            <Image src={image} alt={imageAlt} width={384} height={384} className="h-80 w-80 object-contain sm:h-96 sm:w-96" />
+          </div>
+
+          <div className="mb-4 flex justify-center">
+            <span
+              className={`inline-flex items-center rounded-full px-4 py-1.5 text-sm font-medium ${
+                badge.type === "success" ? "bg-[#C9F1E2] text-[#6ED2A2]" : "bg-[#EF44441A] text-[#EF4444]"
+              }`}
+            >
+              {badge.text}
+            </span>
+          </div>
+
+          <h1 className="text-center text-2xl font-bold tracking-tight text-foreground sm:text-3xl">{title}</h1>
+          <div className="mt-3 space-y-2 text-center">
+            {paragraphs.map((text, i) => (
+              <p key={i} className="text-base text-muted-foreground">{text}</p>
+            ))}
+          </div>
+
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
+            <Button key="go_sub" variant="outline" size="lg"
+              className="w-full rounded-xl bg-[#8faaba] text-white hover:bg-[#7a98a7] sm:w-auto"
+              onClick={paid ? onContinue : onRetry}
+            >
+              {paid ? "Перейти в Личный кабинет" : "Попробовать ещё раз"}
             </Button>
           </div>
 

@@ -14,6 +14,7 @@ import { PdfIcon } from "@/src/app/components/popups/pdf";
 import { Loader2 } from "lucide-react";
 import { useFormContext, useWatch } from 'react-hook-form';
 import React, { useEffect, useState, useContext, useCallback, createContext } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { JobDataI } from '@/src/interfaces/form';
 import { CustomGetRequest } from "@/src/libs/request"
 import { AdminJobView } from '@/src/app/components/admin/AdminJobView';
@@ -472,11 +473,15 @@ const CustomSaveButton = () => {
 const LawyerAttachmentUpload = ({ attachments = [], onUploaded }: { attachments?: AttachmentDTO[]; onUploaded?: () => void }) => {
   const notify = useNotify();
   const record = useRecordContext();
+  const queryClient = useQueryClient();
   const childId = useWatch({ name: 'child_id' });
   const targetId = childId ?? record?.id;
   const [files, setFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  const invalidateList = () =>
+    queryClient.invalidateQueries({ queryKey: ['requests', 'getList'] });
 
   const existingCount = attachments.length;
   const overLimit = existingCount + files.length > ATTACH_MAX_FILES;
@@ -496,6 +501,7 @@ const LawyerAttachmentUpload = ({ attachments = [], onUploaded }: { attachments?
       }
       notify('Файлы загружены.', { type: 'success' });
       setFiles([]);
+      invalidateList();
       if (onUploaded) onUploaded();
     } finally {
       setLoading(false);
@@ -512,6 +518,7 @@ const LawyerAttachmentUpload = ({ attachments = [], onUploaded }: { attachments?
         return;
       }
       notify('Файл удалён.', { type: 'success' });
+      invalidateList();
       if (onUploaded) onUploaded();
     } finally {
       setDeletingId(null);

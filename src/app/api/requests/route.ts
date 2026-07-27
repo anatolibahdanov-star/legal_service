@@ -10,7 +10,7 @@ import { validateRequestForm } from "@/src/app/components/forms/validation/reque
 import { RequestFormI } from "@/src/interfaces/form"
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '../auth/[...nextauth]/route';
-import { getAttachmentsByQuestionIds } from "@/src/repositories/question_attachments/repo"
+import { getAttachmentsByRootIds } from "@/src/repositories/question_attachments/repo"
 import { toAttachmentDTO } from "@/src/services/attachments"
 
 export const dynamic = 'force-dynamic'; // defaults to auto
@@ -22,17 +22,18 @@ function isStaff(role: string | undefined): boolean {
 async function attachAttachmentsToRows(rows: DBQuestion[], staff: boolean): Promise<void> {
     if (rows.length === 0) return;
     const sourceFilter = staff ? undefined : ('user' as const);
-    const ids = rows.map((r) => Number(r.id));
-    const attachments = await getAttachmentsByQuestionIds(ids, sourceFilter);
-    const byQuestion = new Map<string, ReturnType<typeof toAttachmentDTO>[]>();
+    const rootKey = (r: DBQuestion) => String(r.parent_id ? r.parent_id : r.id);
+    const rootIds = rows.map((r) => Number(rootKey(r)));
+    const attachments = await getAttachmentsByRootIds(rootIds, sourceFilter);
+    const byRoot = new Map<string, ReturnType<typeof toAttachmentDTO>[]>();
     for (const att of attachments) {
-        const key = String(att.question_id);
-        const list = byQuestion.get(key) ?? [];
+        const key = String(att.root_id);
+        const list = byRoot.get(key) ?? [];
         list.push(toAttachmentDTO(att));
-        byQuestion.set(key, list);
+        byRoot.set(key, list);
     }
     for (const row of rows) {
-        row.attachments = byQuestion.get(String(row.id)) ?? [];
+        row.attachments = byRoot.get(rootKey(row)) ?? [];
     }
 }
 

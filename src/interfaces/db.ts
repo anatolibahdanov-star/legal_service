@@ -2,7 +2,7 @@ import { RowDataPacket} from 'mysql2/promise';
 import {User} from "next-auth"
 import { DateTime } from "next-auth/providers/kakao";
 import { EmailStatusesE, QuestionStatusesE, ReplyStatusesE } from './data';
-import { AlfaOrderStatusE, OrderStatusE, OrderTypeE } from './payment';
+import { AlfaOrderStatusE, OrderStatusE, OrderTypeE, SubscriptionStatusE, SubscriptionEventE, FreeQuestionSourceE } from './payment';
 
 export interface CountResult extends RowDataPacket {
   counter: number; // The alias from the SQL query
@@ -110,6 +110,7 @@ export interface DBOrder extends RowDataPacket {
   amount: number;
   ptype: OrderTypeE;
   question_id?: number | null;
+  plan_id?: number | null;
   alpha_id: string;
   alpha_status: AlfaOrderStatusE;
   alpha_qr_url: string;
@@ -208,4 +209,67 @@ export interface DBPdfShareLink extends RowDataPacket {
   revoked: number;
   created_at: DateTime;
   updated_at: DateTime;
+}
+
+export interface DBSubscriptionPlan extends RowDataPacket {
+  id: number;
+  code: string | null;
+  name: string;
+  description: string | null;
+  price_rub: number;
+  bv_amount: number;
+  period: number;
+  tone: string | null;
+  badge: string | null;
+  featured: number;
+  weight: number;
+  is_active: number;
+  created_at: DateTime;
+  updated_at: DateTime;
+}
+
+export interface DBSubscription extends RowDataPacket {
+  id: number;
+  user_id: number;
+  plan_id: number | null;
+  status: SubscriptionStatusE;
+  price_rub: number;
+  bv_amount: number;
+  period_start: DateTime | null;
+  period_end: DateTime | null;
+  binding_id: string | null;
+  next_charge_at: DateTime | null;
+  order_id: number | null;
+  created_at: DateTime;
+  updated_at: DateTime;
+}
+
+export interface DBSubscriptionHistory extends RowDataPacket {
+  id: number;
+  subscription_id: number | null;
+  user_id: number;
+  event_type: SubscriptionEventE;
+  plan_id: number | null;
+  plan_name: string | null;
+  price_rub: number | null;
+  bv_amount: number | null;
+  bv_delta: number | null;
+  period_start: DateTime | null;
+  period_end: DateTime | null;
+  status_after: SubscriptionStatusE | null;
+  order_id: number | null;
+  admin_id: number | null;
+  comment: string | null;
+  created_at: DateTime;
+}
+
+export interface DBFreeQuestionGrant extends RowDataPacket {
+  id: number;
+  user_id: number;
+  source: FreeQuestionSourceE;
+  remaining: number;
+  initial: number;
+  expires_at: DateTime | null;
+  subscription_id: number | null;
+  created_at: DateTime;
 }
