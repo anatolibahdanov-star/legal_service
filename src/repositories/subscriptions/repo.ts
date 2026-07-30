@@ -1,4 +1,4 @@
-import type { PoolConnection, ResultSetHeader } from 'mysql2/promise';
+import type { PoolConnection, ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 import pool, { find, findOne, queryTransactionWrapper } from '@/src/libs/db';
 import logger from '@/src/libs/logger';
 import { CountResult, DBSubscriptionPlan, DBSubscription, DBSubscriptionHistory } from '@/src/interfaces/db';
@@ -269,6 +269,60 @@ export async function getSubscriptionHistory(userId: number | string, cap: numbe
              ORDER BY h.created_at DESC, h.id DESC
              LIMIT ?`,
             [userId, cap],
+        );
+        return rows ?? [];
+    } catch (error) {
+        logger.error(msg + 'failed', { user_id: userId, error });
+        return [];
+    }
+}
+
+export interface SubscriptionQuestionStats {
+    remaining: number;
+    initial: number;
+}
+
+export async function getSubscriptionQuestionStats(subscriptionId: number): Promise<SubscriptionQuestionStats> {
+    const msg = msgGlobal + 'getSubscriptionQuestionStats - ';
+    try {
+        const [rows] = await pool.query<RowDataPacket[]>(
+            `SELECT COALESCE(SUM(remaining), 0) AS remaining, COALESCE(SUM(initial), 0) AS total
+             FROM free_question_grant
+             WHERE subscription_id = ? AND source = 2`,
+            [subscriptionId],
+        );
+        const row = rows[0] ?? {};
+        return { remaining: Number(row.remaining) || 0, initial: Number(row.total) || 0 };
+    } catch (error) {
+        logger.error(msg + 'failed', { subscription_id: subscriptionId, error });
+        return { remaining: 0, initial: 0 };
+    }
+}
+
+export interface DBSubscriptionCancelRow extends RowDataPacket {
+    id: number;
+    created_at: string;
+    comment: string | null;
+    plan_name: string | null;
+    admin_name: string | null;
+    admin_username: string | null;
+}
+
+export async function getUserSubscriptionCancelEvents(
+    userId: number | string,
+    cap: number = 2000,
+): Promise<DBSubscriptionCancelRow[]> {
+    const msg = msgGlobal + 'getUserSubscriptionCancelEvents - ';
+    try {
+        const [rows] = await pool.query<DBSubscriptionCancelRow[]>(
+            `SELECT h.id, h.created_at, h.comment, h.plan_name,
+                a.name AS admin_name, a.username AS admin_username
+             FROM subscription_history h
+             LEFT JOIN administrator a ON h.admin_id = a.id
+             WHERE h.user_id = ? AND h.event_type = ?
+             ORDER BY h.created_at DESC, h.id DESC
+             LIMIT ?`,
+            [userId, SubscriptionEventE.Cancel, cap],
         );
         return rows ?? [];
     } catch (error) {

@@ -15,6 +15,7 @@ import { QuestionStatusesE } from '@/src/interfaces/data'
 import { CustomGetRequest, CustomRequest } from '@/src/libs/request'
 import {
   formatAmount,
+  formatDate,
   formatDateTime,
   isFreeQuestionOperation,
   operationTypeLabels,
@@ -28,6 +29,31 @@ interface V2ProfileBalanceProps {
 }
 
 type TopupMethodT = 'form' | 'qr'
+
+type MySubscriptionT = {
+  planName: string | null
+  tone: string | null
+  priceRub: number
+  bvAmount: number
+  questionsRemaining: number
+  questionsTotal: number
+  periodEnd: string | null
+  willRenew: boolean
+}
+
+const SUB_TONE_COLORS: Record<string, string> = {
+  orange: '#c44021',
+  yellow: '#b8a91a',
+  purple: '#34347c',
+  green: '#183e35',
+}
+
+const SUB_TONE_BG: Record<string, string> = {
+  orange: '#f5b29a',
+  yellow: '#ebe46a',
+  purple: '#a8a6e0',
+  green: '#7eb8a6',
+}
 
 // Платёжная сессия и QR у Альфы живут ~20 минут — более старый незавершённый
 // заказ не переиспользуем, вместо него создаём новый.
@@ -45,10 +71,11 @@ const isCredit = (op: AdminBalanceOperationI): boolean =>
   op.type === AdminOperationTypeE.Refund ||
   (op.type === AdminOperationTypeE.Payment && op.questionId === null)
 
-// Денежное списание (оплата услуги/вопроса), без операций с бесплатными вопросами.
+// Денежное списание (оплата услуги/вопроса/подписки), без операций с бесплатными вопросами.
 const isMoneySpend = (op: AdminBalanceOperationI): boolean =>
   !isFreeQuestionOperation(op.type) &&
   (op.type === AdminOperationTypeE.Charge ||
+    op.type === AdminOperationTypeE.SubscriptionPayment ||
     (op.type === AdminOperationTypeE.Payment && op.questionId !== null))
 
 const isSameMonth = (iso: string): boolean => {
@@ -74,8 +101,15 @@ export function V2ProfileBalance({ data, setUserBalance }: V2ProfileBalanceProps
   const [showAllOperations, setShowAllOperations] = useState(false)
   const [dealsActive, setDealsActive] = useState(0)
   const [dealsCompleted, setDealsCompleted] = useState(0)
+  const [mySub, setMySub] = useState<MySubscriptionT | null>(null)
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
+  const [cancelError, setCancelError] = useState('')
+  const [opsRefreshKey, setOpsRefreshKey] = useState(0)
+  const [subLoaded, setSubLoaded] = useState(false)
   const balance = data?.balance ?? 0
   const freeQuestions = data?.free_questions ?? 0
+  const adminQuestions = Math.max(0, freeQuestions - (mySub?.questionsRemaining ?? 0))
   const topupKop = Math.round(minTopupRub * 100)
 
   useEffect(() => {
@@ -137,7 +171,7 @@ export function V2ProfileBalance({ data, setUserBalance }: V2ProfileBalanceProps
     return () => {
       active = false
     }
-  }, [balance])
+  }, [balance, opsRefreshKey])
 
   // Счётчики дел для карточки «Активных дел / завершено».
   useEffect(() => {
@@ -164,6 +198,43 @@ export function V2ProfileBalance({ data, setUserBalance }: V2ProfileBalanceProps
       active = false
     }
   }, [data?.id, balance])
+
+  useEffect(() => {
+    if (!data?.id) return
+    let active = true
+    const fetchSubscription = async () => {
+      const res = await CustomGetRequest('/subscriptions/me')
+      if (!active) return
+      if (res.status) {
+        setMySub((res.data?.subscription as MySubscriptionT | null) ?? null)
+      }
+      setSubLoaded(true)
+    }
+    fetchSubscription()
+    return () => {
+      active = false
+    }
+  }, [data?.id, data?.free_questions, balance])
+
+  const handleCancelSubscription = async () => {
+    if (cancelling) return
+    setCancelling(true)
+    setCancelError('')
+    try {
+      const res = await CustomRequest('/subscriptions/cancel', {})
+      if (res.status) {
+        setMySub((prev) => (prev ? { ...prev, willRenew: false } : prev))
+        setCancelConfirmOpen(false)
+        setOpsRefreshKey((key) => key + 1)
+      } else {
+        setCancelError(res.error || 'Не удалось отключить автопродление. Попробуйте ещё раз.')
+      }
+    } catch {
+      setCancelError('Техническая ошибка. Попробуйте ещё раз.')
+    } finally {
+      setCancelling(false)
+    }
+  }
 
   const cancelRequestedRef = useRef(false)
   const [pickerOpenedAt, setPickerOpenedAt] = useState(0)
@@ -240,6 +311,7 @@ export function V2ProfileBalance({ data, setUserBalance }: V2ProfileBalanceProps
 
   const renderOperationValue = (op: AdminBalanceOperationI) => {
     const credit = isCredit(op)
+    if (op.type === AdminOperationTypeE.SubscriptionCancel) return '—'
     if (isFreeQuestionOperation(op.type)) {
       const sign = op.type === AdminOperationTypeE.FreeCharge ? '−' : '+'
       return `${sign} ${Math.abs(op.amount)} шт.`
@@ -334,6 +406,77 @@ export function V2ProfileBalance({ data, setUserBalance }: V2ProfileBalanceProps
                 </div>
               )}
             </div>
+
+            {mySub && (
+              <div className={styles.subPanel}>
+                <div className={styles.balanceStatus}>
+                  <span
+                    className={styles.statusDot}
+                    style={{ background: SUB_TONE_COLORS[mySub.tone ?? ''] ?? '#34347c' }}
+                  />
+                  <span className={styles.statusLabel}>Подписка</span>
+                </div>
+                <div className={styles.subPanelBody}>
+                  <p className={styles.subPlanRow}>
+                    <span
+                      className={styles.subPlanBadge}
+                      style={{ background: SUB_TONE_BG[mySub.tone ?? ''] ?? '#a8a6e0' }}
+                    >
+                      {mySub.planName ?? 'Тариф'}
+                    </span>
+                    <span className={styles.subPrice}>{formatRub(mySub.priceRub)} ₽/мес</span>
+                  </p>
+                  <div className={styles.subQuestionsRow}>
+                    <span className={styles.subQuestionsCount}>
+                      {mySub.questionsRemaining}/{mySub.questionsTotal}
+                    </span>
+                    <span className={styles.subQuestionsLabel}>вопросов осталось</span>
+                  </div>
+                  <span className={styles.balanceHint}>
+                    {mySub.willRenew
+                      ? `Продлится автоматически ${mySub.periodEnd ? formatDate(mySub.periodEnd) : ''}`
+                      : `Автопродление отключено — действует до ${mySub.periodEnd ? formatDate(mySub.periodEnd) : 'конца оплаченного периода'}`}
+                  </span>
+                </div>
+                {mySub.willRenew && !cancelConfirmOpen && (
+                  <button
+                    type="button"
+                    onClick={() => { setCancelError(''); setCancelConfirmOpen(true) }}
+                    className={`${styles.topupBtn} ${styles.unsubBtn}`}
+                  >
+                    Отписаться
+                  </button>
+                )}
+                {cancelConfirmOpen && (
+                  <div className={styles.subConfirm}>
+                    <p className={styles.subConfirmText}>
+                      Автосписания прекратятся. Подписка и оставшиеся вопросы будут
+                      действовать до {mySub.periodEnd ? formatDate(mySub.periodEnd) : 'конца оплаченного периода'}.
+                      Возобновить можно повторной покупкой тарифа.
+                    </p>
+                    {cancelError && <p className={styles.methodError}>{cancelError}</p>}
+                    <div className={styles.subConfirmBtns}>
+                      <button
+                        type="button"
+                        onClick={handleCancelSubscription}
+                        disabled={cancelling}
+                        className={styles.subConfirmBtn}
+                      >
+                        {cancelling ? 'Отключаем…' : 'Да, отписаться'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCancelConfirmOpen(false)}
+                        disabled={cancelling}
+                        className={styles.methodCancel}
+                      >
+                        Оставить
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
             <div className={styles.balanceBlur} />
           </div>
 
@@ -345,16 +488,17 @@ export function V2ProfileBalance({ data, setUserBalance }: V2ProfileBalanceProps
             </div>
             <div className={styles.balanceAmountWrap}>
               <div className={styles.balanceAmountRow}>
-                <span className={styles.freeQuestionsAmount}>{freeQuestions}</span>
+                <span className={styles.freeQuestionsAmount}>{subLoaded ? adminQuestions : '—'}</span>
                 <span className={styles.balanceCurrency}>шт.</span>
               </div>
               <span className={styles.balanceHint}>
-                {freeQuestions > 0
-                  ? 'Списываются в первую очередь при отправке вопроса'
-                  : 'Появятся при активной подписке или начислении'}
+                {adminQuestions > 0
+                  ? 'Начислены администратором — не сгорают, тратятся после подписочных'
+                  : 'Начисляются администратором'}
               </span>
             </div>
           </div>
+
         </div>
 
         {/* История операций — превью */}
@@ -424,7 +568,7 @@ export function V2ProfileBalance({ data, setUserBalance }: V2ProfileBalanceProps
         </div>
       </div>
 
-      {showAllOperations && <OperationsHistory />}
+      {showAllOperations && <OperationsHistory key={opsRefreshKey} />}
 
       {newOrder && (
         <div className={styles.orderCard}>

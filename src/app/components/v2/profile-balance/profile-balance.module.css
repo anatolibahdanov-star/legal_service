@@ -258,6 +258,120 @@
   background: #34347c;
 }
 
+.subPanel {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 24px;
+  min-width: 0;
+  padding-left: 40px;
+  border-left: 1px solid rgba(18, 22, 27, 0.07);
+}
+
+.balanceCard:has(.subPanel) .balanceInner {
+  padding-right: 40px;
+}
+
+.subPanelBody {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.subPlanRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.subPlanBadge {
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 16px;
+  border-radius: 999px;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+  color: #12161b;
+}
+
+.subPrice {
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(18, 22, 27, 0.55);
+}
+
+.subQuestionsRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.subQuestionsCount {
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 36px;
+  color: #12161b;
+}
+
+.subQuestionsLabel {
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(18, 22, 27, 0.5);
+}
+
+.unsubBtn {
+  width: 100%;
+  justify-content: center;
+  padding: 0 28px;
+}
+
+.subConfirm {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.subConfirmText {
+  font-size: 13px;
+  line-height: 19px;
+  color: rgba(18, 22, 27, 0.6);
+}
+
+.subConfirmBtns {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.subConfirmBtn {
+  height: 40px;
+  padding: 0 18px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  background: #dc2626;
+  border: none;
+  border-radius: 35px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.subConfirmBtn:hover {
+  opacity: 0.9;
+}
+
+.subConfirmBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .freeQuestionsAmount {
   font-size: 48px;
   font-weight: 700;
@@ -570,6 +684,25 @@
 }
 
 /* ─── Tablet / Mobile ───────────────────────────────────────────────────── */
+@media (max-width: 1279px) {
+  .balanceCard {
+    flex-direction: column;
+    gap: 32px;
+  }
+
+  .subPanel {
+    min-width: 0;
+    padding-left: 0;
+    padding-top: 24px;
+    border-left: none;
+    border-top: 1px solid rgba(18, 22, 27, 0.07);
+  }
+
+  .balanceCard:has(.subPanel) .balanceInner {
+    padding-right: 0;
+  }
+}
+
 @media (max-width: 1023px) {
   .topRow {
     flex-direction: column;

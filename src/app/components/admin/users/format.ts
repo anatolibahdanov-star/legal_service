@@ -47,6 +47,7 @@ export const formatDateTime = (value: string | number | Date | null | undefined)
 export const operationTypeLabels: Record<AdminOperationTypeE, string> = {
     [AdminOperationTypeE.Payment]: "Оплата",
     [AdminOperationTypeE.SubscriptionPayment]: "Оплата подписки",
+    [AdminOperationTypeE.SubscriptionCancel]: "Отмена подписки",
     [AdminOperationTypeE.Charge]: "Списание с баланса",
     [AdminOperationTypeE.Refund]: "Возврат",
     [AdminOperationTypeE.Manual]: "Ручное изменение",
@@ -61,7 +62,7 @@ export const subscriptionEventLabels: Record<SubscriptionEventE, string> = {
     [SubscriptionEventE.Upgrade]: "Повышение тарифа",
     [SubscriptionEventE.Downgrade]: "Понижение тарифа",
     [SubscriptionEventE.Expire]: "Окончание срока",
-    [SubscriptionEventE.Cancel]: "Отмена",
+    [SubscriptionEventE.Cancel]: "Отмена подписки",
 };
 
 export const subscriptionStatusLabels: Record<SubscriptionStatusE, string> = {
@@ -77,6 +78,7 @@ export const subscriptionStatusLabels: Record<SubscriptionStatusE, string> = {
  */
 export const formatOperationValue = (op: AdminBalanceOperationI): string => {
     const abs = Math.abs(op.amount);
+    if (op.type === AdminOperationTypeE.SubscriptionCancel) return "—";
     if (isFreeQuestionOperation(op.type)) {
         const sign = op.type === AdminOperationTypeE.FreeCharge || op.type === AdminOperationTypeE.FreeExpire ? "−" : "+";
         return `${sign}${abs} ${pluralizeQuestions(abs)}`;

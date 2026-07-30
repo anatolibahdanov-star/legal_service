@@ -169,7 +169,7 @@ export async function applySubscriptionOrder(
 
         if (delta >= 0) {
             if (grantId) {
-                await topUpSubscriptionGrantTx(conn, grantId, userId, delta, endStr);
+                await topUpSubscriptionGrantTx(conn, grantId, userId, delta, endStr, 'Повышение тарифа');
             } else {
                 await accrueSubscriptionGrantTx(conn, userId, plan.bv_amount, active.id, endStr);
             }
@@ -232,6 +232,10 @@ export async function cancelSubscription(
             return { ok: false, error: 'Активная подписка не найдена.' };
         }
         const sub = rows[0];
+        if (sub.next_charge_at === null) {
+            await conn.rollback();
+            return { ok: true, periodEnd: dbDateToStr(sub.period_end) };
+        }
         const plan = sub.plan_id ? await getPlanById(sub.plan_id) : null;
         await conn.query<ResultSetHeader>(`UPDATE subscription SET next_charge_at = NULL WHERE id = ?`, [sub.id]);
         await insertSubscriptionHistoryTx(conn, {
