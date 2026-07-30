@@ -29,7 +29,6 @@ import {
 } from '@/src/app/components/LegalConsents'
 import { YandexSmartCaptcha } from "@/src/app/components/forms/YandexSmartCaptcha"
 import { useInquirySection, type InquiryPanel } from './inquiry-section.hook'
-import { useFileUpload } from './file-upload.hook'
 import { InquiryOtpModal } from './inquiry-verification-modals'
 import { type VerificationModal } from './inquiry-section.verify'
 import RequestStepProfile from '@/src/app/components/forms/RequestStepProfile'
@@ -40,8 +39,8 @@ import styles from './inquiry-section.module.css'
 // ─── shared sub-components ────────────────────────────────────────────────────
 
 const PILLS = [
-  { icon: FileText, label: '5 шагов' },
-  { icon: Clock, label: '2 минуты' },
+  { icon: FileText, label: '2 шага' },
+  { icon: Clock, label: '3 часа' },
   { icon: Globe, label: 'Онлайн' },
 ]
 
@@ -61,8 +60,6 @@ const VioletBtn = ({ label, onClick, disabled }: { label: string; onClick: () =>
 function Step2Panel({ 
   value, 
   onChange, 
-  files, 
-  onFilesChange,
   touched,
   onBlur,
   validateQuestionText,
@@ -70,21 +67,12 @@ function Step2Panel({
 }: {
   value: string
   onChange: (v: string) => void
-  files: File[]
-  onFilesChange: (files: File[]) => void
   touched: boolean
   onBlur: () => void
   validateQuestionText: (text: string) => string | null
   errors: { question: string }
 }) {
   const questionError = errors.question || validateQuestionText(value)
-  const {
-    fileInputRef,
-    handleFileClick,
-    handleFileChange,
-    removeFile,
-    formatFileSize,
-  } = useFileUpload(files, onFilesChange)
 
   return (
     <div className={styles.colGap6}>
@@ -115,83 +103,19 @@ function Step2Panel({
         </div>
       )}
 
-      
+      {/* Upload UI kept for layout; interaction disabled until attachments ship. */}
       <div
-        className="flex flex-col gap-3 cursor-pointer transition-all duration-200 hover:border-[#34347C]/60 hover:bg-[#f4f4ff] active:scale-[0.98]"
+        aria-disabled="true"
+        className="flex flex-col gap-3 opacity-60 cursor-not-allowed select-none"
         style={{ padding: 16, background: '#F9F9F9', border: '1.5px dashed rgba(52,52,124,0.3)', borderRadius: 20 }}
-        onClick={handleFileClick}
       >
-        {files.length === 0 ? (
-          // Empty state - show upload prompt
-          <>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="mx-auto">
-              <path d="M8 2v8M4 6l4-4 4 4M2 12h12" stroke="#34347C" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            <div className="flex flex-col gap-0.5 text-center">
-              <span className="text-[12px] leading-[17px] text-[rgba(18,22,27,0.5)]">Прикрепите документы (необязательно)</span>
-              <span className="text-[12px] leading-[17px] text-[rgba(18,22,27,0.35)]">PDF, DOCX, JPG — до 10 МБ</span>
-            </div>
-          </>
-        ) : (
-          // Files attached - show file list inside the upload area
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center justify-between">
-              <span className="text-[12px] font-medium leading-[17px] text-[rgba(18,22,27,0.7)]">
-                Прикрепленные файлы ({files.length}):
-              </span>
-              <span className="text-[11px] leading-[15px] text-[rgba(18,22,27,0.4)]">
-                PDF, DOCX, JPG — до 10 МБ
-              </span>
-            </div>
-            
-            {files.map((file, index) => (
-              <div 
-                key={index}
-                className="flex items-center justify-between p-2 bg-white/60 border border-[rgba(18,22,27,0.08)] rounded-[8px] group hover:bg-white hover:border-[#34347C]/30 transition-colors"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 flex items-center justify-center rounded bg-[rgba(52,52,124,0.1)]">
-                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                      <path d="M7 1H2.5A.5.5 0 002 1.5v9a.5.5 0 00.5.5h7a.5.5 0 00.5-.5V4L7 1z" stroke="#34347C" strokeWidth="0.8" fill="rgba(52,52,124,0.05)"/>
-                      <path d="M7 1v3h3" stroke="#34347C" strokeWidth="0.8" fill="none"/>
-                    </svg>
-                  </div>
-                  
-                  <div className="flex flex-col">
-                    <span className="text-[12px] font-medium leading-[16px] text-[#12161B] truncate max-w-[180px]">
-                      {file.name}
-                    </span>
-                    <span className="text-[10px] leading-[12px] text-[rgba(18,22,27,0.5)]">
-                      {formatFileSize(file.size)}
-                    </span>
-                  </div>
-                </div>
-
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    removeFile(index)
-                  }}
-                  className="w-5 h-5 flex items-center justify-center rounded-full text-[rgba(18,22,27,0.4)] hover:text-red-500 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100"
-                >
-                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                    <path d="M7.5 2.5L2.5 7.5M2.5 2.5l5 5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-                  </svg>
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          accept=".pdf,.docx,.doc,.jpg,.jpeg,.png"
-          onChange={handleFileChange}
-          className="hidden"
-        />
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="mx-auto" aria-hidden>
+          <path d="M8 2v8M4 6l4-4 4 4M2 12h12" stroke="#34347C" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        </svg>
+        <div className="flex flex-col gap-0.5 text-center">
+          <span className="text-[12px] leading-[17px] text-[rgba(18,22,27,0.5)]">Прикрепите документы (необязательно)</span>
+          <span className="text-[12px] leading-[17px] text-[rgba(18,22,27,0.35)]">PDF, DOCX, JPG — до 10 МБ</span>
+        </div>
       </div>
     </div>
   )
@@ -601,7 +525,6 @@ export function InquirySection({
     panel,
     isComplete,
     problemText,
-    attachedFiles,
     contactValue,
     consents,
     consentErrors,
@@ -633,7 +556,6 @@ export function InquirySection({
     goToBalance,
     resetForm,
     setProblemText,
-    setAttachedFiles,
     setContactValue,
     setConsents,
     setCaptchaToken,
@@ -737,8 +659,6 @@ export function InquirySection({
                           <Step2Panel 
                             value={problemText} 
                             onChange={setProblemText}
-                            files={attachedFiles}
-                            onFilesChange={setAttachedFiles}
                             touched={questionTouched}
                             onBlur={() => setQuestionTouched(true)}
                             validateQuestionText={validateQuestionText}
@@ -872,14 +792,14 @@ export function InquirySection({
               </div>
             </div>
 
-            <div className={styles.pills}>
+            {/* <div className={styles.pills}>
               {PILLS.map(({ icon: Icon, label }) => (
                 <div key={label} className={styles.pill}>
                   <Icon className={styles.pillIcon} strokeWidth={1.6} />
                   <span className={styles.pillLabel}>{label}</span>
                 </div>
               ))}
-            </div>
+            </div> */}
           </div>
         )}
 

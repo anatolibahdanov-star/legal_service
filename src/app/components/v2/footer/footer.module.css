@@ -160,15 +160,13 @@
 .linksColumn {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
   gap: 24px;
 }
 
 @media (min-width: 1024px) {
   .linksColumn {
     width: 160px;
-    min-height: 300px;
-    gap: 0;
+    gap: 40px;
   }
 }
 
@@ -321,6 +319,20 @@
 .mobileContactsEmail {
   font-size: 14px;
   line-height: 20px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.mobileRequisites {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  line-height: 16px;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.mobileRequisitesName {
+  font-weight: 500;
   color: rgba(255, 255, 255, 0.8);
 }
 

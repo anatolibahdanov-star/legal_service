@@ -1,47 +1,9 @@
 .whyUs {
   display: flex;
   flex-direction: column;
-  gap: 0;
   width: 100%;
   background: transparent;
   padding-block: 0;
-}
-
-/* ─── Desktop / Mobile HTML toggle ──────────────────────────────────────── */
-.desktopBlock {
-  display: block;
-}
-
-.mobileBlock {
-  display: none;
-}
-
-@media (max-width: 1023px) {
-  .whyUs {
-    gap: 0;
-    padding-block: 0;
-  }
-
-  .desktopBlock {
-    display: none;
-  }
-
-  .mobileBlock {
-    display: flex;
-    flex-direction: column;
-    gap: 32px;
-    width: 100%;
-    max-width: none;
-    margin-inline: 0;
-    padding-inline: 0;
-  }
-}
-
-@media (min-width: 768px) and (max-width: 1023px) {
-  .mobileBlock {
-    gap: 32px;
-    padding-inline: 0;
-  }
 }
 
 .whyUsContainer {
@@ -57,66 +19,42 @@
   }
 }
 
-.whyUsHeaderRow {
+.carousel {
+  width: 100%;
+}
+
+.emblaViewport {
+  overflow: hidden;
+  width: 100%;
+  container-type: inline-size;
+  container-name: why-us-cards;
+}
+
+.emblaContainer {
   display: flex;
-  align-items: flex-start;
-  gap: 16px;
-}
-
-.whyUsHeader {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  flex: 1;
-}
-
-.whyUsIntro {
-  margin-bottom: 56px;
-}
-
-.sectionTitleLg {
-  font-size: 48px;
-  line-height: 56px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  color: #12161b;
-}
-
-.sectionSubtitleLg {
-  font-size: 22px;
-  line-height: 28px;
-  letter-spacing: -0.01em;
-  color: #12161b;
-}
-
-.whyUsGrid {
-  display: grid;
-  grid-template-columns: 1fr;
+  touch-action: pan-y pinch-zoom;
   gap: 24px;
 }
 
-@media (min-width: 640px) {
-  .whyUsGrid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (min-width: 1024px) {
-  .whyUsGrid {
-    grid-template-columns: repeat(4, 1fr);
-  }
+/* Desktop: exactly 3 cards visible, 4th via scroll */
+.emblaSlide {
+  flex: 0 0 calc((100% - 48px) / 3);
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .whyUsCard {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  min-height: 350px;
+  width: 100%;
+  height: 350px;
   padding: 12px;
   border-radius: 21.32px;
   border: 0.38px solid rgba(18, 22, 27, 0.1);
   box-shadow: 0 2px 6px 0 rgba(30, 47, 72, 0.06);
   background: var(--card-bg);
+  box-sizing: border-box;
 }
 
 .whyUsCardIcon {
@@ -136,9 +74,11 @@
   flex-direction: column;
   gap: 16px;
   flex: 1;
+  min-height: 0;
 }
 
 .whyUsCardTitle {
+  margin: 0;
   font-size: 22px;
   font-weight: 600;
   line-height: 28px;
@@ -148,6 +88,8 @@
 
 .whyUsCardDesc {
   flex: 1;
+  margin: 0;
+  overflow: auto;
   font-size: 16px;
   line-height: 24px;
   letter-spacing: -0.01em;
@@ -166,111 +108,12 @@
   opacity: 0.8;
 }
 
-/* ─── Mobile block (<1024px) ────────────────────────────────────────────── */
-.mobileHeader {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.mobileTitle {
-  font-size: 24px;
-  font-weight: 600;
-  line-height: 30px;
-  letter-spacing: -0.01em;
-  color: #12161b;
-}
-
-.mobileSubtitle {
-  font-size: 16px;
-  line-height: 22px;
-  letter-spacing: -0.01em;
-  color: #12161b;
-}
-
-.mobileCardsScroll {
-  display: none;
-}
-
-.mobileCarouselWrap {
-  display: block;
-}
-
-.tabletGrid {
-  display: none;
-}
-
-.emblaViewport {
-  overflow: hidden;
-  width: 100%;
-}
-
-.emblaContainer {
-  display: flex;
-  touch-action: pan-y pinch-zoom;
-}
-
-/* Mobile: exactly 1 card */
-.emblaSlide {
-  flex: 0 0 100%;
-  min-width: 0;
-  padding-inline: 16px;
-  box-sizing: border-box;
-}
-
-.mobileCard {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  width: 100%;
-  height: 100%;
-  min-height: 280px;
-  padding: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 24px;
-  box-shadow: 0 2px 6px 0 rgba(30, 47, 72, 0.06);
-  background: var(--card-bg);
-  box-sizing: border-box;
-}
-
-.mobileCardIcon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 64px;
-  height: 64px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 12px;
-  background: var(--card-icon-bg);
-}
-
-.mobileCardBody {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.mobileCardTitle {
-  font-size: 16px;
-  font-weight: 600;
-  line-height: 20px;
-  color: var(--card-text);
-}
-
-.mobileCardDesc {
-  font-size: 14px;
-  line-height: 22px;
-  color: var(--card-text);
-  white-space: pre-line;
-}
-
 .dots {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   margin-top: 24px;
-  padding-inline: 16px;
 }
 
 .dot {
@@ -289,35 +132,79 @@
   background: #34347c;
 }
 
-/* Tablet: ~2.5–3 cards */
+/* Tablet: ~2.2 cards peek */
 @media (min-width: 768px) and (max-width: 1023px) {
-  .mobileTitle {
-    font-size: 28px;
-    line-height: 32px;
+  .whyUsContainer {
+    padding-inline: 32px;
   }
 
-  .mobileSubtitle {
+  .emblaContainer {
+    gap: 16px;
+  }
+
+  .emblaSlide {
+    flex: 0 0 calc((100% - 16px) / 2.15);
+  }
+
+  .whyUsCard {
+    height: 320px;
+    padding: 16px;
+  }
+
+  .whyUsCardIcon {
+    width: 64px;
+    height: 64px;
+  }
+
+  .whyUsCardTitle {
     font-size: 18px;
     line-height: 24px;
   }
 
+  .whyUsCardDesc {
+    font-size: 14px;
+    line-height: 22px;
+  }
+}
+
+/* Mobile: 1 card with gap between slides */
+@media (max-width: 767px) {
+  .whyUsContainer {
+    padding-inline: 16px;
+  }
+
   .emblaContainer {
     gap: 12px;
-    padding-inline: 32px;
   }
 
   .emblaSlide {
-    flex: 0 0 280px;
-    padding-inline: 0;
+    flex: 0 0 calc(100% - 12px);
   }
 
-  .mobileCard {
-    padding: 16px;
-    min-height: 300px;
+  .whyUsCard {
+    height: 300px;
+    gap: 24px;
+    padding: 12px;
+    border-radius: 24px;
+  }
+
+  .whyUsCardIcon {
+    width: 64px;
+    height: 64px;
+    border-radius: 12px;
+  }
+
+  .whyUsCardTitle {
+    font-size: 16px;
+    line-height: 20px;
+  }
+
+  .whyUsCardDesc {
+    font-size: 14px;
+    line-height: 22px;
   }
 
   .dots {
-    margin-top: 28px;
-    padding-inline: 32px;
+    margin-top: 20px;
   }
 }

@@ -71,6 +71,7 @@
 .logo {
     display: flex;
     align-items: center;
+    gap: 10px;
     padding-bottom: 2px;
     color: #12161b;
     font-weight: 600;
@@ -79,6 +80,13 @@
     letter-spacing: -0.02em;
     text-decoration: none;
     transition: color 0.2s, opacity 0.2s;
+}
+
+.logoMark {
+    display: block;
+    flex-shrink: 0;
+    width: 28px;
+    height: auto;
 }
 
 .logo:hover {
@@ -92,6 +100,11 @@
 @media (min-width: 768px) {
     .logo {
         font-size: 28px;
+        gap: 12px;
+    }
+
+    .logoMark {
+        width: 32px;
     }
 }
 
@@ -153,6 +166,28 @@
     margin-top: 16px;
 }
 
+/* Admin: edge-to-edge bar, no pill shape */
+.flush {
+    max-width: none;
+    width: 100%;
+    margin: 0;
+    border-radius: 0;
+}
+
+.fixed.flush {
+    top: 0;
+    left: 0;
+    right: 0;
+}
+
+.sticky.flush {
+    top: 0;
+}
+
+.static.flush {
+    margin-top: 0;
+}
+
 .underAppBar {
     z-index: 50;
 }
@@ -177,7 +212,7 @@
     gap: 8px;
 }
 
-@media (min-width: 390px) and (max-width: 1023px) {
+@media (min-width: 440px) and (max-width: 1023px) {
     .headerAuthBtns {
         display: flex;
     }
@@ -218,7 +253,7 @@
     }
 }
 
-@media (min-width: 390px) {
+@media (min-width: 440px) {
     .hideNav .burger {
         display: none;
     }
@@ -319,7 +354,7 @@
     border-top: 1px solid rgba(18, 22, 27, 0.1);
 }
 
-@media (max-width: 389px) {
+@media (max-width: 439px) {
     .mobileMenuAuth {
         display: flex;
     }

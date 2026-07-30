@@ -46,14 +46,16 @@
   position: relative;
   z-index: 10;
   display: flex;
+  flex-direction: column;
   align-items: flex-start;
+  justify-content: space-between;
   width: 100%;
   height: 100%;
   max-width: 1440px;
   margin-inline: auto;
   padding-inline: 100px;
   padding-top: 140px;
-  padding-bottom: 0;
+  padding-bottom: 122px;
 }
 
 .heroText {
@@ -82,6 +84,41 @@
   color: rgba(255, 255, 255, 0.88);
 }
 
+.heroOnlineBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: 44px;
+  padding: 0 18px;
+  border: 0.5px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.2);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.heroBadges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.heroOnlineDot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #4ade80;
+  box-shadow: 0 0 0 4px rgba(74, 222, 128, 0.25);
+}
+
 /* ─── Tablet (768–1023px) ───────────────────────────────────────────────── */
 @media (min-width: 768px) and (max-width: 1023px) {
   .hero {
@@ -95,7 +132,7 @@
   .heroContent {
     padding-inline: 40px;
     padding-top: 120px;
-    padding-bottom: 0;
+    padding-bottom: 106px;
   }
 
   .heroText {
@@ -112,6 +149,12 @@
     font-size: 16px;
     line-height: 24px;
   }
+
+  .heroOnlineBadge {
+    height: 40px;
+    padding: 0 16px;
+    font-size: 14px;
+  }
 }
 
 /* ─── Mobile (≤767px) — match Figma Mobile/Landing ───────────────────────── */
@@ -126,18 +169,27 @@
 
   .heroImageMobile {
     display: block;
-    /* Figma Mobile/Landing «Container Image»: scaleMode STRETCH 100% 100%
-       (glass sits low; dark area stays under the title). */
     object-fit: cover;
     object-position: center center;
+    /* Push glass letters below the headline */
+    transform: translateY(22%);
+    /* Soft black veil over the letters */
+    filter: brightness(0.62);
   }
 
   .heroOverlay {
     display: block;
-    /* Match Figma Container Image overlays */
     background:
-      linear-gradient(180deg, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0) 53%),
-      linear-gradient(0deg, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0) 64%),
+      linear-gradient(
+        180deg,
+        #000 0%,
+        rgba(0, 0, 0, 0.95) 24%,
+        rgba(0, 0, 0, 0.7) 40%,
+        rgba(0, 0, 0, 0.4) 55%,
+        rgba(0, 0, 0, 0.2) 70%,
+        transparent 88%
+      ),
+      linear-gradient(0deg, rgba(0, 0, 0, 0.8) 0%, transparent 50%),
       linear-gradient(180deg, rgba(255, 255, 255, 0) 89%, #f9f9f9 100%);
   }
 
@@ -145,22 +197,37 @@
     align-items: flex-start;
     padding-inline: 16px;
     padding-top: 96px;
-    padding-bottom: 0;
+    padding-bottom: 90px;
   }
 
   .heroText {
-    max-width: min(280px, 78vw);
+    max-width: 100%;
+    width: 100%;
     gap: 10px;
   }
 
   .heroTitle {
-    font-size: 28px;
-    line-height: 32px;
+    font-size: 46px;
+    line-height: 52px;
     font-weight: 600;
+    text-align: center;
   }
 
+  /* Mobile: only the headline — hide supporting paragraphs */
   .heroSubtitle {
-    font-size: 14px;
-    line-height: 20px;
+    display: none;
+  }
+
+  .heroOnlineBadge {
+    height: 36px;
+    padding: 0 14px;
+    gap: 8px;
+    font-size: 13px;
+  }
+
+  .heroOnlineDot {
+    width: 7px;
+    height: 7px;
+    box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.25);
   }
 }

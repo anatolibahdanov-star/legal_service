@@ -121,8 +121,8 @@
 }
 
 .statusUnpaid {
-  color: #475569;
-  background: #f1f5f9;
+  color: #dd3f37;
+  background: rgba(221, 63, 55, 0.12);
 }
 
 .title {

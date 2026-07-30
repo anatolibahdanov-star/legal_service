@@ -143,6 +143,18 @@ export const Footer = () => {
 
           <div className={styles.mobileContacts}>
             <div className={styles.mobileContactsTitle}>
+              <span className={styles.mobileContactsHeading}>Реквизиты</span>
+              <div className={styles.mobileContactsLine} />
+            </div>
+            <div className={styles.mobileRequisites}>
+              <span className={styles.mobileRequisitesName}>{COMPANY_INFO.name}</span>
+              <span>ОГРН: {COMPANY_INFO.ogrn}</span>
+              <span>ИНН: {COMPANY_INFO.inn}</span>
+            </div>
+          </div>
+
+          <div className={styles.mobileContacts}>
+            <div className={styles.mobileContactsTitle}>
               <span className={styles.mobileContactsHeading}>Документы</span>
               <div className={styles.mobileContactsLine} />
             </div>

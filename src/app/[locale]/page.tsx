@@ -5,7 +5,19 @@ import heroImageMobile from '@/public/design/v2-main-page/hero-image-mobile.png'
 import { InquirySection } from '@/src/app/components/v2/inquiry-section/inquiry-section'
 import { Subscriptions } from '@/src/app/components/v2/subscriptions/subscriptions'
 import { HowItWorks } from '@/src/app/components/v2/how-it-works/how-it-works'
+// import { HeroAskButton } from '@/src/app/components/v2/hero/hero-ask-button'
 import styles from './page.module.css'
+
+// const LAWYERS_ONLINE = 3
+
+// function lawyersOnlineLabel(count: number): string {
+//   const n = Math.abs(count) % 100
+//   const last = n % 10
+//   if (n > 10 && n < 15) return `${count} юристов онлайн`
+//   if (last === 1) return `${count} юрист онлайн`
+//   if (last >= 2 && last <= 4) return `${count} юриста онлайн`
+//   return `${count} юристов онлайн`
+// }
 
 export default function Home() {
   return (
@@ -46,7 +58,18 @@ export default function Home() {
               Пользователь получает ответ в пределах 3-х часов с момента
               отправки запроса.
             </p>
+            {/* <HeroAskButton /> */}
           </div>
+
+          {/* <div className={styles.heroBadges}>
+            <div className={styles.heroOnlineBadge}>
+              <span className={styles.heroOnlineDot} aria-hidden />
+              <span>{lawyersOnlineLabel(LAWYERS_ONLINE)}</span>
+            </div>
+            <div className={styles.heroOnlineBadge}>
+              <span>Среднее время ответа ~ 3 часа</span>
+            </div>
+          </div> */}
         </div>
       </section>
 

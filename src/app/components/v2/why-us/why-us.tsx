@@ -30,7 +30,7 @@ function CardDesc({ text }: { text: string }) {
   )
 }
 
-function WhyUsMobileCarousel() {
+function WhyUsCarousel() {
   const [emblaRef, emblaApi] = useEmblaCarousel({
     align: 'start',
     containScroll: 'trimSnaps',
@@ -38,6 +38,7 @@ function WhyUsMobileCarousel() {
     slidesToScroll: 1,
   })
   const [selectedIndex, setSelectedIndex] = useState(0)
+  const [scrollSnaps, setScrollSnaps] = useState<number[]>([])
 
   const onSelect = useCallback(() => {
     if (!emblaApi) return
@@ -46,16 +47,22 @@ function WhyUsMobileCarousel() {
 
   useEffect(() => {
     if (!emblaApi) return
-    onSelect()
+
+    const sync = () => {
+      setScrollSnaps(emblaApi.scrollSnapList())
+      onSelect()
+    }
+
+    sync()
     emblaApi.on('select', onSelect)
-    emblaApi.on('reInit', onSelect)
+    emblaApi.on('reInit', sync)
 
     const onResize = () => emblaApi.reInit()
     window.addEventListener('resize', onResize)
 
     return () => {
       emblaApi.off('select', onSelect)
-      emblaApi.off('reInit', onSelect)
+      emblaApi.off('reInit', sync)
       window.removeEventListener('resize', onResize)
     }
   }, [emblaApi, onSelect])
@@ -68,62 +75,12 @@ function WhyUsMobileCarousel() {
   )
 
   return (
-    <>
+    <div className={styles.carousel}>
       <div className={styles.emblaViewport} ref={emblaRef}>
         <div className={styles.emblaContainer}>
           {CARDS.map((card) => (
             <div key={card.title} className={styles.emblaSlide}>
               <div
-                className={styles.mobileCard}
-                style={
-                  {
-                    '--card-bg': card.bg,
-                    '--card-icon-bg': card.iconBg,
-                    '--card-text': card.textColor,
-                  } as React.CSSProperties
-                }
-              >
-                <div className={styles.mobileCardIcon}>
-                  <Image src={card.icon} alt="" width={48} height={48} />
-                </div>
-                <div className={styles.mobileCardBody}>
-                  <p className={styles.mobileCardTitle}>{card.title}</p>
-                  <p className={styles.mobileCardDesc}>
-                    <CardDesc text={card.desc} />
-                  </p>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className={styles.dots} role="tablist" aria-label="Карточки">
-        {CARDS.map((card, i) => (
-          <button
-            key={card.title}
-            type="button"
-            role="tab"
-            aria-selected={i === selectedIndex}
-            aria-label={`Слайд ${i + 1}`}
-            className={`${styles.dot} ${i === selectedIndex ? styles.dotActive : ''}`}
-            onClick={() => scrollTo(i)}
-          />
-        ))}
-      </div>
-    </>
-  )
-}
-
-export function WhyUs() {
-  return (
-    <div className={styles.whyUs}>
-      <div className={styles.desktopBlock}>
-        <div className={styles.whyUsContainer}>
-          <div className={styles.whyUsGrid}>
-            {CARDS.map((card, i) => (
-              <div
-                key={i}
                 className={styles.whyUsCard}
                 style={
                   {
@@ -134,9 +91,8 @@ export function WhyUs() {
                 }
               >
                 <div className={styles.whyUsCardIcon}>
-                  <Image src={card.icon} alt={card.title} width={48} height={48} />
+                  <Image src={card.icon} alt="" width={48} height={48} />
                 </div>
-
                 <div className={styles.whyUsCardBody}>
                   <p className={styles.whyUsCardTitle}>{card.title}</p>
                   <p className={styles.whyUsCardDesc}>
@@ -144,15 +100,35 @@ export function WhyUs() {
                   </p>
                 </div>
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
       </div>
 
-      <div className={styles.mobileBlock}>
-        <div className={styles.mobileCarouselWrap}>
-          <WhyUsMobileCarousel />
+      {scrollSnaps.length > 1 ? (
+        <div className={styles.dots} role="tablist" aria-label="Карточки">
+          {scrollSnaps.map((_, i) => (
+            <button
+              key={i}
+              type="button"
+              role="tab"
+              aria-selected={i === selectedIndex}
+              aria-label={`Слайд ${i + 1}`}
+              className={`${styles.dot} ${i === selectedIndex ? styles.dotActive : ''}`}
+              onClick={() => scrollTo(i)}
+            />
+          ))}
         </div>
+      ) : null}
+    </div>
+  )
+}
+
+export function WhyUs() {
+  return (
+    <div className={styles.whyUs}>
+      <div className={styles.whyUsContainer}>
+        <WhyUsCarousel />
       </div>
     </div>
   )
