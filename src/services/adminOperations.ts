@@ -2,6 +2,7 @@ import logger from "@/src/libs/logger"
 import { getAllUserPaymentsForAdmin } from "@/src/repositories/payments/repo"
 import { adminAdjustBalance, getUserManualOperations } from "@/src/repositories/balances/repo"
 import { accrueFreeQuestions, getUserFreeQuestionOperations } from "@/src/repositories/freeQuestions/repo"
+import { getUserSubscriptionCancelEvents } from "@/src/repositories/subscriptions/repo"
 import { mapPaymentRow } from "@/src/services/paymentHistory"
 import {
     AdminBalanceOperationI,
@@ -51,10 +52,11 @@ export const getAdminUserOperations = async (
 ): Promise<AdminBalanceOperationI[]> => {
     const msg = msgGlobal + "getAdminUserOperations - "
     const operationsCap = 2000
-    const [porderRows, manualRows, freeRows] = await Promise.all([
+    const [porderRows, manualRows, freeRows, cancelRows] = await Promise.all([
         getAllUserPaymentsForAdmin(userId, operationsCap),
         getUserManualOperations(userId, operationsCap),
         getUserFreeQuestionOperations(userId, operationsCap),
+        getUserSubscriptionCancelEvents(userId, operationsCap),
     ])
 
     const operations: AdminBalanceOperationI[] = []
@@ -112,6 +114,19 @@ export const getAdminUserOperations = async (
             actor,
             questionId: row.question_id ?? null,
             questionUuid: row.question_uuid ?? null,
+        })
+    }
+
+    for (const row of cancelRows) {
+        operations.push({
+            id: `s-${row.id}`,
+            createdAt: new Date(row.created_at).toISOString(),
+            type: AdminOperationTypeE.SubscriptionCancel,
+            amount: 0,
+            comment: row.comment ?? (row.plan_name ? `Тариф «${row.plan_name}»` : null),
+            actor: row.admin_name || row.admin_username ? formatActor(row.admin_name, row.admin_username) : "Пользователь",
+            questionId: null,
+            questionUuid: null,
         })
     }
 

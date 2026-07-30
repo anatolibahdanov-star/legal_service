@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import logger from '@/src/libs/logger';
 import { authOptions } from '@/src/app/api/auth/[...nextauth]/route';
-import { getActiveSubscriptionByUser, getPlanById } from '@/src/repositories/subscriptions/repo';
+import { getActiveSubscriptionByUser, getPlanById, getSubscriptionQuestionStats } from '@/src/repositories/subscriptions/repo';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,14 +21,18 @@ export async function GET() {
             return NextResponse.json({ subscription: null }, { status: 200 });
         }
         const plan = sub.plan_id ? await getPlanById(sub.plan_id) : null;
+        const questions = await getSubscriptionQuestionStats(sub.id);
         return NextResponse.json({
             subscription: {
                 id: sub.id,
                 status: sub.status,
                 planId: sub.plan_id,
                 planName: plan?.name ?? null,
+                tone: plan?.tone ?? null,
                 priceRub: sub.price_rub,
                 bvAmount: sub.bv_amount,
+                questionsRemaining: questions.remaining,
+                questionsTotal: questions.initial,
                 periodStart: sub.period_start ? new Date(sub.period_start as unknown as string).toISOString() : null,
                 periodEnd: sub.period_end ? new Date(sub.period_end as unknown as string).toISOString() : null,
                 willRenew: sub.next_charge_at !== null && sub.binding_id !== null,

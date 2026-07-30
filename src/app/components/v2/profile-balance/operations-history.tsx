@@ -17,6 +17,7 @@ const typeFilterOptions = [
   { value: 'all', label: 'Все операции' },
   { value: 'payment', label: 'Оплата' },
   { value: 'subscription_payment', label: 'Оплата подписки' },
+  { value: 'subscription_cancel', label: 'Отмена подписки' },
   { value: 'charge', label: 'Списание с баланса' },
   { value: 'refund', label: 'Возврат' },
   { value: 'manual', label: 'Ручное изменение' },

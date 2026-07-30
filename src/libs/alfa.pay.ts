@@ -2,9 +2,8 @@ import logger from "@/src/libs/logger"
 import { User } from "next-auth";
 import { CustomResponseDataI } from "../interfaces/api";
 
-// const ALFA_API_URL = 'https://pay.alfabank.ru/payment/rest'; // Or test URL
-const ALFA_API_URL = 'https://alfa.rbsuat.com/payment/rest'; // Or test URL
-const ALFA_API_URL_DYN = 'https://alfa.rbsuat.com/payment/rest/sbp/c2b/qr/dynamic/get.do'
+const ALFA_API_URL = process.env.ALFA_API_URL || 'https://pay.alfabank.ru/payment/rest';
+const ALFA_API_URL_DYN = `${ALFA_API_URL}/sbp/c2b/qr/dynamic/get.do`;
 const USERNAME = process.env.ALFA_USERNAME;
 const PASSWORD = process.env.ALFA_PASSWORD;
 // Отдельный мерчант-логин для подписок (с включённым автоплатёжом/binding на
@@ -17,8 +16,6 @@ const msgGlobal = "LIBS ALFA.PAY "
 
 export const createAlfaOrder = async (amount: number, orderId: string, user: User): Promise<CustomResponseDataI> => {
   const msg = msgGlobal + "createAlfaOrder - "
-  // const ALFA_API_URL = 'https://pay.alfabank.ru/payment/rest'; // Or test URL
-  const ALFA_API_URL = 'https://alfa.rbsuat.com/payment/rest';
   const domainUrl = process.env.NEXT_PUBLIC_URL
   const orderPrefix = process.env.NODE_ENV === 'development' ? 'dev-' : ''
 
@@ -72,7 +69,6 @@ export const createAlfaOrder = async (amount: number, orderId: string, user: Use
 
 export const getAlfaOrderQR = async (alfaOrderId: string, user: User): Promise<CustomResponseDataI> => {
     const msg = "SERVICE ALFA getAlfaOrderQR - "
-    const ALFA_API_URL_DYN = 'https://alfa.rbsuat.com/payment/rest/sbp/c2b/qr/dynamic/get.do'
 
     try {
         const responseQR = await fetch(`${ALFA_API_URL_DYN}`, {
@@ -121,7 +117,6 @@ export const createAlfaBindingOrder = async (
   clientId: string,
 ): Promise<CustomResponseDataI> => {
   const msg = msgGlobal + "createAlfaBindingOrder - "
-  const ALFA_API_URL = 'https://alfa.rbsuat.com/payment/rest';
   const domainUrl = process.env.NEXT_PUBLIC_URL
   const orderPrefix = process.env.NODE_ENV === 'development' ? 'dev-' : ''
 
@@ -187,7 +182,6 @@ export const chargeAlfaBinding = async (
   bindingId: string,
 ): Promise<CustomResponseDataI> => {
   const msg = msgGlobal + "chargeAlfaBinding - "
-  const ALFA_API_URL = 'https://alfa.rbsuat.com/payment/rest';
   const domainUrl = process.env.NEXT_PUBLIC_URL
   const orderPrefix = process.env.NODE_ENV === 'development' ? 'dev-' : ''
 
@@ -248,7 +242,6 @@ export const chargeAlfaBinding = async (
 
 export const getAlfaOrderStatus = async (alfaOrderId: string, user: User, useSubCredentials: boolean = false): Promise<CustomResponseDataI> => {
   const msg = "SERVICE ALFA getAlfaOrderStatus - "
-  const ALFA_API_URL = 'https://alfa.rbsuat.com/payment/rest/getOrderStatusExtended.do';
 
   const query = new URLSearchParams({
     userName: (useSubCredentials ? SUB_USERNAME : USERNAME)!,
@@ -257,7 +250,7 @@ export const getAlfaOrderStatus = async (alfaOrderId: string, user: User, useSub
   })
 
   try {
-    const response = await fetch(`${ALFA_API_URL}?${query}`, {
+    const response = await fetch(`${ALFA_API_URL}/getOrderStatusExtended.do?${query}`, {
         method: 'GET',
         headers: { 'Accept': 'application/json' },
     });
@@ -290,5 +283,29 @@ export const getAlfaOrderStatus = async (alfaOrderId: string, user: User, useSub
         error: "Error during Alfa payment request create order: " + (err as Error).message,
     }
   }
-  
+
+}
+
+export const unBindAlfaCard = async (bindingId: string): Promise<CustomResponseDataI> => {
+  const msg = msgGlobal + "unBindAlfaCard - "
+  try {
+    const response = await fetch(`${ALFA_API_URL}/unBindCard.do`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+            userName: SUB_USERNAME!,
+            password: SUB_PASSWORD!,
+            bindingId: bindingId,
+        }),
+    });
+    const data = await response.json();
+    logger.info(msg + "Response from Alfa", data)
+    if (data.errorCode && data.errorCode !== "0") {
+        return { status: false, data: null, techical_data: data, error: data.errorMessage ?? 'unBindCard failed' }
+    }
+    return { status: true, data: data, techical_data: data, error: "" }
+  } catch (err) {
+    logger.error(msg + "Technical Error during unBindCard", (err as Error).message)
+    return { status: false, data: null, error: "unBindCard: " + (err as Error).message }
+  }
 }

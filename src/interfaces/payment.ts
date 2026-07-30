@@ -161,6 +161,7 @@ export interface PaymentHistoryResponseI {
 export enum AdminOperationTypeE {
   Payment = "payment",
   SubscriptionPayment = "subscription_payment",
+  SubscriptionCancel = "subscription_cancel",
   Charge = "charge",
   Refund = "refund",
   Manual = "manual",

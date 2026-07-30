@@ -40,16 +40,17 @@ export async function topUpSubscriptionGrantTx(
     userId: number | string,
     addCount: number,
     newExpiresAt: string,
+    comment: string = 'Продление подписки',
 ): Promise<void> {
     await conn.query<ResultSetHeader>(
-        `UPDATE free_question_grant SET remaining = remaining + ?, initial = initial + ?, expires_at = ? WHERE id = ?`,
+        `UPDATE free_question_grant SET initial = remaining + ?, remaining = remaining + ?, expires_at = ? WHERE id = ?`,
         [addCount, addCount, newExpiresAt, grantId],
     );
     if (addCount > 0) {
         await conn.query<ResultSetHeader>(
             `INSERT INTO free_question_operation(user_id, admin_id, question_id, op_type, source, grant_id, amount, comment, created_at)
              VALUES(?, NULL, NULL, ?, ?, ?, ?, ?, NOW())`,
-            [userId, FreeQuestionOpTypeE.SubscriptionAccrual, FreeQuestionSourceE.Subscription, grantId, addCount, 'Продление подписки'],
+            [userId, FreeQuestionOpTypeE.SubscriptionAccrual, FreeQuestionSourceE.Subscription, grantId, addCount, comment],
         );
         await conn.query<ResultSetHeader>(`UPDATE user SET free_questions = free_questions + ? WHERE id = ?`, [addCount, userId]);
     }
