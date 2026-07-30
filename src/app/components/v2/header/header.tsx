@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import styles from "./header.module.css";
@@ -9,6 +10,7 @@ import { useHeader } from "./header.hook";
 import { AuthFormWindow } from "@/src/app/components/popups/AuthFormWindow";
 import { RegisterFormWindow } from "@/src/app/components/popups/RegisterFormWindow";
 import { ResetPasswordFormWindow } from "@/src/app/components/popups/ResetPasswordFormWindow";
+import headerLogo from "@/public/design/v2-main-page/icons/header-logo.svg";
 
 interface HeaderProps {
   isAuthenticated?: boolean
@@ -17,6 +19,8 @@ interface HeaderProps {
   mode?: 'fixed' | 'sticky' | 'static'
   hideNav?: boolean
   underAppBar?: boolean
+  /** Full-width bar without pill rounding (admin shell). */
+  flush?: boolean
 }
 
 export const Header: React.FC<HeaderProps> = ({ 
@@ -26,6 +30,7 @@ export const Header: React.FC<HeaderProps> = ({
   mode = 'sticky',
   hideNav = false,
   underAppBar = false,
+  flush = false,
 }) => {
   const {
     isAuthenticated: actuallyAuthenticated,
@@ -146,7 +151,7 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={isMenu ? closeMobileMenu : undefined}
             className={className}
           >
-            Личный кабинет
+            {isStaff ? 'Кабинет' : 'Личный кабинет'}
           </Link>
           <button
             type="button"
@@ -181,7 +186,7 @@ export const Header: React.FC<HeaderProps> = ({
     <header
       ref={headerRef}
       id="header"
-      className={`${styles.header} ${styles[mode]} ${underAppBar ? styles.underAppBar : ''} ${hideNav || isStaff ? styles.hideNav : ''} ${overDarkHero ? styles.headerOverHero : ''}`}
+      className={`${styles.header} ${styles[mode]} ${flush ? styles.flush : ''} ${underAppBar ? styles.underAppBar : ''} ${hideNav || isStaff ? styles.hideNav : ''} ${overDarkHero ? styles.headerOverHero : ''}`}
     >
         <div id="container" className={styles.container}>
 
@@ -191,6 +196,14 @@ export const Header: React.FC<HeaderProps> = ({
               className={styles.logo}
               onClick={closeMobileMenu}
             >
+              <Image
+                src={headerLogo}
+                alt=""
+                width={32}
+                height={36}
+                className={styles.logoMark}
+                priority
+              />
               ЭНКИ
             </Link>
 

@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
+import useEmblaCarousel from 'embla-carousel-react'
 import { X } from 'lucide-react'
 import { isStaffRole } from '@/src/app/components/v2/lawyer-requests/staff-gate'
 import { useBodyScrollLock } from '@/src/app/hooks/useBodyScrollLock'
@@ -69,7 +70,7 @@ const MONTHLY_FALLBACK: Plan[] = [
   {
     name: 'Старт',
     description: 'Ежемесячная подписка: 5 вопросов',
-    price: '7 000 ₽',
+    price: '8 500 ₽',
     priceSuffix: '/мес',
     badge: '5 запросов в месяц для базовых задач',
     tone: 'yellow',
@@ -279,6 +280,49 @@ export function Subscriptions() {
 
   const plans: Plan[] = [oneTimePlan, ...monthly]
 
+  const [emblaRef, emblaApi] = useEmblaCarousel({
+    align: 'start',
+    containScroll: 'trimSnaps',
+    dragFree: false,
+    slidesToScroll: 1,
+  })
+  const [selectedIndex, setSelectedIndex] = useState(0)
+  const [scrollSnaps, setScrollSnaps] = useState<number[]>([])
+
+  const onSelect = useCallback(() => {
+    if (!emblaApi) return
+    setSelectedIndex(emblaApi.selectedScrollSnap())
+  }, [emblaApi])
+
+  useEffect(() => {
+    if (!emblaApi) return
+
+    const sync = () => {
+      setScrollSnaps(emblaApi.scrollSnapList())
+      onSelect()
+    }
+
+    sync()
+    emblaApi.on('select', onSelect)
+    emblaApi.on('reInit', sync)
+
+    const onResize = () => emblaApi.reInit()
+    window.addEventListener('resize', onResize)
+
+    return () => {
+      emblaApi.off('select', onSelect)
+      emblaApi.off('reInit', sync)
+      window.removeEventListener('resize', onResize)
+    }
+  }, [emblaApi, onSelect, plans.length])
+
+  const scrollTo = useCallback(
+    (index: number) => {
+      emblaApi?.scrollTo(index)
+    },
+    [emblaApi],
+  )
+
   return (
     <section id="subscriptions" className={styles.subscriptions}>
       <div className={styles.container}>
@@ -292,86 +336,106 @@ export function Subscriptions() {
             <p className={styles.subtitle}>
               {/* <strong>Подписки</strong> */}
               {/* <br /> */}
-              Ежемесячные подписки с разным количеством вопросов. В случае если
-              Пользователь не исчерпал лимит вопросов за месяц их остаток не
-              сгорает и переносится на следующий месяц при условии продолжения
-              подписки.
+              Разовый запрос или ежемесячные подписки с разным количеством запросов.
+              <br/>
+               Выбирайте подходящий именно вам вариант. 
+               <br/>
+              При ежемесячной подписке неиспользованные запросы не сгорают и переносятся на следующий месяц
             </p>
-            <p className={styles.subtitle}>
+            {/* <p className={styles.subtitle}>
               Лицензия на месяц предоставляется для 1 пользователя.
-            </p>
+            </p> */}
           </div>
         </header>
 
-        <div className={styles.cardsViewport}>
-          <div className={styles.cards}>
-            {plans.map((plan) => {
-              const isCurrent = plan.planId != null && mySub?.planId === plan.planId
-              return (
-              <article
-                key={plan.planId ?? plan.name}
-                className={`${styles.card} ${plan.featured ? styles.featuredCard : ''} ${isCurrent ? styles.currentCard : ''}`}
-              >
-                {isCurrent ? (
-                  <span className={`${styles.featuredLabel} ${styles.currentLabel}`}>
-                    Ваш тариф
-                  </span>
-                ) : plan.featured ? (
-                  <span className={styles.featuredLabel}>Оптимальный</span>
-                ) : null}
-
-                <div>
-                  <h3 className={styles.cardTitle}>{plan.name}</h3>
-                  <p className={styles.cardDescription}>{plan.description}</p>
-                </div>
-
-                <p className={styles.price}>
-                  {plan.oldPrice ? (
-                    <span className={styles.oldPrice}>{plan.oldPrice}</span>
-                  ) : null}
-                  <span>{plan.price}</span>
-                  {plan.priceSuffix ? (
-                    <span className={styles.priceSuffix}>{plan.priceSuffix}</span>
-                  ) : null}
-                </p>
-
-                <div className={`${styles.benefit} ${BADGE_TONE_CLASS[plan.tone]}`}>
-                  <CheckIcon />
-                  <p className={styles.benefitTitle}>{plan.badge}</p>
-                </div>
-
-                <div className={styles.cardFooter}>
-                  {plan.note ? <p className={styles.note}>{plan.note}</p> : null}
-                  {isStaff ? (
-                    <span
-                      className={`${styles.primaryButton} ${styles.primaryButtonDisabled}`}
-                      aria-disabled="true"
-                    >
-                      Недоступно
+        <div className={styles.carousel}>
+          <div className={styles.cardsViewport} ref={emblaRef}>
+            <div className={styles.cards}>
+              {plans.map((plan) => {
+                const isCurrent = plan.planId != null && mySub?.planId === plan.planId
+                return (
+                <div key={plan.planId ?? plan.name} className={styles.slide}>
+                <article
+                  className={`${styles.card} ${plan.featured ? styles.featuredCard : ''} ${isCurrent ? styles.currentCard : ''}`}
+                >
+                  {isCurrent ? (
+                    <span className={`${styles.featuredLabel} ${styles.currentLabel}`}>
+                      Ваш тариф
                     </span>
-                  ) : plan.planId && session?.user ? (
-                    <button
-                      type="button"
-                      className={styles.primaryButton}
-                      onClick={() => handleBuy(plan)}
-                      disabled={buyingId !== null || subCheck === 'loading'}
-                    >
-                      {buyingId === plan.planId
-                        ? 'Создаём платёж…'
-                        : isCurrent
-                          ? 'Продлить'
-                          : 'Купить'}
-                    </button>
-                  ) : (
-                    <a className={styles.primaryButton} href="#inquiry">
-                      Купить
-                    </a>
-                  )}
+                  ) : plan.featured ? (
+                    <span className={styles.featuredLabel}>Оптимальный</span>
+                  ) : null}
+
+                  <div>
+                    <h3 className={styles.cardTitle}>{plan.name}</h3>
+                    <p className={styles.cardDescription}>{plan.description}</p>
+                  </div>
+
+                  <p className={styles.price}>
+                    {plan.oldPrice ? (
+                      <span className={styles.oldPrice}>{plan.oldPrice}</span>
+                    ) : null}
+                    <span>{plan.price}</span>
+                    {plan.priceSuffix ? (
+                      <span className={styles.priceSuffix}>{plan.priceSuffix}</span>
+                    ) : null}
+                  </p>
+
+                  <div className={`${styles.benefit} ${BADGE_TONE_CLASS[plan.tone]}`}>
+                    <CheckIcon />
+                    <p className={styles.benefitTitle}>{plan.badge}</p>
+                  </div>
+
+                  <div className={styles.cardFooter}>
+                    {plan.note ? <p className={styles.note}>{plan.note}</p> : null}
+                    {isStaff ? (
+                      <span
+                        className={`${styles.primaryButton} ${styles.primaryButtonDisabled}`}
+                        aria-disabled="true"
+                      >
+                        Недоступно
+                      </span>
+                    ) : plan.planId && session?.user ? (
+                      <button
+                        type="button"
+                        className={styles.primaryButton}
+                        onClick={() => handleBuy(plan)}
+                        disabled={buyingId !== null || subCheck === 'loading'}
+                      >
+                        {buyingId === plan.planId
+                          ? 'Создаём платёж…'
+                          : isCurrent
+                            ? 'Продлить'
+                            : 'Купить'}
+                      </button>
+                    ) : (
+                      <a className={styles.primaryButton} href="#inquiry">
+                        Купить
+                      </a>
+                    )}
+                  </div>
+                </article>
                 </div>
-              </article>
-              )
-            })}
+                )
+              })}
+            </div>
           </div>
+
+          {scrollSnaps.length > 1 ? (
+            <div className={styles.dots} role="tablist" aria-label="Тарифы">
+              {scrollSnaps.map((_, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  role="tab"
+                  aria-selected={i === selectedIndex}
+                  aria-label={`Тариф ${i + 1}`}
+                  className={`${styles.dot} ${i === selectedIndex ? styles.dotActive : ''}`}
+                  onClick={() => scrollTo(i)}
+                />
+              ))}
+            </div>
+          ) : null}
         </div>
       </div>
 

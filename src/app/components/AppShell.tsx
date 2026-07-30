@@ -3,8 +3,6 @@
 import { usePathname } from "next/navigation";
 import { locales } from "@/i18n.config";
 
-import { Header as LegacyHeader } from "@/src/app/components/Header";
-import { Footer as LegacyFooter } from "@/src/app/components/Footer";
 import { Header } from "@/src/app/components/v2/header/header";
 import { Footer } from "@/src/app/components/v2/footer/footer";
 // import { CookieConsent } from "@/src/app/components/CookieConsent";
@@ -14,7 +12,9 @@ import { YandexCaptchaProvider } from "@/src/app/providers/YandexCaptchaProvider
 import { Toaster } from "@/src/app/components/ui/sonner";
 
 const isRoute = (pathname: string, route: string) =>
-  pathname === route || new RegExp(`^/[^/]+${route}(?:/|$)`).test(pathname);
+  pathname === route ||
+  pathname.startsWith(`${route}/`) ||
+  new RegExp(`^/(?:${locales.join("|")})${route}(?:/|$)`).test(pathname);
 
 const LOCALE_HOME_PATTERN = new RegExp(`^/(?:${locales.join("|")})/?$`);
 
@@ -25,31 +25,16 @@ const isHomeRoute = (pathname: string) =>
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isAdminPage = isRoute(pathname, "/admin");
   const isAdminRequests = isRoute(pathname, "/admin/requests");
-  const isLegacyAdminShell = isAdminPage && !isAdminRequests;
+  // Full-width flat header only for react-admin (/admin), not lawyer UI (/admin/requests)
+  const isReactAdmin = isRoute(pathname, "/admin") && !isAdminRequests;
   const isHome = isHomeRoute(pathname);
-  const contentClass =
-    isHome || isLegacyAdminShell ? undefined : "v2-header-content-offset";
-
-  if (isLegacyAdminShell) {
-    return (
-      <NextAuthProvider>
-        <YandexCaptchaProvider>
-          <LegacyHeader />
-          {children}
-          <LegacyFooter />
-          {/* <SmartCaptchaLegalBadge /> */}
-          <Toaster richColors position="top-right" />
-        </YandexCaptchaProvider>
-      </NextAuthProvider>
-    );
-  }
+  const contentClass = isHome ? undefined : "v2-header-content-offset";
 
   return (
     <NextAuthProvider>
       <YandexCaptchaProvider>
-        <Header mode="fixed" />
+        <Header mode="fixed" flush={isReactAdmin} />
         <div className={contentClass}>{children}</div>
         <Footer />
         {/* <CookieConsent /> */}
