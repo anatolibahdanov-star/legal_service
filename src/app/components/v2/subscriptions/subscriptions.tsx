@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import useEmblaCarousel from 'embla-carousel-react'
 import { X } from 'lucide-react'
@@ -8,6 +9,7 @@ import { isStaffRole } from '@/src/app/components/v2/lawyer-requests/staff-gate'
 import { useBodyScrollLock } from '@/src/app/hooks/useBodyScrollLock'
 import { CustomGetRequest, CustomRequest } from '@/src/libs/request'
 import { OrderTypeE } from '@/src/interfaces/payment'
+import { clearPostAuthIntent, peekPostAuthIntent, setPostAuthIntent } from '@/src/libs/postAuthIntent'
 import styles from './subscriptions.module.css'
 
 type Tone = 'orange' | 'yellow' | 'purple' | 'green'
@@ -27,6 +29,8 @@ type Plan = {
   /** Subscription plan id when the card is a DB-backed monthly plan */
   planId?: number
   bvAmount?: number
+  /** Pay-per-question card: no subscription, money goes through the balance */
+  oneTime?: boolean
 }
 
 type MySub = {
@@ -64,6 +68,7 @@ const oneTimePlan: Plan = {
   price: '2 000 ₽',
   badge: 'Один вопрос – один ответ, без подписки',
   tone: 'orange',
+  oneTime: true,
 }
 
 const MONTHLY_FALLBACK: Plan[] = [
@@ -140,12 +145,14 @@ function CheckIcon() {
 }
 
 export function Subscriptions() {
-  const { data: session } = useSession()
+  const { data: session, status: sessionStatus } = useSession()
   const isStaff = isStaffRole(session?.user?.role)
   const [monthly, setMonthly] = useState<Plan[]>(MONTHLY_FALLBACK)
+  const [plansLoaded, setPlansLoaded] = useState(false)
   const [buyingId, setBuyingId] = useState<number | null>(null)
   const [mySub, setMySub] = useState<MySub | null>(null)
   const [subCheck, setSubCheck] = useState<'loading' | 'ready' | 'error'>('loading')
+  const [subLoadedFor, setSubLoadedFor] = useState<string | null>(null)
   const [confirmData, setConfirmData] = useState<ConfirmData | null>(null)
 
   useBodyScrollLock(confirmData !== null)
@@ -212,6 +219,15 @@ export function Subscriptions() {
     void doBuy(plan)
   }
 
+  const handleAnonBuy = (plan: Plan) => {
+    setPostAuthIntent(
+      plan.oneTime
+        ? { kind: 'topup' }
+        : { kind: 'plan', planId: plan.planId ?? null, planName: plan.name },
+    )
+    window.dispatchEvent(new CustomEvent('enki:open-auth', { detail: { form: 'register' } }))
+  }
+
   const doBuy = async (plan: Plan) => {
     if (!plan.planId || buyingId !== null) return
     setBuyingId(plan.planId)
@@ -241,21 +257,53 @@ export function Subscriptions() {
         if (!cancelled && Array.isArray(list) && list.length > 0) {
           setMonthly(list.map(mapDtoToPlan))
         }
+        if (!cancelled) setPlansLoaded(true)
       })
-      .catch(() => {})
+      .catch(() => {
+        if (!cancelled) setPlansLoaded(true)
+      })
     return () => {
       cancelled = true
     }
   }, [])
 
   useEffect(() => {
-    if (!session?.user || isStaff) {
+    const userId = session?.user?.id ? String(session.user.id) : null
+    if (!userId || isStaff) return
+    if (!plansLoaded || subLoadedFor !== userId) return
+    // Намерение отрабатываем только на своём якоре: после авторизации формы
+    // приводят сюда через '/#subscriptions'. Логин из других сценариев
+    // (например, встроенный вход в визарде вопроса) его не подхватывает.
+    if (window.location.hash !== '#subscriptions') return
+    const intent = peekPostAuthIntent()
+    if (!intent || intent.kind !== 'plan') return
+    const plan = monthly.find((p) =>
+      intent.planId !== null ? p.planId === intent.planId : p.name === intent.planName,
+    )
+    if (!plan?.planId) return
+    clearPostAuthIntent()
+    setConfirmData(buildConfirm(plan) ?? {
+      plan,
+      title: 'Подтверждение покупки',
+      paragraphs: [
+        `Вы выбрали тариф «${plan.name}» — ${plan.price}${plan.priceSuffix ?? ''}.`,
+        'Нажмите «Продолжить», чтобы перейти к оплате.',
+      ],
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.user?.id, isStaff, plansLoaded, subLoadedFor, monthly])
+
+  useEffect(() => {
+    const userId = session?.user?.id ? String(session.user.id) : null
+    if (!userId || isStaff) {
       setMySub(null)
       setSubCheck('ready')
+      setSubLoadedFor(null)
       return
     }
     let cancelled = false
     setSubCheck('loading')
+    setSubLoadedFor(null)
     CustomGetRequest('/subscriptions/me')
       .then((res) => {
         if (cancelled) return
@@ -266,11 +314,13 @@ export function Subscriptions() {
           setMySub(null)
           setSubCheck('error')
         }
+        setSubLoadedFor(userId)
       })
       .catch(() => {
         if (!cancelled) {
           setMySub(null)
           setSubCheck('error')
+          setSubLoadedFor(userId)
         }
       })
     return () => {
@@ -408,10 +458,29 @@ export function Subscriptions() {
                             ? 'Продлить'
                             : 'Купить'}
                       </button>
-                    ) : (
-                      <a className={styles.primaryButton} href="#inquiry">
+                    ) : plan.oneTime && session?.user ? (
+                      <Link className={styles.primaryButton} href="/profile/?tab=balance">
                         Купить
-                      </a>
+                      </Link>
+                    ) : sessionStatus === 'loading' ? (
+                      <button type="button" className={styles.primaryButton} disabled>
+                        Купить
+                      </button>
+                    ) : !session?.user ? (
+                      <button
+                        type="button"
+                        className={styles.primaryButton}
+                        onClick={() => handleAnonBuy(plan)}
+                      >
+                        Купить
+                      </button>
+                    ) : (
+                      <span
+                        className={`${styles.primaryButton} ${styles.primaryButtonDisabled}`}
+                        aria-disabled="true"
+                      >
+                        Недоступно
+                      </span>
                     )}
                   </div>
                 </article>

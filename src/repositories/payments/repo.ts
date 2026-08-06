@@ -2,7 +2,7 @@ import logger from "@/src/libs/logger"
 import { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 import { find, findOne, insert, update, queryTransactionWrapper, executeTransactionWrapper } from '@/src/libs/db';
 import { CountResult } from '@/src/interfaces/db';
-import { OrderStatusE, OrderTypeE } from "@/src/interfaces/payment";
+import { OrderStatusE, OrderTypeE, SubscriptionEventE } from "@/src/interfaces/payment";
 
 const msgGlobal = "REPO PAYMENTS "
 
@@ -17,6 +17,8 @@ export interface DBPaymentRow extends RowDataPacket {
     data: string | null;
     created_at: string;
     question_uuid: string | null;
+    plan_name?: string | null;
+    sub_event?: SubscriptionEventE | null;
 }
 
 export async function getUserPayments(
@@ -44,13 +46,28 @@ export async function getAllUserPaymentsForAdmin(
     userId: string | number, cap: number = 500
 ): Promise<DBPaymentRow[]> {
     const msg = msgGlobal + "getAllUserPaymentsForAdmin - "
+    const subEvents = [
+        SubscriptionEventE.Purchase,
+        SubscriptionEventE.Renew,
+        SubscriptionEventE.Upgrade,
+        SubscriptionEventE.Downgrade,
+    ].join(",")
     const query = `SELECT po.id, po.user_id, po.amount, po.order_type ptype, po.question_id,
-        po.alpha_id, po.status, po.data, po.created_at, BIN_TO_UUID(q.uuid) question_uuid
-        FROM porder po LEFT JOIN question q ON po.question_id = q.id
+        po.alpha_id, po.status, po.data, po.created_at, BIN_TO_UUID(q.uuid) question_uuid,
+        COALESCE(sh.plan_name, sp.name) plan_name, sh.event_type sub_event
+        FROM porder po
+        LEFT JOIN question q ON po.question_id = q.id
+        LEFT JOIN (
+            SELECT h.order_id, MIN(h.event_type) event_type, MIN(h.plan_name) plan_name
+            FROM subscription_history h
+            WHERE h.user_id = ? AND h.order_id IS NOT NULL AND h.event_type IN (${subEvents})
+            GROUP BY h.order_id
+        ) sh ON sh.order_id = po.id
+        LEFT JOIN subscription_plan sp ON sp.id = po.plan_id
         WHERE po.user_id = ?
         ORDER BY po.created_at DESC, po.id DESC
         LIMIT ?`
-    const findFunc = find({ query, values: [userId, cap] });
+    const findFunc = find({ query, values: [userId, userId, cap] });
     const executedQueries = await queryTransactionWrapper<DBPaymentRow>([findFunc], msg);
     if (!executedQueries) {
         logger.error(msg + "SQL not results from execution", query)

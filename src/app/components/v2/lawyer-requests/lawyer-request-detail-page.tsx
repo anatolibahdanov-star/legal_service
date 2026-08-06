@@ -182,6 +182,10 @@ export function LawyerRequestDetailPage({ requestId }: Props) {
 
   const handleGrok = async () => {
     if (!record) return
+    if (record.job_status === QuestionStatusesE.Unpaid) {
+      toast.warning('Вопрос не оплачен — работа с ним недоступна.')
+      return
+    }
     if (!plainText(reply)) {
       toast.warning('Нужен текст ответа Консультант+ для обработки в Grok.')
       return
@@ -508,7 +512,8 @@ export function LawyerRequestDetailPage({ requestId }: Props) {
                     confirmLabel: 'Обработать в Grok',
                     run: handleGrok,
                   })}
-                  disabled={grokLoading}
+                  disabled={grokLoading || isUnpaid}
+                  title={isUnpaid ? 'Вопрос не оплачен — работа с ним недоступна' : undefined}
                 >
                   {grokLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                   Обработать в Grok

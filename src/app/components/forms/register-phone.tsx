@@ -19,6 +19,7 @@ import {
   type LegalConsentsValue,
 } from "@/src/app/components/LegalConsents";
 import { usePhoneBlockCountdown } from "@/src/app/components/forms/hooks/usePhoneBlockCountdown";
+import { consumePostAuthRedirect } from "@/src/libs/postAuthIntent";
 
 type Step = "phone" | "code";
 
@@ -164,7 +165,7 @@ export default function RegisterPhoneForm({ onClose, onSwitchToLogin }: FormCont
       };
     }
     onClose();
-    router.push("/profile");
+    router.push(consumePostAuthRedirect() ?? "/profile");
     router.refresh();
     return { ok: true };
   };

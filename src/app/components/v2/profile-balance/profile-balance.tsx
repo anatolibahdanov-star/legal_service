@@ -237,6 +237,7 @@ export function V2ProfileBalance({ data, setUserBalance }: V2ProfileBalanceProps
   }
 
   const cancelRequestedRef = useRef(false)
+  const orderCardRef = useRef<HTMLDivElement | null>(null)
   const [pickerOpenedAt, setPickerOpenedAt] = useState(0)
 
   const openMethodPicker = () => {
@@ -288,12 +289,25 @@ export function V2ProfileBalance({ data, setUserBalance }: V2ProfileBalanceProps
       if (cancelRequestedRef.current) return
     }
 
+    if (method === 'qr' && !order.alpha_qr_url) {
+      setTopupError('Банк не вернул QR-код. Попробуйте оплату через форму.')
+      return
+    }
+    if (method === 'form' && !order.alpha_form_url) {
+      setTopupError('Платёжная форма недоступна. Попробуйте оплату по QR-коду.')
+      return
+    }
+
     // Состояние сбрасываем до редиректа: при возврате «Назад» браузер может
     // восстановить страницу из bfcache с живым состоянием React.
     setMethodPickerOpen(false)
-    if (method === 'form' && order.alpha_form_url) {
+    if (method === 'form') {
       window.location.href = order.alpha_form_url
+      return
     }
+    requestAnimationFrame(() => {
+      orderCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    })
   }
 
   const recentOperations = useMemo(() => operations.slice(0, 3), [operations])
@@ -323,12 +337,15 @@ export function V2ProfileBalance({ data, setUserBalance }: V2ProfileBalanceProps
     if (op.questionId) {
       const label = `Вопрос №${op.questionId}`
       return (
-        <Link
-          href={`/profile/?tab=cases&question=${op.questionId}`}
-          className={styles.subtitleLink}
-        >
-          {label}
-        </Link>
+        <>
+          <Link
+            href={`/profile/?tab=cases&question=${op.questionId}`}
+            className={styles.subtitleLink}
+          >
+            {label}
+          </Link>
+          {op.comment ? <span className={styles.subtitleText}>{` · ${op.comment}`}</span> : null}
+        </>
       )
     }
     return <span className={styles.subtitleText}>{op.comment ?? op.actor}</span>
@@ -571,7 +588,7 @@ export function V2ProfileBalance({ data, setUserBalance }: V2ProfileBalanceProps
       {showAllOperations && <OperationsHistory key={opsRefreshKey} />}
 
       {newOrder && (
-        <div className={styles.orderCard}>
+        <div className={styles.orderCard} ref={orderCardRef}>
           <div className={styles.orderRow}>
             <div>
               <h3 className={styles.orderTitle}>Завершите пополнение</h3>

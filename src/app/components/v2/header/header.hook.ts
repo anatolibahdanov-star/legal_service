@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useSession, signOut } from "next-auth/react"
 import { SwitchToLoginPrefill } from "@/src/interfaces/form"
 
@@ -23,6 +23,15 @@ export const useHeader = ({
   const handleAuthClick = () => {
     setActiveForm("login")
   }
+
+  useEffect(() => {
+    const onOpenAuth = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { form?: 'login' | 'register' } | undefined
+      setActiveForm(detail?.form === 'login' ? 'login' : 'register')
+    }
+    window.addEventListener('enki:open-auth', onOpenAuth)
+    return () => window.removeEventListener('enki:open-auth', onOpenAuth)
+  }, [])
 
   const handleLogout = () => {
     signOut({ callbackUrl: '/' })

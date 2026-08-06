@@ -10,7 +10,7 @@ import Link from 'next/link';
 import Swal from 'sweetalert2'
 import { toast } from 'sonner'
 
-import { Eye, EyeOff, Star, Edit, StarOff, Share2, Check, CreditCard, Link as LucideLink, AlertCircle, Paperclip } from "lucide-react";
+import { Eye, EyeOff, Star, Edit, StarOff, Share2, Check, CreditCard, Link as LucideLink, AlertCircle, Paperclip, ArrowUp, ArrowDown, ChevronsUpDown } from "lucide-react";
 
 import { CustomGetRequest, CustomRequest } from "@/src/libs/request";
 import { emitBalanceRefresh } from "@/src/libs/balanceEvents";
@@ -387,6 +387,9 @@ export const ProfileJobList = ({is_user, user}: ProfileJobListPropsI) => {
   const [copiedLink, setCopiedLink] = useState("");
   const [showLinkCopied, setShowLinkCopied] = useState(false);
   const [payingQuestionId, setPayingQuestionId] = useState<string | number | null>(null);
+  const [sortState, setSortState] = useState<{ field: string; order: "ASC" | "DESC" }>(
+    is_user ? { field: "id", order: "DESC" } : { field: "updated_at", order: "DESC" }
+  );
   /** Question the PDF actions modal is open for; null when closed. */
   const [pdfCase, setPdfCase] = useState<DBQuestion | null>(null);
   /** Cached-PDF flag for the currently-open question — toggles the modal's
@@ -429,12 +432,11 @@ export const ProfileJobList = ({is_user, user}: ProfileJobListPropsI) => {
   const domainUrl = process.env.NEXT_PUBLIC_URL
   useEffect(() => {
       const path = "/requests"
-      const sort = is_user ? ['id', 'DESC'] : ['updated_at', 'DESC']
       const filter = is_user ? {user_id: user.id} : {admin_id: user.id}
       const request = {
           page: currentPage,
           limit: itemsPerPage,
-          sort: JSON.stringify(sort),
+          sort: JSON.stringify([sortState.field, sortState.order]),
           filter: JSON.stringify(filter)
       }
       // Define an asynchronous function inside the effect
@@ -449,7 +451,37 @@ export const ProfileJobList = ({is_user, user}: ProfileJobListPropsI) => {
 
       // Call the async function
       fetchData();
-  }, [currentPage, is_user, user.id, isRefresh]);
+  }, [currentPage, is_user, user.id, isRefresh, sortState]);
+
+  const toggleSort = (field: string) => {
+    setSortState((prev) =>
+      prev.field === field
+        ? { field, order: prev.order === "ASC" ? "DESC" : "ASC" }
+        : { field, order: "DESC" }
+    );
+    setCurrentPage(1);
+  };
+
+  const renderSortableTh = (label: string, field: string) => {
+    const active = sortState.field === field;
+    return (
+      <th
+        className="text-left p-4 text-xs text-[#757575] font-normal cursor-pointer select-none"
+        onClick={() => toggleSort(field)}
+      >
+        <span className="inline-flex items-center gap-1">
+          {label}
+          <span className={active ? "text-[#333]" : "text-[#bdbdbd]"}>
+            {active ? (
+              sortState.order === "ASC" ? <ArrowUp className="size-3.5" /> : <ArrowDown className="size-3.5" />
+            ) : (
+              <ChevronsUpDown className="size-3.5" />
+            )}
+          </span>
+        </span>
+      </th>
+    );
+  };
 
   const setCloseProfileWindow = () => {
     console.log('setCloseProfileWindow')
@@ -520,11 +552,15 @@ export const ProfileJobList = ({is_user, user}: ProfileJobListPropsI) => {
                   <input type="checkbox" className="cursor-pointer" />
                 </th>
                 <th className="text-left p-4 text-xs text-[#757575] font-normal">Id</th>
-                {!is_user && (<th className="text-left p-4 text-xs text-[#757575] font-normal">Пользователь</th>)}
+                {!is_user && renderSortableTh("Пользователь", "username")}
                 <th className="text-left p-4 text-xs text-[#757575] font-normal">Категория</th>
                 <th className="text-left p-4 text-xs text-[#757575] font-normal">Вопрос</th>
                 <th className="text-left p-4 text-xs text-[#757575] font-normal">Статус</th>
-                <th className="text-left p-4 text-xs text-[#757575] font-normal">Дата</th>
+                {is_user ? (
+                  <th className="text-left p-4 text-xs text-[#757575] font-normal">Дата</th>
+                ) : (
+                  renderSortableTh("Дата", "created_at")
+                )}
                 <th className="text-left p-4 text-xs text-[#757575] font-normal">Действия</th>
               </tr>
             </thead>
@@ -877,12 +913,12 @@ export function ProfileScreen({is_user = false}: ProfileScreenPropsI) {
           <div className="border-b border-[#e0e0e0]">
             <div className="flex gap-8">
               {!is_user && (
-                <Link
+                <a
                   href={user.role === "admin" ? "/admin#/requests" : "/admin/requests"}
                   className="pb-3 px-1 text-sm relative text-[#757575] hover:text-[#333]"
                 >
                   Заявки
-                </Link>
+                </a>
               )}
               <button onClick={() => setActiveTab("cases")}
                 className={`pb-3 px-1 text-sm relative ${activeTab === "cases" ? "text-[#2196f3]" : "text-[#757575] hover:text-[#333]"}`}

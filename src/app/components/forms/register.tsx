@@ -12,6 +12,7 @@ import {
   allConsentsAccepted,
   type LegalConsentsValue,
 } from "@/src/app/components/LegalConsents";
+import { consumePostAuthRedirect } from "@/src/libs/postAuthIntent";
 
 const FIELD_BG = "bg-[#f7f6f9] border border-[rgba(18,22,27,0.1)]";
 const PASSWORD_MIN_LENGTH = 6;
@@ -142,7 +143,7 @@ export default function RegisterForm({ onClose, onSwitchToLogin }: FormContainer
     }
 
     onClose();
-    router.push("/profile");
+    router.push(consumePostAuthRedirect() ?? "/profile");
     router.refresh();
   };
 

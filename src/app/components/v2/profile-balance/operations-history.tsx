@@ -63,12 +63,15 @@ export function OperationsHistory() {
     if (op.questionId) {
       const label = `Вопрос №${op.questionId}`
       return (
-        <Link
-          href={`/profile/?tab=cases&question=${op.questionId}`}
-          className={styles.subtitleLink}
-        >
-          {label}
-        </Link>
+        <>
+          <Link
+            href={`/profile/?tab=cases&question=${op.questionId}`}
+            className={styles.subtitleLink}
+          >
+            {label}
+          </Link>
+          {op.comment ? <span className={styles.subtitleText}>{` · ${op.comment}`}</span> : null}
+        </>
       )
     }
     return <span className={styles.subtitleText}>{op.comment ?? op.actor}</span>

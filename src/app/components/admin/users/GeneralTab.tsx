@@ -54,6 +54,11 @@ export const GeneralTab = ({ user, saving, onSave }: GeneralTabProps) => {
                 </div>
 
                 <div className={styles.field}>
+                    <p className={styles.fieldLabel}>Телефон</p>
+                    <p className={styles.fieldValue}>{user.phone ?? "—"}</p>
+                </div>
+
+                <div className={styles.field}>
                     <p className={styles.fieldLabel}>Дата регистрации</p>
                     <p className={styles.fieldValue}>{formatDate(user.created_at as unknown as string)}</p>
                 </div>

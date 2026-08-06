@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import {addClientQuestion, getQuestions, getTotalQuestions} from "@/src/repositories/requests/repo"
+import {addClientQuestion, getQuestions, getQuestionsByIds, getTotalQuestions} from "@/src/repositories/requests/repo"
 import {DBQuestion} from "@/src/interfaces/db"
+import {QuestionStatusesE} from "@/src/interfaces/data"
 import {UserRequest} from "@/src/interfaces/api"
 import logger from "@/src/libs/logger"
 import { sendNewRequestEmail } from '@/src/libs/email/senders';
@@ -97,6 +98,21 @@ export async function POST(request: Request) {
             return NextResponse.json(
                 { success: false, message: 'Пожалуйста, введите текст вопроса.' },
                 { status: 400 }
+            );
+        }
+        const parentRows = await getQuestionsByIds([String(insertedQuestion.parent)])
+        const parent = parentRows?.[0] ?? null
+        if (!parent) {
+            return NextResponse.json(
+                { success: false, message: 'Исходный вопрос не найден.' },
+                { status: 404 }
+            );
+        }
+        if (parent.job_status === QuestionStatusesE.Unpaid) {
+            logger.warn(msg + 'follow-up rejected: parent question is unpaid', { parent_id: insertedQuestion.parent })
+            return NextResponse.json(
+                { success: false, message: 'Исходный вопрос не оплачен — уточняющий вопрос недоступен.' },
+                { status: 409 }
             );
         }
     } else {

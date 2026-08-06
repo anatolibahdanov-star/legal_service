@@ -10,6 +10,7 @@ import {
     FreeQuestionOpTypeE,
     PaymentDisplayStatusE,
     PaymentOperationE,
+    SubscriptionEventE,
 } from "@/src/interfaces/payment"
 
 const freeQuestionTypes = new Set<AdminOperationTypeE>([
@@ -26,11 +27,34 @@ const formatActor = (name: string | null, username: string | null): string => {
     return "Администратор"
 }
 
+const withPlan = (comment: string | null, planName: string | null): string | null => {
+    if (!planName) return comment
+    const plan = `Тариф «${planName}»`
+    return comment ? `${comment} · ${plan}` : plan
+}
+
+const subscriptionPaymentComment = (planName: string | null, subEvent: SubscriptionEventE | null): string => {
+    const plan = planName ? ` «${planName}»` : ""
+    switch (subEvent) {
+        case SubscriptionEventE.Purchase:
+            return `Покупка подписки${plan}`
+        case SubscriptionEventE.Renew:
+            return `Продление подписки${plan}`
+        case SubscriptionEventE.Upgrade:
+        case SubscriptionEventE.Downgrade:
+            return `Переход на тариф${plan}`
+        default:
+            return planName ? `Подписка${plan}` : "Ежемесячная подписка"
+    }
+}
+
 const mapPorderOperation = (
     operation: PaymentOperationE,
     amount: number,
     questionId: number | null,
     questionUuid: string | null,
+    planName: string | null,
+    subEvent: SubscriptionEventE | null,
 ): Pick<AdminBalanceOperationI, "type" | "amount" | "comment" | "actor" | "questionId" | "questionUuid"> | null => {
     switch (operation) {
         case PaymentOperationE.Payment:
@@ -38,7 +62,7 @@ const mapPorderOperation = (
         case PaymentOperationE.Topup:
             return { type: AdminOperationTypeE.Payment, amount, comment: "Пополнение баланса", actor: "Платёжная система", questionId: null, questionUuid: null }
         case PaymentOperationE.SubscriptionPayment:
-            return { type: AdminOperationTypeE.SubscriptionPayment, amount, comment: "Ежемесячная подписка", actor: "Платёжная система", questionId: null, questionUuid: null }
+            return { type: AdminOperationTypeE.SubscriptionPayment, amount, comment: subscriptionPaymentComment(planName, subEvent), actor: "Платёжная система", questionId: null, questionUuid: null }
         case PaymentOperationE.Charge:
             return { type: AdminOperationTypeE.Charge, amount, comment: null, actor: "Система", questionId, questionUuid }
         default:
@@ -64,7 +88,10 @@ export const getAdminUserOperations = async (
     for (const row of porderRows) {
         const mapped = mapPaymentRow(row)
         if (mapped.status !== PaymentDisplayStatusE.Success) continue
-        const op = mapPorderOperation(mapped.operation, mapped.amount, mapped.questionId, mapped.questionUuid)
+        const op = mapPorderOperation(
+            mapped.operation, mapped.amount, mapped.questionId, mapped.questionUuid,
+            row.plan_name ?? null, row.sub_event ?? null,
+        )
         if (!op) continue
         operations.push({ id: `p-${mapped.id}`, createdAt: mapped.createdAt, ...op })
     }
@@ -110,7 +137,7 @@ export const getAdminUserOperations = async (
             createdAt: new Date(row.created_at).toISOString(),
             type,
             amount: Number(row.amount),
-            comment: row.comment ?? null,
+            comment: withPlan(row.comment ?? null, row.plan_name ?? null),
             actor,
             questionId: row.question_id ?? null,
             questionUuid: row.question_uuid ?? null,
@@ -123,7 +150,7 @@ export const getAdminUserOperations = async (
             createdAt: new Date(row.created_at).toISOString(),
             type: AdminOperationTypeE.SubscriptionCancel,
             amount: 0,
-            comment: row.comment ?? (row.plan_name ? `Тариф «${row.plan_name}»` : null),
+            comment: withPlan(row.comment ?? null, row.plan_name ?? null),
             actor: row.admin_name || row.admin_username ? formatActor(row.admin_name, row.admin_username) : "Пользователь",
             questionId: null,
             questionUuid: null,
