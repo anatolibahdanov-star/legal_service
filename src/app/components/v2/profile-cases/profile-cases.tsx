@@ -324,18 +324,37 @@ export function V2ProfileCases({ user }: V2ProfileCasesProps) {
                       >
                         <Eye className={styles.actionIcon} />
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => openCase(caseItem, true)}
-                        title={caseItem.rating ? `Изменить оценку (${caseItem.rating})` : 'Оценить юриста'}
-                        aria-label="Оценить юриста"
-                        className={`${styles.actionBtn} ${caseItem.rating ? styles.actionBtnRated : ''}`}
-                      >
-                        <Star className={`${styles.actionIcon} ${caseItem.rating ? styles.starFilled : ''}`} />
-                        {!!caseItem.rating && (
-                          <span className={styles.ratingBadge}>{caseItem.rating}</span>
-                        )}
-                      </button>
+                      {(() => {
+                        const canRate =
+                          jobStatus === QuestionStatusesE.Approved ||
+                          jobStatus === QuestionStatusesE.Spam
+                        const rateTitle = !canRate
+                          ? 'Оценить работу юриста можно только после получения ответа!'
+                          : caseItem.rating
+                            ? `Изменить оценку (${caseItem.rating})`
+                            : 'Оценить юриста'
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => canRate && openCase(caseItem, true)}
+                            disabled={!canRate}
+                            title={rateTitle}
+                            aria-label={rateTitle}
+                            className={`${styles.actionBtn} ${
+                              caseItem.rating ? styles.actionBtnRated : ''
+                            } ${!canRate ? styles.actionBtnDisabled : ''}`}
+                          >
+                            <Star
+                              className={`${styles.actionIcon} ${
+                                caseItem.rating ? styles.starFilled : ''
+                              }`}
+                            />
+                            {!!caseItem.rating && (
+                              <span className={styles.ratingBadge}>{caseItem.rating}</span>
+                            )}
+                          </button>
+                        )
+                      })()}
                       <button
                         type="button"
                         onClick={() => shareCase(caseItem)}
