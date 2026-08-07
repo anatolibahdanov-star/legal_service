@@ -88,7 +88,7 @@ export function FileUpload({
               <path d="M8 2v8M4 6l4-4 4 4M2 12h12" stroke="#34347C" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
             <div className="flex flex-col gap-0.5 text-center">
-              <span className="text-[12px] leading-[17px] text-[rgba(18,22,27,0.5)]">Прикрепите документы (необязательно)</span>
+              <span className="text-[12px] leading-[17px] text-[rgba(18,22,27,0.5)]">Прикрепите документы (в разработке)</span>
               <span className="text-[12px] leading-[17px] text-[rgba(18,22,27,0.35)]">DOC, DOCX, PDF, XLSX — до 3 МБ, не более {maxFiles} файлов</span>
             </div>
           </>

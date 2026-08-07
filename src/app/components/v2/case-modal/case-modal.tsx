@@ -68,17 +68,19 @@ export function V2CaseModal({
           setRatingDate(root.rating_date)
           setSavedComment(root.comment ?? '')
         }
+        const answered = (jobData.data as DBQuestion[]).some(
+          (m) => !!m.final_reply && m.final_reply.trim() !== '',
+        )
+        if (openRatingSection && answered && !root?.rating) {
+          setIsRatingExpanded(true)
+        } else if (!answered) {
+          setIsRatingExpanded(false)
+        }
       }
     }
 
     fetchData()
-  }, [user.id, caseItem.id])
-
-  useEffect(() => {
-    if (isOpen && openRatingSection) {
-      setIsRatingExpanded(true)
-    }
-  }, [isOpen, openRatingSection])
+  }, [user.id, caseItem.id, openRatingSection])
 
   useEffect(() => {
     if (!askClarificationMessageId) return
@@ -297,8 +299,17 @@ export function V2CaseModal({
                     ? 'Оценить работу юриста'
                     : 'Оцените консультацию'}
               </h3>
-              <div className={styles.stars}>{renderStars('sm')}</div>
+              {/* Hide compact stars while the form is open — large stars below are enough */}
+              {(!isRatingExpanded || isRatingSubmitted || !hasLawyerAnswer) && (
+                <div className={styles.stars}>{renderStars('sm')}</div>
+              )}
             </div>
+
+            {!hasLawyerAnswer && !isRatingSubmitted && (
+              <p className={styles.ratingMeta}>
+                Оценить работу юриста можно только после получения ответа!
+              </p>
+            )}
 
             {isRatingSubmitted && typeof ratingDate === 'string' && (
               <p className={styles.ratingMeta}>Вы оценили дело {format(new Date(ratingDate), dFormat)}</p>
@@ -308,22 +319,21 @@ export function V2CaseModal({
               <div className={styles.savedComment}>{savedComment}</div>
             )}
 
-            {isRatingExpanded &&
-              [QuestionStatusesE.Approved, QuestionStatusesE.Spam].includes(caseItem.job_status) && (
-                <div className={styles.ratingForm}>
-                  <div className={styles.ratingStarsLarge}>{renderStars('lg')}</div>
-                  <label className={styles.label}>Ваш комментарий к оценке (необязательно)</label>
-                  <textarea
-                    value={comment}
-                    onChange={(e) => setComment(e.target.value)}
-                    placeholder="Напишите ваш комментарий..."
-                    className={styles.textarea}
-                  />
-                  <button type="button" onClick={handleSaveRating} className={styles.saveBtn}>
-                    Сохранить оценку
-                  </button>
-                </div>
-              )}
+            {isRatingExpanded && hasLawyerAnswer && !isRatingSubmitted && (
+              <div className={styles.ratingForm}>
+                <div className={styles.ratingStarsLarge}>{renderStars('lg')}</div>
+                <label className={styles.label}>Ваш комментарий к оценке (необязательно)</label>
+                <textarea
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  placeholder="Напишите ваш комментарий..."
+                  className={styles.textarea}
+                />
+                <button type="button" onClick={handleSaveRating} className={styles.saveBtn}>
+                  Сохранить оценку
+                </button>
+              </div>
+            )}
 
             {showThankYou && (
               <div className={styles.thankYou}>

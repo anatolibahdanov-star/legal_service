@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useSession, signOut } from "next-auth/react"
 import { SwitchToLoginPrefill } from "@/src/interfaces/form"
+import { clearAllPendingPurchases, subscribeOpenAuth } from "@/src/libs/authIntent"
 
 interface UseHeaderProps {
   isAuthenticated?: boolean
@@ -19,8 +20,28 @@ export const useHeader = ({
   const [loginPrefillOtpSent, setLoginPrefillOtpSent] = useState<boolean>(false)
   const [loginPrefillExpiresInSec, setLoginPrefillExpiresInSec] = useState<number | undefined>(undefined)
   const { data: session } = useSession()
+
+  useEffect(() => {
+    return subscribeOpenAuth((detail) => {
+      const form = detail.form ?? 'login'
+      if (form === 'register') {
+        setLoginPrefillPhone(undefined)
+        setLoginPrefillOtpSent(false)
+        setLoginPrefillExpiresInSec(undefined)
+        setActiveForm('register')
+        return
+      }
+      if (form === 'reset') {
+        setActiveForm('reset')
+        return
+      }
+      setActiveForm('login')
+    })
+  }, [])
   
   const handleAuthClick = () => {
+    // Manual "Войти" should not resume a previously abandoned purchase intent.
+    clearAllPendingPurchases()
     setActiveForm("login")
   }
 

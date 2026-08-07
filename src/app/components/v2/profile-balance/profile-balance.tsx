@@ -37,8 +37,18 @@ type MySubscriptionT = {
   bvAmount: number
   questionsRemaining: number
   questionsTotal: number
+  periodStart: string | null
   periodEnd: string | null
   willRenew: boolean
+}
+
+const questionsWord = (n: number) => {
+  const tail = Math.abs(n) % 100
+  const last = tail % 10
+  if (tail > 10 && tail < 15) return 'вопросов'
+  if (last === 1) return 'вопрос'
+  if (last >= 2 && last <= 4) return 'вопроса'
+  return 'вопросов'
 }
 
 const SUB_TONE_COLORS: Record<string, string> = {
@@ -107,9 +117,8 @@ export function V2ProfileBalance({ data, setUserBalance }: V2ProfileBalanceProps
   const [cancelError, setCancelError] = useState('')
   const [opsRefreshKey, setOpsRefreshKey] = useState(0)
   const [subLoaded, setSubLoaded] = useState(false)
+  const operationsHistoryRef = useRef<HTMLDivElement>(null)
   const balance = data?.balance ?? 0
-  const freeQuestions = data?.free_questions ?? 0
-  const adminQuestions = Math.max(0, freeQuestions - (mySub?.questionsRemaining ?? 0))
   const topupKop = Math.round(minTopupRub * 100)
 
   useEffect(() => {
@@ -172,6 +181,14 @@ export function V2ProfileBalance({ data, setUserBalance }: V2ProfileBalanceProps
       active = false
     }
   }, [balance, opsRefreshKey])
+
+  useEffect(() => {
+    if (!showAllOperations) return
+    const timer = window.setTimeout(() => {
+      operationsHistoryRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 50)
+    return () => window.clearTimeout(timer)
+  }, [showAllOperations])
 
   // Счётчики дел для карточки «Активных дел / завершено».
   useEffect(() => {
@@ -296,7 +313,7 @@ export function V2ProfileBalance({ data, setUserBalance }: V2ProfileBalanceProps
     }
   }
 
-  const recentOperations = useMemo(() => operations.slice(0, 3), [operations])
+  const recentOperations = useMemo(() => operations.slice(0, 4), [operations])
   const lastTopup = useMemo(() => operations.find(isCredit) ?? null, [operations])
   const monthlySpent = useMemo(
     () =>
@@ -336,122 +353,154 @@ export function V2ProfileBalance({ data, setUserBalance }: V2ProfileBalanceProps
 
   return (
     <div className={styles.root}>
+      {/* Верх: баланс + превью истории — одна высота */}
       <div className={styles.topRow}>
-        <div className={styles.balanceCol}>
-          {/* Доступный баланс */}
-          <div className={styles.balanceCard}>
-            <div className={styles.balanceInner}>
-              <div className={styles.balanceTop}>
-                <div className={styles.balanceStatus}>
-                  <span className={styles.statusDot} />
-                  <span className={styles.statusLabel}>Доступный баланс</span>
-                </div>
-                <div className={styles.balanceAmountWrap}>
-                  <div className={styles.balanceAmountRow}>
-                    <span className={styles.balanceAmount}>{formatRub(balance)}</span>
-                    <span className={styles.balanceCurrency}>₽</span>
-                  </div>
-                  <span className={styles.balanceHint}>
-                    {lastTopup
-                      ? `Пополнено ${formatDateTime(lastTopup.createdAt)}`
-                      : 'Доступно для оплаты вопросов и услуг'}
-                  </span>
-                </div>
+        <div className={styles.balanceCard}>
+          <div className={styles.balanceInner}>
+            <div className={styles.balanceTop}>
+              <div className={styles.balanceStatus}>
+                <span className={styles.statusDot} />
+                <span className={styles.statusLabel}>Доступный баланс</span>
               </div>
-              {!methodPickerOpen ? (
-                <button
-                  type="button"
-                  onClick={openMethodPicker}
-                  className={styles.topupBtn}
-                >
-                  <Plus className={styles.topupIcon} />
-                  Пополнить
-                </button>
-              ) : (
-                <div className={styles.methodPicker}>
-                  <div>
-                    <p className={styles.methodTitle}>Выберите способ оплаты</p>
-                    <p className={styles.methodHint}>
-                      Пополнение на {formatRub(topupAmountRub)} ₽ через Альфа-Банк
-                    </p>
-                  </div>
-                  <div className={styles.methodButtons}>
-                    <button
-                      type="button"
-                      onClick={() => handleSelectMethod('form')}
-                      disabled={creatingMethod !== null}
-                      className={styles.methodBtn}
-                    >
-                      <CreditCard className={styles.methodIcon} />
-                      {creatingMethod === 'form' ? 'Создаём платёж…' : 'Через форму оплаты'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleSelectMethod('qr')}
-                      disabled={creatingMethod !== null}
-                      className={styles.methodBtn}
-                    >
-                      <QrCode className={styles.methodIcon} />
-                      {creatingMethod === 'qr' ? 'Создаём платёж…' : 'По QR-коду'}
-                    </button>
-                  </div>
-                  {topupError && <p className={styles.methodError}>{topupError}</p>}
+              <div className={styles.balanceAmountWrap}>
+                <div className={styles.balanceAmountRow}>
+                  <span className={styles.balanceAmount}>{formatRub(balance)}</span>
+                  <span className={styles.balanceCurrency}>₽</span>
+                </div>
+                <span className={styles.balanceHint}>
+                  {lastTopup
+                    ? `Пополнено ${formatDateTime(lastTopup.createdAt)}`
+                    : 'Доступно для оплаты вопросов и услуг'}
+                </span>
+              </div>
+            </div>
+            {!methodPickerOpen ? (
+              <button
+                type="button"
+                onClick={openMethodPicker}
+                className={styles.topupBtn}
+              >
+                <Plus className={styles.topupIcon} />
+                Пополнить
+              </button>
+            ) : (
+              <div className={styles.methodPicker}>
+                <div>
+                  <p className={styles.methodTitle}>Выберите способ оплаты</p>
+                  <p className={styles.methodHint}>
+                    Пополнение на {formatRub(topupAmountRub)} ₽ через Альфа-Банк
+                  </p>
+                </div>
+                <div className={styles.methodButtons}>
                   <button
                     type="button"
-                    onClick={closeMethodPicker}
-                    className={styles.methodCancel}
+                    onClick={() => handleSelectMethod('form')}
+                    disabled={creatingMethod !== null}
+                    className={styles.methodBtn}
                   >
-                    Отменить
+                    <CreditCard className={styles.methodIcon} />
+                    {creatingMethod === 'form' ? 'Создаём платёж…' : 'Через форму оплаты'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectMethod('qr')}
+                    disabled={creatingMethod !== null}
+                    className={styles.methodBtn}
+                  >
+                    <QrCode className={styles.methodIcon} />
+                    {creatingMethod === 'qr' ? 'Создаём платёж…' : 'По QR-коду'}
                   </button>
                 </div>
-              )}
+                {topupError && <p className={styles.methodError}>{topupError}</p>}
+                <button
+                  type="button"
+                  onClick={closeMethodPicker}
+                  className={styles.methodCancel}
+                >
+                  Отменить
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className={styles.subscriptionPanel}>
+            <div className={styles.balanceStatus}>
+              <span
+                className={styles.statusDot}
+                style={{
+                  background: mySub
+                    ? (SUB_TONE_COLORS[mySub.tone ?? ''] ?? '#34347c')
+                    : 'rgba(18, 22, 27, 0.25)',
+                }}
+              />
+              <span className={styles.statusLabel}>
+                {subLoaded ? (mySub ? 'Активная подписка' : 'Подписка') : 'Подписка'}
+              </span>
             </div>
 
-            {mySub && (
-              <div className={styles.subPanel}>
-                <div className={styles.balanceStatus}>
+            {!subLoaded ? (
+              <p className={styles.balanceHint}>Загружаем…</p>
+            ) : mySub ? (
+              <>
+                <div className={styles.subCardHeader}>
                   <span
-                    className={styles.statusDot}
-                    style={{ background: SUB_TONE_COLORS[mySub.tone ?? ''] ?? '#34347c' }}
-                  />
-                  <span className={styles.statusLabel}>Подписка</span>
+                    className={styles.subPlanBadge}
+                    style={{ background: SUB_TONE_BG[mySub.tone ?? ''] ?? '#a8a6e0' }}
+                  >
+                    {mySub.planName ?? 'Тариф'}
+                  </span>
+                  <span className={styles.subPrice}>{formatRub(mySub.priceRub)} ₽/мес</span>
                 </div>
-                <div className={styles.subPanelBody}>
-                  <p className={styles.subPlanRow}>
-                    <span
-                      className={styles.subPlanBadge}
-                      style={{ background: SUB_TONE_BG[mySub.tone ?? ''] ?? '#a8a6e0' }}
-                    >
-                      {mySub.planName ?? 'Тариф'}
-                    </span>
-                    <span className={styles.subPrice}>{formatRub(mySub.priceRub)} ₽/мес</span>
-                  </p>
-                  <div className={styles.subQuestionsRow}>
-                    <span className={styles.subQuestionsCount}>
-                      {mySub.questionsRemaining}/{mySub.questionsTotal}
-                    </span>
-                    <span className={styles.subQuestionsLabel}>вопросов осталось</span>
-                  </div>
-                  <span className={styles.balanceHint}>
-                    {mySub.willRenew
-                      ? `Продлится автоматически ${mySub.periodEnd ? formatDate(mySub.periodEnd) : ''}`
-                      : `Автопродление отключено — действует до ${mySub.periodEnd ? formatDate(mySub.periodEnd) : 'конца оплаченного периода'}`}
+
+                <div className={styles.subQuestionsRow}>
+                  <span className={styles.subQuestionsCount}>
+                    {mySub.questionsRemaining}
+                    <span className={styles.subQuestionsTotal}>/{mySub.questionsTotal}</span>
+                  </span>
+                  <span className={styles.subQuestionsLabel}>
+                    {questionsWord(mySub.questionsRemaining)} осталось в этом периоде
                   </span>
                 </div>
+
+                <dl className={styles.subMetaList}>
+                  <div className={styles.subMetaRow}>
+                    <dt>Оформлена</dt>
+                    <dd>{mySub.periodStart ? formatDate(mySub.periodStart) : '—'}</dd>
+                  </div>
+                  <div className={styles.subMetaRow}>
+                    <dt>Действует до</dt>
+                    <dd>{mySub.periodEnd ? formatDate(mySub.periodEnd) : '—'}</dd>
+                  </div>
+                  <div className={styles.subMetaRow}>
+                    <dt>Автопродление</dt>
+                    <dd>{mySub.willRenew ? 'Включено' : 'Отключено'}</dd>
+                  </div>
+                  <div className={styles.subMetaRow}>
+                    <dt>Лимит периода</dt>
+                    <dd>
+                      {mySub.bvAmount} {questionsWord(mySub.bvAmount)} / мес
+                    </dd>
+                  </div>
+                </dl>
+
                 {mySub.willRenew && !cancelConfirmOpen && (
                   <button
                     type="button"
-                    onClick={() => { setCancelError(''); setCancelConfirmOpen(true) }}
-                    className={`${styles.topupBtn} ${styles.unsubBtn}`}
+                    onClick={() => {
+                      setCancelError('')
+                      setCancelConfirmOpen(true)
+                    }}
+                    className={styles.subCancelLink}
                   >
-                    Отписаться
+                    Отключить автопродление
                   </button>
                 )}
                 {cancelConfirmOpen && (
                   <div className={styles.subConfirm}>
                     <p className={styles.subConfirmText}>
                       Автосписания прекратятся. Подписка и оставшиеся вопросы будут
-                      действовать до {mySub.periodEnd ? formatDate(mySub.periodEnd) : 'конца оплаченного периода'}.
+                      действовать до{' '}
+                      {mySub.periodEnd ? formatDate(mySub.periodEnd) : 'конца оплаченного периода'}.
                       Возобновить можно повторной покупкой тарифа.
                     </p>
                     {cancelError && <p className={styles.methodError}>{cancelError}</p>}
@@ -475,33 +524,24 @@ export function V2ProfileBalance({ data, setUserBalance }: V2ProfileBalanceProps
                     </div>
                   </div>
                 )}
+              </>
+            ) : (
+              <div className={styles.subEmpty}>
+                <p className={styles.subEmptyTitle}>Нет активной подписки</p>
+                <p className={styles.balanceHint}>
+                  Подключите тариф, чтобы получать пакет вопросов каждый месяц
+                </p>
+                <Link href="/#subscriptions" className={styles.subEmptyCta}>
+                  Смотреть тарифы
+                  <ArrowRight className={styles.toggleIcon} />
+                </Link>
               </div>
             )}
-            <div className={styles.balanceBlur} />
           </div>
 
-          {/* Бесплатные вопросы (подписка / начисления админом) */}
-          <div className={styles.freeQuestionsCard}>
-            <div className={styles.balanceStatus}>
-              <span className={`${styles.statusDot} ${styles.statusDotPurple}`} />
-              <span className={styles.statusLabel}>Бесплатные вопросы</span>
-            </div>
-            <div className={styles.balanceAmountWrap}>
-              <div className={styles.balanceAmountRow}>
-                <span className={styles.freeQuestionsAmount}>{subLoaded ? adminQuestions : '—'}</span>
-                <span className={styles.balanceCurrency}>шт.</span>
-              </div>
-              <span className={styles.balanceHint}>
-                {adminQuestions > 0
-                  ? 'Начислены администратором — не сгорают, тратятся после подписочных'
-                  : 'Начисляются администратором'}
-              </span>
-            </div>
-          </div>
-
+          <div className={styles.balanceBlur} />
         </div>
 
-        {/* История операций — превью */}
         <div className={styles.historyCard}>
           <div className={styles.historyHeader}>
             <div className={styles.historyTitleWrap}>
@@ -512,6 +552,8 @@ export function V2ProfileBalance({ data, setUserBalance }: V2ProfileBalanceProps
               type="button"
               onClick={() => setShowAllOperations((value) => !value)}
               className={styles.historyToggle}
+              aria-expanded={showAllOperations}
+              aria-controls="operations-history"
             >
               {showAllOperations ? 'Свернуть' : 'Все операции'}
               <ArrowRight className={styles.toggleIcon} />
@@ -551,12 +593,13 @@ export function V2ProfileBalance({ data, setUserBalance }: V2ProfileBalanceProps
         </div>
       </div>
 
-      {/* Стат-карточки: реальные данные */}
-      <div className={styles.statsGrid}>
+      {/* Низ: траты · дела */}
+      <div className={styles.secondaryGrid}>
         <div className={styles.statCard}>
           <p className={styles.statLabel}>Потрачено в этом месяце</p>
           <p className={styles.statValue}>{formatRub(monthlySpent)} ₽</p>
         </div>
+
         <div className={styles.statCard}>
           <p className={styles.statLabel}>Активных дел</p>
           <div className={styles.statRow}>
@@ -568,7 +611,11 @@ export function V2ProfileBalance({ data, setUserBalance }: V2ProfileBalanceProps
         </div>
       </div>
 
-      {showAllOperations && <OperationsHistory key={opsRefreshKey} />}
+      {showAllOperations && (
+        <div ref={operationsHistoryRef} className={styles.operationsHistoryAnchor} id="operations-history">
+          <OperationsHistory key={opsRefreshKey} />
+        </div>
+      )}
 
       {newOrder && (
         <div className={styles.orderCard}>
