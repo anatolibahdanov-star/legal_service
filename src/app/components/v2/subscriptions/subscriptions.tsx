@@ -1,6 +1,7 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import useEmblaCarousel from 'embla-carousel-react'
 import { X } from 'lucide-react'
@@ -14,7 +15,6 @@ import {
   clearPendingSubscriptionPlan,
   setPendingSubscriptionPlan,
   setPendingOneTimePurchase,
-  consumePendingOneTimePurchase,
 } from '@/src/libs/authIntent'
 import styles from './subscriptions.module.css'
 
@@ -35,6 +35,8 @@ type Plan = {
   /** Subscription plan id when the card is a DB-backed monthly plan */
   planId?: number
   bvAmount?: number
+  /** Pay-per-question card: no subscription, money goes through the balance */
+  oneTime?: boolean
 }
 
 type MySub = {
@@ -72,6 +74,7 @@ const oneTimePlan: Plan = {
   price: '2 000 ₽',
   badge: 'Один вопрос – один ответ, без подписки',
   tone: 'orange',
+  oneTime: true,
 }
 
 const MONTHLY_FALLBACK: Plan[] = [
@@ -148,12 +151,14 @@ function CheckIcon() {
 }
 
 export function Subscriptions() {
+  const router = useRouter()
   const { data: session } = useSession()
   const isStaff = isStaffRole(session?.user?.role)
   const [monthly, setMonthly] = useState<Plan[]>(MONTHLY_FALLBACK)
   const [buyingId, setBuyingId] = useState<number | null>(null)
   const [mySub, setMySub] = useState<MySub | null>(null)
   const [subCheck, setSubCheck] = useState<'loading' | 'ready' | 'error'>('loading')
+  const [subLoadedFor, setSubLoadedFor] = useState<string | null>(null)
   const [confirmData, setConfirmData] = useState<ConfirmData | null>(null)
 
   useBodyScrollLock(confirmData !== null)
@@ -210,26 +215,14 @@ export function Subscriptions() {
     }
   }
 
-  const resumePendingRef = useRef(false)
-
-  const goToInquiry = () => {
-    const target =
-      document.getElementById('m-inquiry') ?? document.getElementById('inquiry')
-    if (target) {
-      target.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      return
-    }
-    window.location.assign('/#inquiry')
-  }
-
   const handleOneTimeBuy = () => {
     if (isStaff) return
     if (!session?.user) {
       setPendingOneTimePurchase()
-      emitOpenAuth({ form: 'login' })
+      emitOpenAuth({ form: 'register' })
       return
     }
-    goToInquiry()
+    router.push('/profile/?tab=balance')
   }
 
   const doBuy = async (plan: Plan) => {
@@ -269,7 +262,7 @@ export function Subscriptions() {
     if (!plan.planId || buyingId !== null) return
     if (!session?.user) {
       setPendingSubscriptionPlan(plan.planId)
-      emitOpenAuth({ form: 'login' })
+      emitOpenAuth({ form: 'register' })
       return
     }
     startBuyForPlan(plan)
@@ -291,13 +284,16 @@ export function Subscriptions() {
   }, [])
 
   useEffect(() => {
-    if (!session?.user || isStaff) {
+    const userId = session?.user?.id ? String(session.user.id) : null
+    if (!userId || isStaff) {
       setMySub(null)
       setSubCheck('ready')
+      setSubLoadedFor(null)
       return
     }
     let cancelled = false
     setSubCheck('loading')
+    setSubLoadedFor(null)
     CustomGetRequest('/subscriptions/me')
       .then((res) => {
         if (cancelled) return
@@ -308,11 +304,13 @@ export function Subscriptions() {
           setMySub(null)
           setSubCheck('error')
         }
+        setSubLoadedFor(userId)
       })
       .catch(() => {
         if (!cancelled) {
           setMySub(null)
           setSubCheck('error')
+          setSubLoadedFor(userId)
         }
       })
     return () => {
@@ -320,33 +318,31 @@ export function Subscriptions() {
     }
   }, [session?.user?.id, isStaff])
 
-  // Guest chose a plan → logged in/registered → resume (with confirm if they already have a sub).
+  // Guest chose a plan → logged in/registered → resume through the confirm modal.
   useEffect(() => {
-    if (!session?.user || isStaff) return
-    if (subCheck === 'loading' || buyingId !== null || resumePendingRef.current) return
+    const userId = session?.user?.id ? String(session.user.id) : null
+    if (!userId || isStaff) return
+    if (subLoadedFor !== userId || buyingId !== null) return
+    if (window.location.hash !== '#subscriptions') return
     const pendingId = peekPendingSubscriptionPlan()
     if (!pendingId) return
     // Wait until DB-backed plans (with planId) are loaded — fallback cards have none.
     const dbPlans = monthly.filter((item) => item.planId != null)
     if (dbPlans.length === 0) return
-    const plan = dbPlans.find((item) => item.planId === pendingId)
-    if (!plan) {
-      clearPendingSubscriptionPlan()
-      return
-    }
-    resumePendingRef.current = true
     clearPendingSubscriptionPlan()
+    const plan = dbPlans.find((item) => item.planId === pendingId)
+    if (!plan?.planId) return
     document.getElementById('subscriptions')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    startBuyForPlan(plan)
-    resumePendingRef.current = false
-  }, [session?.user?.id, isStaff, subCheck, buyingId, monthly])
-
-  // Guest chose one-time package → after auth, open the inquiry wizard.
-  useEffect(() => {
-    if (!session?.user || isStaff) return
-    if (!consumePendingOneTimePurchase()) return
-    goToInquiry()
-  }, [session?.user?.id, isStaff])
+    setConfirmData(buildConfirm(plan) ?? {
+      plan,
+      title: 'Подтверждение покупки',
+      paragraphs: [
+        `Вы выбрали тариф «${plan.name}» — ${plan.price}${plan.priceSuffix ?? ''}.`,
+        'Нажмите «Продолжить», чтобы перейти к оплате.',
+      ],
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.user?.id, isStaff, subLoadedFor, buyingId, monthly])
 
   const plans: Plan[] = [oneTimePlan, ...monthly]
 
@@ -478,7 +474,7 @@ export function Subscriptions() {
                             ? 'Продлить'
                             : 'Купить'}
                       </button>
-                    ) : (
+                    ) : plan.oneTime ? (
                       <button
                         type="button"
                         className={styles.primaryButton}
@@ -486,6 +482,21 @@ export function Subscriptions() {
                       >
                         Купить
                       </button>
+                    ) : !session?.user ? (
+                      <button
+                        type="button"
+                        className={styles.primaryButton}
+                        onClick={() => emitOpenAuth({ form: 'register' })}
+                      >
+                        Купить
+                      </button>
+                    ) : (
+                      <span
+                        className={`${styles.primaryButton} ${styles.primaryButtonDisabled}`}
+                        aria-disabled="true"
+                      >
+                        Недоступно
+                      </span>
                     )}
                   </div>
                 </article>
