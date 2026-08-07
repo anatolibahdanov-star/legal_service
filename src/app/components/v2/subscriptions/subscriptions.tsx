@@ -1,7 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
-import Link from 'next/link'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import useEmblaCarousel from 'embla-carousel-react'
 import { X } from 'lucide-react'
@@ -9,7 +8,14 @@ import { isStaffRole } from '@/src/app/components/v2/lawyer-requests/staff-gate'
 import { useBodyScrollLock } from '@/src/app/hooks/useBodyScrollLock'
 import { CustomGetRequest, CustomRequest } from '@/src/libs/request'
 import { OrderTypeE } from '@/src/interfaces/payment'
-import { clearPostAuthIntent, peekPostAuthIntent, setPostAuthIntent } from '@/src/libs/postAuthIntent'
+import {
+  emitOpenAuth,
+  peekPendingSubscriptionPlan,
+  clearPendingSubscriptionPlan,
+  setPendingSubscriptionPlan,
+  setPendingOneTimePurchase,
+  consumePendingOneTimePurchase,
+} from '@/src/libs/authIntent'
 import styles from './subscriptions.module.css'
 
 type Tone = 'orange' | 'yellow' | 'purple' | 'green'
@@ -29,8 +35,6 @@ type Plan = {
   /** Subscription plan id when the card is a DB-backed monthly plan */
   planId?: number
   bvAmount?: number
-  /** Pay-per-question card: no subscription, money goes through the balance */
-  oneTime?: boolean
 }
 
 type MySub = {
@@ -68,14 +72,13 @@ const oneTimePlan: Plan = {
   price: '2 000 ₽',
   badge: 'Один вопрос – один ответ, без подписки',
   tone: 'orange',
-  oneTime: true,
 }
 
 const MONTHLY_FALLBACK: Plan[] = [
   {
     name: 'Старт',
     description: 'Ежемесячная подписка: 5 вопросов',
-    price: '8 500 ₽',
+    price: '7 000 ₽',
     priceSuffix: '/мес',
     badge: '5 запросов в месяц для базовых задач',
     tone: 'yellow',
@@ -145,14 +148,12 @@ function CheckIcon() {
 }
 
 export function Subscriptions() {
-  const { data: session, status: sessionStatus } = useSession()
+  const { data: session } = useSession()
   const isStaff = isStaffRole(session?.user?.role)
   const [monthly, setMonthly] = useState<Plan[]>(MONTHLY_FALLBACK)
-  const [plansLoaded, setPlansLoaded] = useState(false)
   const [buyingId, setBuyingId] = useState<number | null>(null)
   const [mySub, setMySub] = useState<MySub | null>(null)
   const [subCheck, setSubCheck] = useState<'loading' | 'ready' | 'error'>('loading')
-  const [subLoadedFor, setSubLoadedFor] = useState<string | null>(null)
   const [confirmData, setConfirmData] = useState<ConfirmData | null>(null)
 
   useBodyScrollLock(confirmData !== null)
@@ -209,23 +210,26 @@ export function Subscriptions() {
     }
   }
 
-  const handleBuy = (plan: Plan) => {
-    if (!plan.planId || buyingId !== null) return
-    const confirm = buildConfirm(plan)
-    if (confirm) {
-      setConfirmData(confirm)
+  const resumePendingRef = useRef(false)
+
+  const goToInquiry = () => {
+    const target =
+      document.getElementById('m-inquiry') ?? document.getElementById('inquiry')
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' })
       return
     }
-    void doBuy(plan)
+    window.location.assign('/#inquiry')
   }
 
-  const handleAnonBuy = (plan: Plan) => {
-    setPostAuthIntent(
-      plan.oneTime
-        ? { kind: 'topup' }
-        : { kind: 'plan', planId: plan.planId ?? null, planName: plan.name },
-    )
-    window.dispatchEvent(new CustomEvent('enki:open-auth', { detail: { form: 'register' } }))
+  const handleOneTimeBuy = () => {
+    if (isStaff) return
+    if (!session?.user) {
+      setPendingOneTimePurchase()
+      emitOpenAuth({ form: 'login' })
+      return
+    }
+    goToInquiry()
   }
 
   const doBuy = async (plan: Plan) => {
@@ -238,6 +242,7 @@ export function Subscriptions() {
         data: { planId: plan.planId },
       })
       if (res.status && res.data?.alpha_form_url) {
+        clearPendingSubscriptionPlan()
         window.location.href = res.data.alpha_form_url
         return
       }
@@ -249,6 +254,27 @@ export function Subscriptions() {
     }
   }
 
+  /** Same path for manual buy and post-login resume: confirm when needed, else pay. */
+  const startBuyForPlan = (plan: Plan) => {
+    if (!plan.planId || buyingId !== null) return
+    const confirm = buildConfirm(plan)
+    if (confirm) {
+      setConfirmData(confirm)
+      return
+    }
+    void doBuy(plan)
+  }
+
+  const handleBuy = (plan: Plan) => {
+    if (!plan.planId || buyingId !== null) return
+    if (!session?.user) {
+      setPendingSubscriptionPlan(plan.planId)
+      emitOpenAuth({ form: 'login' })
+      return
+    }
+    startBuyForPlan(plan)
+  }
+
   useEffect(() => {
     let cancelled = false
     CustomGetRequest('/subscriptions/public')
@@ -257,53 +283,21 @@ export function Subscriptions() {
         if (!cancelled && Array.isArray(list) && list.length > 0) {
           setMonthly(list.map(mapDtoToPlan))
         }
-        if (!cancelled) setPlansLoaded(true)
       })
-      .catch(() => {
-        if (!cancelled) setPlansLoaded(true)
-      })
+      .catch(() => {})
     return () => {
       cancelled = true
     }
   }, [])
 
   useEffect(() => {
-    const userId = session?.user?.id ? String(session.user.id) : null
-    if (!userId || isStaff) return
-    if (!plansLoaded || subLoadedFor !== userId) return
-    // Намерение отрабатываем только на своём якоре: после авторизации формы
-    // приводят сюда через '/#subscriptions'. Логин из других сценариев
-    // (например, встроенный вход в визарде вопроса) его не подхватывает.
-    if (window.location.hash !== '#subscriptions') return
-    const intent = peekPostAuthIntent()
-    if (!intent || intent.kind !== 'plan') return
-    const plan = monthly.find((p) =>
-      intent.planId !== null ? p.planId === intent.planId : p.name === intent.planName,
-    )
-    if (!plan?.planId) return
-    clearPostAuthIntent()
-    setConfirmData(buildConfirm(plan) ?? {
-      plan,
-      title: 'Подтверждение покупки',
-      paragraphs: [
-        `Вы выбрали тариф «${plan.name}» — ${plan.price}${plan.priceSuffix ?? ''}.`,
-        'Нажмите «Продолжить», чтобы перейти к оплате.',
-      ],
-    })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.user?.id, isStaff, plansLoaded, subLoadedFor, monthly])
-
-  useEffect(() => {
-    const userId = session?.user?.id ? String(session.user.id) : null
-    if (!userId || isStaff) {
+    if (!session?.user || isStaff) {
       setMySub(null)
       setSubCheck('ready')
-      setSubLoadedFor(null)
       return
     }
     let cancelled = false
     setSubCheck('loading')
-    setSubLoadedFor(null)
     CustomGetRequest('/subscriptions/me')
       .then((res) => {
         if (cancelled) return
@@ -314,18 +308,44 @@ export function Subscriptions() {
           setMySub(null)
           setSubCheck('error')
         }
-        setSubLoadedFor(userId)
       })
       .catch(() => {
         if (!cancelled) {
           setMySub(null)
           setSubCheck('error')
-          setSubLoadedFor(userId)
         }
       })
     return () => {
       cancelled = true
     }
+  }, [session?.user?.id, isStaff])
+
+  // Guest chose a plan → logged in/registered → resume (with confirm if they already have a sub).
+  useEffect(() => {
+    if (!session?.user || isStaff) return
+    if (subCheck === 'loading' || buyingId !== null || resumePendingRef.current) return
+    const pendingId = peekPendingSubscriptionPlan()
+    if (!pendingId) return
+    // Wait until DB-backed plans (with planId) are loaded — fallback cards have none.
+    const dbPlans = monthly.filter((item) => item.planId != null)
+    if (dbPlans.length === 0) return
+    const plan = dbPlans.find((item) => item.planId === pendingId)
+    if (!plan) {
+      clearPendingSubscriptionPlan()
+      return
+    }
+    resumePendingRef.current = true
+    clearPendingSubscriptionPlan()
+    document.getElementById('subscriptions')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    startBuyForPlan(plan)
+    resumePendingRef.current = false
+  }, [session?.user?.id, isStaff, subCheck, buyingId, monthly])
+
+  // Guest chose one-time package → after auth, open the inquiry wizard.
+  useEffect(() => {
+    if (!session?.user || isStaff) return
+    if (!consumePendingOneTimePurchase()) return
+    goToInquiry()
   }, [session?.user?.id, isStaff])
 
   const plans: Plan[] = [oneTimePlan, ...monthly]
@@ -445,12 +465,12 @@ export function Subscriptions() {
                       >
                         Недоступно
                       </span>
-                    ) : plan.planId && session?.user ? (
+                    ) : plan.planId ? (
                       <button
                         type="button"
                         className={styles.primaryButton}
                         onClick={() => handleBuy(plan)}
-                        disabled={buyingId !== null || subCheck === 'loading'}
+                        disabled={buyingId !== null || (!!session?.user && subCheck === 'loading')}
                       >
                         {buyingId === plan.planId
                           ? 'Создаём платёж…'
@@ -458,29 +478,14 @@ export function Subscriptions() {
                             ? 'Продлить'
                             : 'Купить'}
                       </button>
-                    ) : plan.oneTime && session?.user ? (
-                      <Link className={styles.primaryButton} href="/profile/?tab=balance">
-                        Купить
-                      </Link>
-                    ) : sessionStatus === 'loading' ? (
-                      <button type="button" className={styles.primaryButton} disabled>
-                        Купить
-                      </button>
-                    ) : !session?.user ? (
+                    ) : (
                       <button
                         type="button"
                         className={styles.primaryButton}
-                        onClick={() => handleAnonBuy(plan)}
+                        onClick={handleOneTimeBuy}
                       >
                         Купить
                       </button>
-                    ) : (
-                      <span
-                        className={`${styles.primaryButton} ${styles.primaryButtonDisabled}`}
-                        aria-disabled="true"
-                      >
-                        Недоступно
-                      </span>
                     )}
                   </div>
                 </article>

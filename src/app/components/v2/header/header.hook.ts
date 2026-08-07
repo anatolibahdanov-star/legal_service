@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useSession, signOut } from "next-auth/react"
 import { SwitchToLoginPrefill } from "@/src/interfaces/form"
+import { clearAllPendingPurchases, subscribeOpenAuth } from "@/src/libs/authIntent"
 
 interface UseHeaderProps {
   isAuthenticated?: boolean
@@ -19,19 +20,30 @@ export const useHeader = ({
   const [loginPrefillOtpSent, setLoginPrefillOtpSent] = useState<boolean>(false)
   const [loginPrefillExpiresInSec, setLoginPrefillExpiresInSec] = useState<number | undefined>(undefined)
   const { data: session } = useSession()
-  
-  const handleAuthClick = () => {
-    setActiveForm("login")
-  }
 
   useEffect(() => {
-    const onOpenAuth = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { form?: 'login' | 'register' } | undefined
-      setActiveForm(detail?.form === 'login' ? 'login' : 'register')
-    }
-    window.addEventListener('enki:open-auth', onOpenAuth)
-    return () => window.removeEventListener('enki:open-auth', onOpenAuth)
+    return subscribeOpenAuth((detail) => {
+      const form = detail.form ?? 'login'
+      if (form === 'register') {
+        setLoginPrefillPhone(undefined)
+        setLoginPrefillOtpSent(false)
+        setLoginPrefillExpiresInSec(undefined)
+        setActiveForm('register')
+        return
+      }
+      if (form === 'reset') {
+        setActiveForm('reset')
+        return
+      }
+      setActiveForm('login')
+    })
   }, [])
+  
+  const handleAuthClick = () => {
+    // Manual "Войти" should not resume a previously abandoned purchase intent.
+    clearAllPendingPurchases()
+    setActiveForm("login")
+  }
 
   const handleLogout = () => {
     signOut({ callbackUrl: '/' })

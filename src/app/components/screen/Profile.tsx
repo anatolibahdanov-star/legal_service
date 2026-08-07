@@ -621,28 +621,43 @@ export const ProfileJobList = ({is_user, user}: ProfileJobListPropsI) => {
                             <Eye className="size-5" />
                           </button>
                         </Tooltip>
-                        <Tooltip content={caseItem.rating ? `Изменить оценку (${caseItem.rating})` : "Оценить"}>
-                          <button
-                            onClick={() => handleCaseClick(caseItem, true)}
-                            className={`p-2 rounded-lg transition-colors relative ${
-                              caseItem.rating 
-                                ? 'border-2 border-[#10b981] text-[#10b981] hover:bg-[#10b981] hover:text-white' 
-                                : 'border-2 border-[#8faaba] text-[#8faaba] hover:border-[#8faaba] hover:text-[#8faaba]'
-                            }`}
-                          >
-                            {caseItem.rating ? (
-                              <>
-                                <Star className="size-5 fill-[#10b981]" />
-                                {/* Rating badge */}
-                                <span className="absolute -top-2 -right-2 bg-[#10b981] text-white text-xs font-bold rounded-full px-1.5 py-0.5 min-w-[24px] flex items-center justify-center shadow-md">
-                                  {caseItem.rating}
-                                </span>
-                              </>
-                            ) : (
-                              <StarOff className="size-5" />
-                            )}
-                          </button>
-                        </Tooltip>
+                        {(() => {
+                          const canRate =
+                            caseItem.job_status === QuestionStatusesE.Approved ||
+                            caseItem.job_status === QuestionStatusesE.Spam;
+                          const rateTooltip = !canRate
+                            ? "Оценить работу юриста можно только после получения ответа!"
+                            : caseItem.rating
+                              ? `Изменить оценку (${caseItem.rating})`
+                              : "Оценить";
+                          return (
+                            <Tooltip content={rateTooltip}>
+                              <button
+                                type="button"
+                                onClick={() => canRate && handleCaseClick(caseItem, true)}
+                                disabled={!canRate}
+                                className={`p-2 rounded-lg transition-colors relative ${
+                                  !canRate
+                                    ? "border-2 border-[#8faaba]/40 text-[#8faaba]/40 cursor-not-allowed"
+                                    : caseItem.rating
+                                      ? "border-2 border-[#10b981] text-[#10b981] hover:bg-[#10b981] hover:text-white"
+                                      : "border-2 border-[#8faaba] text-[#8faaba] hover:border-[#8faaba] hover:text-[#8faaba]"
+                                }`}
+                              >
+                                {caseItem.rating ? (
+                                  <>
+                                    <Star className="size-5 fill-[#10b981]" />
+                                    <span className="absolute -top-2 -right-2 bg-[#10b981] text-white text-xs font-bold rounded-full px-1.5 py-0.5 min-w-[24px] flex items-center justify-center shadow-md">
+                                      {caseItem.rating}
+                                    </span>
+                                  </>
+                                ) : (
+                                  <StarOff className="size-5" />
+                                )}
+                              </button>
+                            </Tooltip>
+                          );
+                        })()}
                         <Tooltip content="Поделиться ссылкой">
                           <button
                             onClick={() => handleShareLink(caseItem.uuid)}

@@ -134,27 +134,36 @@ export function ProfileSidebar({
   const createdAt = (data as (DBUser & { created_at?: string | Date }) | null)?.created_at
   const rawEmail = data?.email ?? user?.email ?? ''
   const email = rawEmail && !isPhoneEmail(rawEmail) ? rawEmail : ''
-  const phone = data?.phone ?? ''
+  const phone = (data?.phone ?? '').trim()
   const displayName = data?.name || user?.name || data?.username || 'Пользователь'
   const initials = getInitials(displayName)
+  // Avatar upload API is temporarily disabled (PUT → 503). Hide the photo
+  // checklist row so it cannot freeze readiness at <100%.
+  const photoUploadAvailable = false
   const completionItems = COMPLETION_ITEMS.map((item) => {
     if (item.key === 'email') {
-      const emailVerified = !!email && data?.email_verified === 1
+      const emailVerified = !!email && Number(data?.email_verified) === 1
+      // Progress counts a real email as soon as it is attached. Verification
+      // status stays in the title; previously only verified email moved %.
       return {
         ...item,
-        title: emailVerified
-          ? 'Email подтверждён'
-          : email
-            ? 'Email не подтверждён'
-            : 'Привязать email',
-        description: email || 'Привязать email',
-        completed: emailVerified,
+        title: !email
+          ? 'Привязать email'
+          : emailVerified
+            ? 'Email подтверждён'
+            : 'Email привязан',
+        description: email
+          ? emailVerified
+            ? email
+            : `${email} · ожидает подтверждения`
+          : 'Привязать email',
+        completed: !!email,
       }
     }
     if (item.key === 'phone') {
       return {
         ...item,
-        title: phone ? 'Телефон привязан' : 'Телефон не подтверждён',
+        title: phone ? 'Телефон привязан' : 'Привязать телефон',
         description: phone || 'Привязать телефон',
         completed: !!phone,
       }
@@ -168,11 +177,13 @@ export function ProfileSidebar({
       }
     }
     return item
-  })
-  const completionPercent = Math.round(
-    (completionItems.filter((item) => item.completed).length / completionItems.length) * 100
-  )
-  const showCompletion = !documentsComplete
+  }).filter((item) => item.key !== 'photo' || photoUploadAvailable || !!avatarUrl)
+  const completionPercent = completionItems.length
+    ? Math.round(
+        (completionItems.filter((item) => item.completed).length / completionItems.length) * 100,
+      )
+    : 0
+  const showCompletion = !documentsComplete && completionPercent < 100
 
   return (
     <div className={styles.root}>

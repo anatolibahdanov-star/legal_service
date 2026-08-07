@@ -6,26 +6,22 @@
 }
 
 .topRow {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   align-items: stretch;
   gap: 48px;
-}
-
-.balanceCol {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: 24px;
-  min-width: 0;
 }
 
 /* ─── Balance card ──────────────────────────────────────────────────────── */
 .balanceCard {
   position: relative;
   display: flex;
-  flex: 1;
+  align-items: stretch;
+  min-height: 340px;
+  min-width: 0;
   overflow: hidden;
-  padding: 32px;
+  padding: 40px 36px;
+  gap: 0;
   background: #fff;
   border: 1px solid rgba(18, 22, 27, 0.05);
   border-radius: 28px;
@@ -38,10 +34,12 @@
   position: relative;
   z-index: 1;
   display: flex;
-  flex: 1;
+  flex: 1 1 0;
+  min-width: 0;
   flex-direction: column;
   justify-content: space-between;
-  gap: 40px;
+  gap: 48px;
+  padding-right: 32px;
 }
 
 .balanceTop {
@@ -106,10 +104,11 @@
 .topupBtn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   width: fit-content;
   height: 56px;
-  padding: 0 28px 0 22px;
+  padding: 0 24px 7px;
   color: #fff;
   font-size: 18px;
   font-weight: 600;
@@ -138,6 +137,7 @@
 .topupIcon {
   width: 24px;
   height: 24px;
+  transform: translateY(2px);
 }
 
 .methodPicker {
@@ -241,47 +241,20 @@
   filter: blur(64px);
 }
 
-.freeQuestionsCard {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 28px 32px;
-  background: #fff;
-  border: 1px solid rgba(18, 22, 27, 0.05);
-  border-radius: 28px;
-  box-shadow:
-    0 3px 36px 0 rgba(0, 0, 0, 0.04),
-    0 -102px 250px 0 rgba(0, 0, 0, 0.07);
-}
-
-.statusDotPurple {
-  background: #34347c;
-}
-
-.subPanel {
+.subscriptionPanel {
   position: relative;
   z-index: 1;
   display: flex;
-  flex: 1;
+  flex: 1.15 1 0;
+  min-width: 260px;
   flex-direction: column;
   justify-content: space-between;
-  gap: 24px;
-  min-width: 0;
-  padding-left: 40px;
-  border-left: 1px solid rgba(18, 22, 27, 0.07);
+  gap: 16px;
+  padding-left: 32px;
+  border-left: 1px solid rgba(18, 22, 27, 0.08);
 }
 
-.balanceCard:has(.subPanel) .balanceInner {
-  padding-right: 40px;
-}
-
-.subPanelBody {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.subPlanRow {
+.subCardHeader {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -308,7 +281,8 @@
 
 .subQuestionsRow {
   display: flex;
-  align-items: center;
+  align-items: baseline;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
@@ -319,23 +293,130 @@
   color: #12161b;
 }
 
+.subQuestionsTotal {
+  font-size: 22px;
+  font-weight: 600;
+  color: rgba(18, 22, 27, 0.35);
+}
+
 .subQuestionsLabel {
-  white-space: nowrap;
   font-size: 13px;
   font-weight: 500;
+  line-height: 18px;
   color: rgba(18, 22, 27, 0.5);
 }
 
-.unsubBtn {
-  width: 100%;
+.subMetaList {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 20px;
+  margin: 4px 0 0;
+}
+
+.subMetaRow {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+}
+
+.subMetaRow dt {
+  margin: 0;
+  font-size: 12px;
+  line-height: 16px;
+  color: rgba(18, 22, 27, 0.45);
+}
+
+.subMetaRow dd {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  color: #12161b;
+}
+
+.subCancelLink {
+  align-self: flex-start;
+  margin-top: auto;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
+  color: rgba(18, 22, 27, 0.45);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color 0.15s;
+}
+
+.subCancelLink:hover {
+  color: #dc2626;
+}
+
+.subEmpty {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 0;
+}
+
+.subEmpty .balanceHint {
+  max-width: 28ch;
+}
+
+.subEmptyTitle {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 26px;
+  white-space: nowrap;
+  color: #12161b;
+}
+
+.subEmptyCta {
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
-  padding: 0 28px;
+  flex-shrink: 0;
+  gap: 8px;
+  width: fit-content;
+  height: 56px;
+  margin-top: auto;
+  padding: 0 24px 7px;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 21px;
+  white-space: nowrap;
+  text-decoration: none;
+  background: radial-gradient(circle at 50% 0%, #34347c 0%, #2d2d6c 100%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 35px;
+  box-shadow: 0 4px 20px 0 rgba(47, 47, 113, 0.15);
+  transition: opacity 0.15s;
+}
+
+.subEmptyCta:hover {
+  opacity: 0.9;
+}
+
+.subEmptyCta:active {
+  opacity: 0.8;
+}
+
+.subEmptyCta .toggleIcon {
+  transform: translateY(2px);
 }
 
 .subConfirm {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  margin-top: auto;
 }
 
 .subConfirmText {
@@ -372,20 +453,13 @@
   cursor: not-allowed;
 }
 
-.freeQuestionsAmount {
-  font-size: 48px;
-  font-weight: 700;
-  line-height: 52px;
-  color: #34347c;
-}
-
 /* ─── History preview card ──────────────────────────────────────────────── */
 .historyCard {
   display: flex;
-  width: 600px;
-  flex-shrink: 0;
+  min-height: 340px;
+  min-width: 0;
   flex-direction: column;
-  gap: 24px;
+  gap: 20px;
   padding: 28px 32px;
   background: #fff;
   border: 1px solid rgba(18, 22, 27, 0.05);
@@ -450,9 +524,11 @@
 
 .historyList {
   display: flex;
+  min-height: 0;
   flex: 1;
   flex-direction: column;
   justify-content: flex-start;
+  overflow-y: auto;
 }
 
 .historyEmpty {
@@ -560,15 +636,25 @@
   color: rgba(18, 22, 27, 0.35);
 }
 
-/* ─── Stat cards ────────────────────────────────────────────────────────── */
-.statsGrid {
+/* ─── Secondary 2×2 grid ────────────────────────────────────────────────── */
+.operationsHistoryAnchor {
+  scroll-margin-top: 96px;
+}
+
+.secondaryGrid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 48px;
+  align-items: stretch;
+  gap: 24px 48px;
 }
 
 .statCard {
-  padding: 24px 32px;
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 140px;
+  padding: 28px 32px;
   background: #fff;
   border: 1px solid rgba(18, 22, 27, 0.05);
   border-radius: 28px;
@@ -587,7 +673,8 @@
 }
 
 .statValue {
-  margin-top: 12px;
+  margin-top: auto;
+  padding-top: 12px;
   font-size: 32px;
   font-weight: 700;
   line-height: 35px;
@@ -605,7 +692,8 @@
   display: flex;
   align-items: flex-end;
   gap: 12px;
-  margin-top: 12px;
+  margin-top: auto;
+  padding-top: 12px;
 }
 
 .statBadge {
@@ -687,30 +775,36 @@
 @media (max-width: 1279px) {
   .balanceCard {
     flex-direction: column;
-    gap: 32px;
+    gap: 28px;
   }
 
-  .subPanel {
-    min-width: 0;
-    padding-left: 0;
-    padding-top: 24px;
-    border-left: none;
-    border-top: 1px solid rgba(18, 22, 27, 0.07);
-  }
-
-  .balanceCard:has(.subPanel) .balanceInner {
+  .balanceInner {
     padding-right: 0;
+  }
+
+  .subscriptionPanel {
+    padding-left: 0;
+    padding-top: 28px;
+    border-left: none;
+    border-top: 1px solid rgba(18, 22, 27, 0.08);
+  }
+}
+
+@media (max-width: 600px) {
+  .subMetaList {
+    grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 1023px) {
   .topRow {
-    flex-direction: column;
+    grid-template-columns: 1fr;
     gap: 24px;
   }
 
+  .balanceCard,
   .historyCard {
-    width: 100%;
+    min-height: 0;
   }
 }
 
@@ -719,19 +813,22 @@
     gap: 24px;
   }
 
-  .balanceCard,
-  .freeQuestionsCard {
+  .balanceCard {
     padding: 24px;
+  }
+
+  .subscriptionPanel {
+    min-width: 0;
+  }
+
+  .subEmptyTitle,
+  .subEmptyCta {
+    white-space: normal;
   }
 
   .balanceAmount {
     font-size: 48px;
     line-height: 52px;
-  }
-
-  .freeQuestionsAmount {
-    font-size: 40px;
-    line-height: 44px;
   }
 
   .balanceCurrency {
@@ -743,12 +840,13 @@
     padding: 24px 20px;
   }
 
-  .statsGrid {
+  .secondaryGrid {
     grid-template-columns: 1fr;
-    gap: 24px;
+    gap: 16px;
   }
 
   .statCard {
+    min-height: 0;
     padding: 20px;
   }
 

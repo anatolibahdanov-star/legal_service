@@ -15,7 +15,7 @@ import { signInWithPhoneOtp } from "@/src/app/components/forms/action/register-p
 import { YandexSmartCaptcha } from "@/src/app/components/forms/YandexSmartCaptcha";
 import { useYandexInvisibleCaptcha } from "@/src/app/components/forms/useYandexInvisibleCaptcha";
 import OtpCodeStep, { OtpStepResult } from "@/src/app/components/forms/OtpCodeStep";
-import { consumePostAuthRedirect } from "@/src/libs/postAuthIntent";
+import { getPostAuthPath } from "@/src/libs/authIntent";
 
 type Tab = "email" | "phone";
 type PhoneStep = "phone" | "code";
@@ -224,13 +224,7 @@ export default function AuthForm({
     const session = await getSession();
     const user = session?.user;
     onClose();
-    if (user?.role === "admin") {
-      router.push("/admin#/requests");
-    } else if (user?.role === "lowyer") {
-      router.push("/admin/requests");
-    } else {
-      router.push(consumePostAuthRedirect() ?? "/profile");
-    }
+    router.push(getPostAuthPath(user?.role));
     router.refresh();
   };
 
