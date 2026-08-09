@@ -9,11 +9,25 @@ import { expireSubscriptions } from './cron/expireSubscriptions';
 import { subscriptionRenewal } from './cron/subscriptionRenewal';
 import { warmSettings } from './services/settings';
 import { seedPromptVersionIfEmpty } from './repositories/settings/repo';
+import logger from './libs/logger';
 
 export async function register() {
     console.log("process.env.NEXT_RUNTIME ", process.env.NEXT_RUNTIME)
   // Only run cron jobs in the server environment (Node.js runtime)
   if (process.env.NEXT_RUNTIME === 'nodejs') {
+    try {
+      const fs = await import('fs');
+      const path = await import('path');
+      const tls = await import('tls');
+      const { Agent, setGlobalDispatcher } = await import('undici');
+      const caPath = path.join(process.cwd(), 'certs/russian_trusted_bundle.pem');
+      const ca = [...tls.rootCertificates, fs.readFileSync(caPath, 'utf-8')];
+      setGlobalDispatcher(new Agent({ connect: { ca } }));
+      logger.info('INSTRUMENTATION register - Russian trusted CA enabled for outbound TLS');
+    } catch (e) {
+      logger.error('INSTRUMENTATION register - Failed to enable Russian trusted CA, falling back to NODE_EXTRA_CA_CERTS', (e as Error).message);
+    }
+
     await warmSettings();
 
     try {
