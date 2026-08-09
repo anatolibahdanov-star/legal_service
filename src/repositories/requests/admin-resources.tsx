@@ -72,7 +72,7 @@ const useUnpaidLock = () => {
 
 const RequestStatusInput = () => {
     const locked = useUnpaidLock();
-    return <SelectInput label="Статус" source="job_status" choices={REQUEST_STATUS_CHOICES} disabled={locked} />;
+    return <SelectInput label="Статус" source="job_status" choices={REQUEST_STATUS_CHOICES} disabled={locked} validate={required()} />;
 };
 
 const RequestFilters = (props: JSX.IntrinsicAttributes) => (
