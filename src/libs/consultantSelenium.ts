@@ -1,23 +1,24 @@
 const stripTrailingSlash = (value: string): string => value.replace(/\/+$/, '');
 
 const SELENIUM = {
-    baseUrl: stripTrailingSlash(process.env.SELENIUM_API_URL ?? 'http://176.113.81.193:8000'),
+    baseUrl: stripTrailingSlash(process.env.SELENIUM_API_URL ?? 'http://localhost:3005'),
     apiToken: process.env.SELENIUM_API_TOKEN ?? '',
     login: process.env.SELENIUM_CONSULTANT_LOGIN ?? '',
     password: process.env.SELENIUM_CONSULTANT_PASSWORD ?? '',
     authPath: process.env.SELENIUM_AUTH_PATH ?? '/auth',
-    queryPath: process.env.SELENIUM_QUERY_PATH ?? '/query_html',
+    queryPath: process.env.SELENIUM_QUERY_PATH ?? '/api/query',
     timeoutMs: Number(process.env.SELENIUM_TIMEOUT_MS ?? 5 * 60 * 1000),
 };
 
-const AUTH_LOGIN_FIELD = 'login';
-const AUTH_PASSWORD_FIELD = 'password';
-const QUERY_FIELD = 'text';
-const QUERY_MAX_LENGTH = 4000;
+// const AUTH_LOGIN_FIELD = 'login';
+// const AUTH_PASSWORD_FIELD = 'password';
+// const QUERY_FIELD = 'text';
+const QUERY_FIELD = 'question';
+const QUERY_MAX_LENGTH = 5000;
 
-const ANSWER_KEYS = ['response_html', 'response_markdown', 'response', 'answer', 'reply', 'text', 'content', 'output'];
+const ANSWER_KEYS = ['response_html', 'response_markdown', 'response', 'answer', 'reply', 'text', 'content', 'output', 'message'];
 const WRAPPER_KEYS = ['data', 'result', 'payload', 'message'];
-const TOKEN_KEYS = ['token', 'access_token', 'accessToken', 'session_token', 'sessionToken', 'session_id', 'sessionId', 'session', 'sid'];
+// const TOKEN_KEYS = ['token', 'access_token', 'accessToken', 'session_token', 'sessionToken', 'session_id', 'sessionId', 'session', 'sid'];
 
 export class ConsultantSeleniumError extends Error {
     constructor(message: string) {
@@ -72,14 +73,14 @@ const extractError = (status: number, body: any): string => {
     return `HTTP ${status}`;
 };
 
-const cookieHeaderFrom = (res: Response): string | null => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const getSetCookie = (res.headers as any).getSetCookie;
-    const list: string[] = typeof getSetCookie === 'function' ? getSetCookie.call(res.headers) : [];
-    const source = list && list.length > 0 ? list : (res.headers.get('set-cookie') ? [res.headers.get('set-cookie') as string] : []);
-    const pairs = source.map((c) => c.split(';')[0].trim()).filter(Boolean);
-    return pairs.length > 0 ? pairs.join('; ') : null;
-};
+// const cookieHeaderFrom = (res: Response): string | null => {
+//     // eslint-disable-next-line @typescript-eslint/no-explicit-any
+//     const getSetCookie = (res.headers as any).getSetCookie;
+//     const list: string[] = typeof getSetCookie === 'function' ? getSetCookie.call(res.headers) : [];
+//     const source = list && list.length > 0 ? list : (res.headers.get('set-cookie') ? [res.headers.get('set-cookie') as string] : []);
+//     const pairs = source.map((c) => c.split(';')[0].trim()).filter(Boolean);
+//     return pairs.length > 0 ? pairs.join('; ') : null;
+// };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const callSelenium = async (path: string, payload: Record<string, unknown>, extraHeaders: Record<string, string> = {}): Promise<{ res: Response; body: any }> => {
@@ -90,7 +91,7 @@ const callSelenium = async (path: string, payload: Record<string, unknown>, extr
             headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
-                'x-api-token': SELENIUM.apiToken,
+                // 'x-api-token': SELENIUM.apiToken,
                 ...extraHeaders,
             },
             body: JSON.stringify(payload),
@@ -122,20 +123,20 @@ export async function sendConsultantSeleniumQuery(question: string): Promise<str
         throw new ConsultantSeleniumError('Не настроены доступы к сервису Консультант+ (проверьте SELENIUM_* в конфиге).');
     }
 
-    const auth = await callSelenium(SELENIUM.authPath, {
-        [AUTH_LOGIN_FIELD]: SELENIUM.login,
-        [AUTH_PASSWORD_FIELD]: SELENIUM.password,
-    });
+    // const auth = await callSelenium(SELENIUM.authPath, {
+    //     [AUTH_LOGIN_FIELD]: SELENIUM.login,
+    //     [AUTH_PASSWORD_FIELD]: SELENIUM.password,
+    // });
 
-    if (!auth.res.ok) {
-        throw new ConsultantSeleniumError(`Ошибка авторизации в Консультант+: ${extractError(auth.res.status, auth.body)}`);
-    }
+    // if (!auth.res.ok) {
+    //     throw new ConsultantSeleniumError(`Ошибка авторизации в Консультант+: ${extractError(auth.res.status, auth.body)}`);
+    // }
 
     const sessionHeaders: Record<string, string> = {};
-    const cookie = cookieHeaderFrom(auth.res);
-    if (cookie) sessionHeaders['Cookie'] = cookie;
-    const token = pickString(auth.body, TOKEN_KEYS);
-    if (token) sessionHeaders['Authorization'] = `Bearer ${token}`;
+    // const cookie = cookieHeaderFrom(auth.res);
+    // if (cookie) sessionHeaders['Cookie'] = cookie;
+    // const token = pickString(auth.body, TOKEN_KEYS);
+    // if (token) sessionHeaders['Authorization'] = `Bearer ${token}`;
 
     const query = await callSelenium(SELENIUM.queryPath, { [QUERY_FIELD]: trimmed.slice(0, QUERY_MAX_LENGTH) }, sessionHeaders);
 
