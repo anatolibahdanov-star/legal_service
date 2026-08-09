@@ -1,5 +1,5 @@
 /* eslint-disable react/jsx-key */
-import { RecordContext, ShowControllerProps, FunctionField, useRecordContext, useRefresh, useUpdate, Button, useNotify, useEditController, ReferenceInput, Filter, DateInput, Show, SimpleShowLayout, required, SelectInput, TextInput, SimpleForm, Edit, List, Datagrid, DateField, TextField, SelectField, EditButton, DeleteButton, EditControllerProps, useShowController, Toolbar, SaveButton} from 'react-admin';
+import { RecordContext, ShowControllerProps, FunctionField, useRecordContext, useRefresh, useUpdate, Button, useNotify, useEditController, ReferenceInput, Filter, DateInput, Show, SimpleShowLayout, required, SelectInput, TextInput, SimpleForm, Edit, List, Datagrid, DateField, TextField, SelectField, EditButton, DeleteButton, EditControllerProps, useShowController, Toolbar, SaveButton, usePermissions} from 'react-admin';
 import {RichTextInput, DefaultEditorOptions} from "ra-input-rich-text"
 import { EditMarkHighlight } from "@/src/app/components/admin/editMarkHighlight"
 import { JSX } from 'react/jsx-runtime';
@@ -61,6 +61,20 @@ const editorOptions = {
     extensions: [...(DefaultEditorOptions.extensions ?? []), EditMarkHighlight],
 };
 
+const REQUEST_STATUS_CHOICES = getAdminChoices(QuestionStatusesE, "Статус обработки вопроса: ", true)
+    .filter(choice => [QuestionStatusesE.New, QuestionStatusesE.InProgress, QuestionStatusesE.Approved].includes(Number(choice.id)));
+
+const useUnpaidLock = () => {
+    const record = useRecordContext();
+    const { permissions } = usePermissions();
+    return record?.job_status === QuestionStatusesE.Unpaid && permissions !== 'admin';
+};
+
+const RequestStatusInput = () => {
+    const locked = useUnpaidLock();
+    return <SelectInput label="Статус" source="job_status" choices={REQUEST_STATUS_CHOICES} disabled={locked} />;
+};
+
 const RequestFilters = (props: JSX.IntrinsicAttributes) => (
     <Filter {...props}>
         <TextInput label="Пользователь" source="username" />
@@ -69,7 +83,7 @@ const RequestFilters = (props: JSX.IntrinsicAttributes) => (
         <ReferenceInput label="Категория" source="category" reference="categories">
             <SelectInput optionText="name" />
         </ReferenceInput>
-        <SelectInput label="Статус" source="status" choices={getAdminChoices(QuestionStatusesE, "Статус обработки вопроса: ", true)} />
+        <SelectInput label="Статус" source="status" choices={REQUEST_STATUS_CHOICES} />
         <SelectInput label="Отправка" source="email_status" choices={getAdminChoices(EmailStatusesE, "Статус отправки уведомления: ", true)} />
         <DateInput label="С" source="published_at_gte" defaultValue={(new Date()).toISOString().split('T')[0]} />
         <DateInput label="До" source="published_at_lte" defaultValue={nextMonth.toISOString().split('T')[0]} />
@@ -216,7 +230,7 @@ export const RequestEdit = (props: EditControllerProps<any, Error> | undefined) 
                             <RichTextInput source="reply" label="Ответ от Консультант+" validate={[required()]} editorOptions={editorOptions} />
                             <CustomSaveButton />
                             <RichTextInput source="final_reply" label="Ответ пользователю" editorOptions={editorOptions} />
-                            <SelectInput label="Статус" source="job_status" choices={getAdminChoices(QuestionStatusesE, "Статус обработки вопроса: ", true)} />
+                            <RequestStatusInput />
                             <LawyerAttachmentUpload attachments={(attachmentsMap[String(lastLawyerMessage.id)] ?? []).filter((a) => a.source === 'lawyer')} onUploaded={reloadJobs} />
                             {/* <PresetFieldLogic lastRecord={lastLawyerMessage} /> */}
                         </SimpleForm>
@@ -366,12 +380,15 @@ const PdfDraftButton = () => {
   );
 };
 
-const EditToolbar = () => (
-  <Toolbar>
-    <SaveButton />
-    <PdfDraftButton />
-  </Toolbar>
-);
+const EditToolbar = () => {
+  const locked = useUnpaidLock();
+  return (
+    <Toolbar>
+      <SaveButton disabled={locked} />
+      <PdfDraftButton />
+    </Toolbar>
+  );
+};
 
 const consultantAnswerToHtml = (text: string): string => {
   const value = (text ?? '').trim();
@@ -434,6 +451,7 @@ const CustomSaveButton = () => {
   const refresh = useRefresh();
   const reloadJobs = useContext(ReloadJobsContext);
   const record = useRecordContext();
+  const locked = useUnpaidLock();
 
   const handleSaveAndPublish = handleSubmit(values => {
     // Custom logic: e.g., add a 'status: published' field before actual save
@@ -459,7 +477,7 @@ const CustomSaveButton = () => {
 
   return (
     <Button
-        disabled={isLoading}
+        disabled={isLoading || locked}
         variant="contained"
         color="primary"
         startIcon={<CheckCircleIcon />}
