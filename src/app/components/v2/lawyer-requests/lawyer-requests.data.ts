@@ -56,9 +56,6 @@ export const STATUS_OPTIONS: Array<{ value: number; label: string }> = [
   { value: QuestionStatusesE.New, label: statusesDesign[QuestionStatusesE.New].name },
   { value: QuestionStatusesE.InProgress, label: statusesDesign[QuestionStatusesE.InProgress].name },
   { value: QuestionStatusesE.Approved, label: statusesDesign[QuestionStatusesE.Approved].name },
-  { value: QuestionStatusesE.Unpaid, label: statusesDesign[QuestionStatusesE.Unpaid].name },
-  { value: QuestionStatusesE.Spam, label: statusesDesign[QuestionStatusesE.Spam].name },
-  { value: QuestionStatusesE.Disabled, label: statusesDesign[QuestionStatusesE.Disabled].name },
 ]
 
 export const EMAIL_STATUS_OPTIONS: Array<{ value: number; label: string }> = [

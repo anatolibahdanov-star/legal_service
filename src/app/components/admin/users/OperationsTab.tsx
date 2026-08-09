@@ -110,9 +110,12 @@ export const OperationsTab = ({ user, apiBase, onChanged }: OperationsTabProps) 
     const renderComment = (op: AdminBalanceOperationI) => {
         if (op.questionId) {
             return (
-                <a className={styles.opsLink} href={questionHref(op.questionId)} target="_blank" rel="noopener noreferrer">
-                    Вопрос №{op.questionId}
-                </a>
+                <>
+                    <a className={styles.opsLink} href={questionHref(op.questionId)} target="_blank" rel="noopener noreferrer">
+                        Вопрос №{op.questionId}
+                    </a>
+                    {op.comment ? <span className={styles.opsMuted}>{` · ${op.comment}`}</span> : null}
+                </>
             );
         }
         if (op.comment) {

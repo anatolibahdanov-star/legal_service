@@ -187,6 +187,25 @@ export async function PUT(request: Request) {
 
     const session = await getServerSession(authOptions);
     logger.info(msg + "session in updatedQuestion", session)
+
+    // Неоплаченный вопрос закрыт для любой работы через админку: ни ответ,
+    // ни смена статуса. Супер-админу оставлен ручной путь для разбора случаев,
+    // когда оплата прошла, а статус остался Unpaid.
+    const incomingStatus = updatedQuestion.job_status == null ? null : Number(updatedQuestion.job_status)
+    if (!session?.user?.is_super) {
+        const currentRows = await getQuestionsByIds([requestUrlId])
+        const current = currentRows?.[0] ?? null
+        if (current && current.job_status === QuestionStatusesE.Unpaid) {
+            logger.warn(msg + "edit blocked: question unpaid", {
+                question_id: requestUrlId,
+                incoming_status: incomingStatus,
+            })
+            return NextResponse.json(
+                { success: false, message: 'Вопрос не оплачен — работа с ним и отправка ответа недоступны.' },
+                { status: 409 }
+            );
+        }
+    }
     /* if(updatedQuestion.chat === 1) {
         const consultantReply = await sendConsultantPlusBot(updatedQuestion.question)
         logger.info(msg + " Consultant+ response", consultantReply)

@@ -30,6 +30,28 @@ html {
   padding-top: var(--v2-header-offset);
 }
 
+.v2-header-content-offset .layout {
+  min-width: 0;
+}
+
+.v2-header-content-offset .layout .RaLayout-content {
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.v2-header-content-offset .RaLayout-contentWithSidebar > .MuiDrawer-root {
+  height: auto;
+}
+
+.v2-header-content-offset .RaLayout-contentWithSidebar > .MuiDrawer-root .MuiDrawer-paper {
+  height: auto;
+}
+
+.v2-header-content-offset .MuiDrawer-root .RaSidebar-fixed {
+  position: static;
+  height: auto;
+}
+
 /* :root {
   --background: #ffffff;
   --foreground: #171717;

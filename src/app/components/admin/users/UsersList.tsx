@@ -22,6 +22,7 @@ const columns: ColumnDef[] = [
     { key: "id", label: "ID", sortable: true },
     { key: "name", label: "Имя", sortable: true },
     { key: "email", label: "Email", sortable: true },
+    { key: "phone", label: "Телефон", sortable: true },
     { key: "created_at", label: "Регистрация", sortable: true },
     { key: "status", label: "Статус", sortable: true },
     { key: "balance", label: "Баланс, ₽", sortable: true },
@@ -148,10 +149,10 @@ export const UsersList = () => {
                         </thead>
                         <tbody>
                             {isPending && (
-                                <tr><td className={styles.emptyRow} colSpan={8}>Загружаем пользователей...</td></tr>
+                                <tr><td className={styles.emptyRow} colSpan={9}>Загружаем пользователей...</td></tr>
                             )}
                             {!isPending && rows.length === 0 && (
-                                <tr><td className={styles.emptyRow} colSpan={8}>Пользователи не найдены</td></tr>
+                                <tr><td className={styles.emptyRow} colSpan={9}>Пользователи не найдены</td></tr>
                             )}
                             {!isPending && rows.map((user) => {
                                 const meta = statusMeta(user.status);
@@ -166,6 +167,7 @@ export const UsersList = () => {
                                             {user.name}
                                         </td>
                                         <td>{user.email}</td>
+                                        <td>{user.phone ?? "—"}</td>
                                         <td>{formatDate(user.created_at as unknown as string)}</td>
                                         <td>
                                             <span className={`${styles.badge} ${badgeClass(meta.tone)}`}>{meta.label}</span>

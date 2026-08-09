@@ -108,6 +108,7 @@ const userSortColumns: Record<string, string> = {
     id: 'u.id',
     name: 'u.name',
     email: 'u.email',
+    phone: 'u.phone',
     created_at: 'u.created_at',
     status: 'u.status',
     is_register: 'u.is_register',
@@ -157,7 +158,19 @@ export function getAdminUserFilter(filter: DBFilterUsers | null = null): string 
         const q = escapeLike(filter.q.trim())
         if (q.length > 0) {
             const resultAnd = isFilter ? 'AND ' : ''
-            result += (resultAnd + '(name LIKE "%' + q + '%" OR email LIKE "%' + q + '%" OR CAST(id AS CHAR) LIKE "%' + q + '%") ')
+            const phoneVariants = new Set<string>([q])
+            const looksLikePhone = /^[\d\s()+-]+$/.test(filter.q.trim())
+            const digits = filter.q.replace(/\D/g, '')
+            if (looksLikePhone && digits.length >= 4) {
+                phoneVariants.add(digits)
+                if (digits.length >= 10) {
+                    phoneVariants.add(digits.slice(-10))
+                }
+            }
+            const phonePart = Array.from(phoneVariants)
+                .map((value) => ' OR phone LIKE "%' + value + '%"')
+                .join('')
+            result += (resultAnd + '(name LIKE "%' + q + '%" OR email LIKE "%' + q + '%" OR CAST(id AS CHAR) LIKE "%' + q + '%"' + phonePart + ') ')
             isFilter = true
         }
     }

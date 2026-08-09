@@ -1,6 +1,33 @@
 const OPEN_AUTH_EVENT = 'enki:open-auth'
 const PENDING_SUBSCRIPTION_PLAN_KEY = 'enki:pendingSubscriptionPlanId'
 const PENDING_ONE_TIME_KEY = 'enki:pendingOneTimePurchase'
+const PENDING_TTL_MS = 30 * 60 * 1000
+
+type StoredIntentT = { v: string; at: number }
+
+function readFreshValue(key: string): string | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = sessionStorage.getItem(key)
+    if (!raw) return null
+    const stored = JSON.parse(raw) as StoredIntentT
+    if (
+      typeof stored?.v !== 'string' ||
+      typeof stored?.at !== 'number' ||
+      Date.now() - stored.at >= PENDING_TTL_MS
+    ) {
+      sessionStorage.removeItem(key)
+      return null
+    }
+    return stored.v
+  } catch {
+    return null
+  }
+}
+
+function writeValue(key: string, value: string): void {
+  sessionStorage.setItem(key, JSON.stringify({ v: value, at: Date.now() } satisfies StoredIntentT))
+}
 
 export type AuthFormKind = 'login' | 'register' | 'reset'
 
@@ -28,22 +55,17 @@ export function setPendingSubscriptionPlan(planId: number): void {
   if (typeof window === 'undefined') return
   try {
     clearPendingOneTimePurchase()
-    sessionStorage.setItem(PENDING_SUBSCRIPTION_PLAN_KEY, String(planId))
+    writeValue(PENDING_SUBSCRIPTION_PLAN_KEY, String(planId))
   } catch {
     // ignore quota / private mode
   }
 }
 
 export function peekPendingSubscriptionPlan(): number | null {
-  if (typeof window === 'undefined') return null
-  try {
-    const raw = sessionStorage.getItem(PENDING_SUBSCRIPTION_PLAN_KEY)
-    if (!raw) return null
-    const id = Number(raw)
-    return Number.isFinite(id) && id > 0 ? id : null
-  } catch {
-    return null
-  }
+  const raw = readFreshValue(PENDING_SUBSCRIPTION_PLAN_KEY)
+  if (!raw) return null
+  const id = Number(raw)
+  return Number.isFinite(id) && id > 0 ? id : null
 }
 
 export function clearPendingSubscriptionPlan(): void {
@@ -65,19 +87,14 @@ export function setPendingOneTimePurchase(): void {
   if (typeof window === 'undefined') return
   try {
     clearPendingSubscriptionPlan()
-    sessionStorage.setItem(PENDING_ONE_TIME_KEY, '1')
+    writeValue(PENDING_ONE_TIME_KEY, '1')
   } catch {
     // ignore
   }
 }
 
 export function peekPendingOneTimePurchase(): boolean {
-  if (typeof window === 'undefined') return false
-  try {
-    return sessionStorage.getItem(PENDING_ONE_TIME_KEY) === '1'
-  } catch {
-    return false
-  }
+  return readFreshValue(PENDING_ONE_TIME_KEY) === '1'
 }
 
 export function clearPendingOneTimePurchase(): void {
@@ -105,6 +122,6 @@ export function getPostAuthPath(role?: string | null): string {
   if (role === 'admin') return '/admin#/requests'
   if (role === 'lowyer') return '/admin/requests'
   if (peekPendingSubscriptionPlan()) return '/#subscriptions'
-  if (peekPendingOneTimePurchase()) return '/#inquiry'
+  if (consumePendingOneTimePurchase()) return '/profile/?tab=balance'
   return '/profile'
 }

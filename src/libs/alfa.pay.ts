@@ -14,6 +14,13 @@ const SUB_PASSWORD = process.env.ALFA_SUB_PASSWORD;
 
 const msgGlobal = "LIBS ALFA.PAY "
 
+// RBS отвечает errorCode "0" на успешный запрос, а строка "0" в JS истинна —
+// поэтому код ошибки сравниваем явно.
+const isAlfaError = (code: unknown): boolean =>
+  code !== undefined && code !== null && String(code) !== '0'
+
+const ALFA_TIMEOUT_MS = 20000
+
 export const createAlfaOrder = async (amount: number, orderId: string, user: User): Promise<CustomResponseDataI> => {
   const msg = msgGlobal + "createAlfaOrder - "
   const domainUrl = process.env.NEXT_PUBLIC_URL
@@ -34,12 +41,13 @@ export const createAlfaOrder = async (amount: number, orderId: string, user: Use
             // currency: '643', // Rubles
             paymentType: 'SBP', // Required for QR
         }),
+        signal: AbortSignal.timeout(ALFA_TIMEOUT_MS),
     });
 
     const data = await response.json();
     logger.info(msg + "Response from Alpha ", data)
 
-    if (data.errorCode) {
+    if (isAlfaError(data.errorCode)) {
         logger.error(msg + "Error during Alfa payment request create order: " + data.errorMessage, user.id, amount, orderId)
         return {
             status: false,
@@ -79,12 +87,13 @@ export const getAlfaOrderQR = async (alfaOrderId: string, user: User): Promise<C
                 password: PASSWORD!,
                 mdOrder: alfaOrderId,
             }),
+            signal: AbortSignal.timeout(ALFA_TIMEOUT_MS),
         });
 
         const data = await responseQR.json();
         logger.info(msg + "Response from Alpha QR", data)
 
-        if (data.errorCode) {
+        if (isAlfaError(data.errorCode)) {
             logger.error(msg + "Error during Alfa payment request get order QR" + data.errorMessage, user.id, alfaOrderId)
             return {
                 status: false,
@@ -142,13 +151,13 @@ export const createAlfaBindingOrder = async (
 
   try {
     let data = await register('FORCE_CREATE_BINDING');
-    if (data.errorCode && data.errorCode !== '0') {
+    if (isAlfaError(data.errorCode)) {
         logger.warn(msg + "FORCE_CREATE_BINDING rejected, falling back to plain register", user.id, orderId, data.errorMessage)
         data = await register(null);
     }
     logger.info(msg + "Response from Alfa", data)
 
-    if (data.errorCode) {
+    if (isAlfaError(data.errorCode)) {
         logger.error(msg + "Error during Alfa binding order register: " + data.errorMessage, user.id, amount, orderId)
         return {
             status: false,
@@ -201,7 +210,7 @@ export const chargeAlfaBinding = async (
     });
     const registerData = await registerResponse.json();
     logger.info(msg + "register response", registerData)
-    if (registerData.errorCode || !registerData.orderId) {
+    if (isAlfaError(registerData.errorCode) || !registerData.orderId) {
         logger.error(msg + "Error during recurring register: " + registerData.errorMessage, user.id, amount, orderId)
         return { status: false, data: null, techical_data: registerData, error: "recurring register failed: " + registerData.errorMessage }
     }

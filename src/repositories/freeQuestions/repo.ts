@@ -16,6 +16,7 @@ export interface DBFreeQuestionOperationRow extends RowDataPacket {
     admin_username: string | null;
     question_id: number | null;
     question_uuid: string | null;
+    plan_name?: string | null;
 }
 
 /**
@@ -129,10 +130,17 @@ export async function getUserFreeQuestionOperations(
 ): Promise<DBFreeQuestionOperationRow[]> {
     const msg = msgGlobal + 'getUserFreeQuestionOperations - ';
     const query = `SELECT o.id, o.op_type, o.amount, o.comment, o.created_at, o.admin_id, o.question_id,
-        a.name admin_name, a.username admin_username, q.uuid question_uuid
+        a.name admin_name, a.username admin_username, q.uuid question_uuid,
+        (SELECT h.plan_name FROM subscription_history h
+            WHERE h.subscription_id = g.subscription_id
+              AND h.plan_name IS NOT NULL
+              AND h.created_at <= o.created_at + INTERVAL 5 SECOND
+            ORDER BY h.created_at DESC, h.id DESC
+            LIMIT 1) plan_name
         FROM free_question_operation o
         LEFT JOIN administrator a ON o.admin_id = a.id
         LEFT JOIN question q ON o.question_id = q.id
+        LEFT JOIN free_question_grant g ON o.grant_id = g.id
         WHERE o.user_id = ?
         ORDER BY o.created_at DESC, o.id DESC
         LIMIT ?`;
