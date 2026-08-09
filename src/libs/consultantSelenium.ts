@@ -1,7 +1,7 @@
 const stripTrailingSlash = (value: string): string => value.replace(/\/+$/, '');
 
 const SELENIUM = {
-    baseUrl: stripTrailingSlash(process.env.SELENIUM_API_URL ?? 'http://176.113.81.193:8000'),
+    baseUrl: stripTrailingSlash(process.env.SELENIUM_API_URL ?? 'http://localhost:3005'),
     apiToken: process.env.SELENIUM_API_TOKEN ?? '',
     login: process.env.SELENIUM_CONSULTANT_LOGIN ?? '',
     password: process.env.SELENIUM_CONSULTANT_PASSWORD ?? '',
