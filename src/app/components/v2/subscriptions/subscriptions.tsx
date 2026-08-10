@@ -1,7 +1,6 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import useEmblaCarousel from 'embla-carousel-react'
 import { X } from 'lucide-react'
@@ -153,7 +152,6 @@ function CheckIcon() {
 }
 
 export function Subscriptions() {
-  const router = useRouter()
   const { data: session } = useSession()
   const isStaff = isStaffRole(session?.user?.role)
   const [monthly, setMonthly] = useState<Plan[]>(MONTHLY_FALLBACK)
@@ -225,7 +223,7 @@ export function Subscriptions() {
       emitOpenAuth({ form: 'register' })
       return
     }
-    router.push('/profile/?tab=balance')
+    void doOneTimeTopup()
   }
 
   const doBuy = async (plan: Plan) => {
@@ -501,8 +499,9 @@ export function Subscriptions() {
                         type="button"
                         className={styles.primaryButton}
                         onClick={handleOneTimeBuy}
+                        disabled={oneTimeBuying || buyingId !== null}
                       >
-                        Купить
+                        {oneTimeBuying ? 'Создаём платёж…' : 'Купить'}
                       </button>
                     ) : !session?.user ? (
                       <button
