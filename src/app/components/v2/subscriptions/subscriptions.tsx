@@ -292,7 +292,6 @@ export function Subscriptions() {
   const handleBuy = (plan: Plan) => {
     if (!plan.planId || buyingId !== null) return
     if (!session?.user) {
-      console.info('[buy-debug] guest stored sub intent', plan.planId)
       setPendingSubscriptionPlan(plan.planId)
       emitOpenAuth({ form: 'register' })
       return
@@ -355,16 +354,6 @@ export function Subscriptions() {
   useEffect(() => {
     const userId = session?.user?.id ? String(session.user.id) : null
     if (!userId || isStaff) return
-    console.info('[buy-debug] resume check', {
-      userId,
-      isStaff,
-      buyingId,
-      oneTimeBuying,
-      subLoadedFor,
-      pendingSub: peekPendingSubscriptionPlan(),
-      pendingOneTime: peekPendingOneTimePurchase(),
-      plansWithId: monthly.filter((item) => item.planId != null).length,
-    })
     if (buyingId !== null || oneTimeBuying) return
     if (peekPendingOneTimePurchase()) {
       void doOneTimeTopup()
@@ -527,10 +516,7 @@ export function Subscriptions() {
                       <button
                         type="button"
                         className={styles.primaryButton}
-                        onClick={() => {
-                          console.info('[buy-debug] fallback card click, no planId — intent NOT stored')
-                          emitOpenAuth({ form: 'register' })
-                        }}
+                        onClick={() => emitOpenAuth({ form: 'register' })}
                       >
                         Купить
                       </button>
