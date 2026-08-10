@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth/next';
 
 import { authOptions } from '@/src/app/api/auth/[...nextauth]/route'
 import { getSettingNumber } from '@/src/services/settings';
+import { getQuestionPriceForFresh } from '@/src/services/pricing';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,5 +17,6 @@ export async function GET() {
     }
 
     const minTopupRub = Math.max(0, getSettingNumber('min_topup_rub', 100));
-    return NextResponse.json({ minTopupRub }, { status: 200 });
+    const oneTimeTopupRub = Math.max(minTopupRub, await getQuestionPriceForFresh('main'));
+    return NextResponse.json({ minTopupRub, oneTimeTopupRub }, { status: 200 });
 }

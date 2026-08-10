@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import useEmblaCarousel from 'embla-carousel-react'
 import { X } from 'lucide-react'
@@ -157,6 +157,7 @@ export function Subscriptions() {
   const [monthly, setMonthly] = useState<Plan[]>(MONTHLY_FALLBACK)
   const [buyingId, setBuyingId] = useState<number | null>(null)
   const [oneTimeBuying, setOneTimeBuying] = useState(false)
+  const oneTimeBuyingRef = useRef(false)
   const [mySub, setMySub] = useState<MySub | null>(null)
   const [subCheck, setSubCheck] = useState<'loading' | 'ready' | 'error'>('loading')
   const [subLoadedFor, setSubLoadedFor] = useState<string | null>(null)
@@ -249,19 +250,29 @@ export function Subscriptions() {
   }
 
   const doOneTimeTopup = async () => {
-    if (oneTimeBuying) return
+    if (oneTimeBuyingRef.current) return
+    oneTimeBuyingRef.current = true
     setOneTimeBuying(true)
     try {
       const min = await CustomGetRequest('/orders/min-topup/')
-      const minTopupRub = typeof min?.data?.minTopupRub === 'number' ? min.data.minTopupRub : 100
-      const res = await CustomRequest('/orders/', { amount: Math.round(minTopupRub * 100) })
+      const rub =
+        typeof min?.data?.oneTimeTopupRub === 'number'
+          ? min.data.oneTimeTopupRub
+          : typeof min?.data?.minTopupRub === 'number'
+            ? min.data.minTopupRub
+            : 100
+      const res = await CustomRequest('/orders/', { amount: Math.round(rub * 100) })
+      clearPendingOneTimePurchase()
       if (res.status && res.data?.alpha_form_url) {
         window.location.href = res.data.alpha_form_url
         return
       }
+      oneTimeBuyingRef.current = false
       setOneTimeBuying(false)
       alert(res.error || 'Не удалось создать платёж. Попробуйте ещё раз.')
     } catch {
+      clearPendingOneTimePurchase()
+      oneTimeBuyingRef.current = false
       setOneTimeBuying(false)
       alert('Техническая ошибка. Попробуйте ещё раз.')
     }
@@ -281,6 +292,7 @@ export function Subscriptions() {
   const handleBuy = (plan: Plan) => {
     if (!plan.planId || buyingId !== null) return
     if (!session?.user) {
+      console.info('[buy-debug] guest stored sub intent', plan.planId)
       setPendingSubscriptionPlan(plan.planId)
       emitOpenAuth({ form: 'register' })
       return
@@ -343,9 +355,18 @@ export function Subscriptions() {
   useEffect(() => {
     const userId = session?.user?.id ? String(session.user.id) : null
     if (!userId || isStaff) return
+    console.info('[buy-debug] resume check', {
+      userId,
+      isStaff,
+      buyingId,
+      oneTimeBuying,
+      subLoadedFor,
+      pendingSub: peekPendingSubscriptionPlan(),
+      pendingOneTime: peekPendingOneTimePurchase(),
+      plansWithId: monthly.filter((item) => item.planId != null).length,
+    })
     if (buyingId !== null || oneTimeBuying) return
     if (peekPendingOneTimePurchase()) {
-      clearPendingOneTimePurchase()
       void doOneTimeTopup()
       return
     }
@@ -506,7 +527,10 @@ export function Subscriptions() {
                       <button
                         type="button"
                         className={styles.primaryButton}
-                        onClick={() => emitOpenAuth({ form: 'register' })}
+                        onClick={() => {
+                          console.info('[buy-debug] fallback card click, no planId — intent NOT stored')
+                          emitOpenAuth({ form: 'register' })
+                        }}
                       >
                         Купить
                       </button>
