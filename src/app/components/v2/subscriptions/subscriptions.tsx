@@ -365,23 +365,29 @@ export function Subscriptions() {
     const userId = session?.user?.id ? String(session.user.id) : null
     if (!userId || isStaff) return
     if (buyingId !== null || oneTimeBuying || confirmData) return
-    if (peekPendingOneTimePurchase()) {
-      void doOneTimeTopup()
-      return
-    }
-    if (subLoadedFor !== userId) return
-    const pendingId = peekPendingSubscriptionPlan()
-    if (!pendingId) return
-    // Wait until DB-backed plans (with planId) are loaded — fallback cards have none.
-    const dbPlans = monthly.filter((item) => item.planId != null)
-    if (dbPlans.length === 0) return
-    const plan = dbPlans.find((item) => item.planId === pendingId)
-    if (!plan?.planId) {
-      clearPendingSubscriptionPlan()
-      return
-    }
-    document.getElementById('subscriptions')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    startBuyForPlan(plan)
+    if (!peekPendingOneTimePurchase() && peekPendingSubscriptionPlan() === null) return
+    // Debounced: post-login router.refresh() can remount the component, so act
+    // only after the tree settles — otherwise the confirm modal flashes twice.
+    const timer = window.setTimeout(() => {
+      if (peekPendingOneTimePurchase()) {
+        void doOneTimeTopup()
+        return
+      }
+      if (subLoadedFor !== userId) return
+      const pendingId = peekPendingSubscriptionPlan()
+      if (!pendingId) return
+      // Wait until DB-backed plans (with planId) are loaded — fallback cards have none.
+      const dbPlans = monthly.filter((item) => item.planId != null)
+      if (dbPlans.length === 0) return
+      const plan = dbPlans.find((item) => item.planId === pendingId)
+      if (!plan?.planId) {
+        clearPendingSubscriptionPlan()
+        return
+      }
+      document.getElementById('subscriptions')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      startBuyForPlan(plan)
+    }, 500)
+    return () => window.clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.user?.id, isStaff, subLoadedFor, buyingId, oneTimeBuying, confirmData, monthly])
 
