@@ -137,9 +137,6 @@ export function ProfileSidebar({
   const phone = (data?.phone ?? '').trim()
   const displayName = data?.name || user?.name || data?.username || 'Пользователь'
   const initials = getInitials(displayName)
-  // Avatar upload API is temporarily disabled (PUT → 503). Hide the photo
-  // checklist row so it cannot freeze readiness at <100%.
-  const photoUploadAvailable = false
   const completionItems = COMPLETION_ITEMS.map((item) => {
     if (item.key === 'email') {
       const emailVerified = !!email && Number(data?.email_verified) === 1
@@ -177,13 +174,13 @@ export function ProfileSidebar({
       }
     }
     return item
-  }).filter((item) => item.key !== 'photo' || photoUploadAvailable || !!avatarUrl)
+  })
   const completionPercent = completionItems.length
     ? Math.round(
         (completionItems.filter((item) => item.completed).length / completionItems.length) * 100,
       )
     : 0
-  const showCompletion = !documentsComplete && completionPercent < 100
+  const showCompletion = !documentsComplete
 
   return (
     <div className={styles.root}>
