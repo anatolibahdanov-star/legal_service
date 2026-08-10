@@ -266,7 +266,7 @@ export function Subscriptions() {
           : typeof min?.data?.minTopupRub === 'number'
             ? min.data.minTopupRub
             : 100
-      const res = await CustomRequest('/orders/', { amount: Math.round(rub * 100) })
+      const res = await CustomRequest('/orders/', { amount: Math.round(rub * 100), data: { oneTime: true } })
       clearPendingOneTimePurchase()
       if (res.status && res.data?.alpha_form_url) {
         window.location.href = res.data.alpha_form_url

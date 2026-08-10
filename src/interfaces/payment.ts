@@ -119,6 +119,7 @@ export interface checkOrderResponse extends ServiceResponse {
 export enum PaymentOperationE {
   Payment = "payment",
   Topup = "topup",
+  OneTimeTopup = "one_time_topup",
   Charge = "charge",
   SubscriptionPayment = "subscription_payment",
 }

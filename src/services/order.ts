@@ -9,6 +9,7 @@ import { QuestionStatusesE } from '@/src/interfaces/data';
 import { UserBalanceRequest, PaymentInfoRequest, PaymentStatusUpdateI } from "@/src/interfaces/api";
 import { createAlfaOrder, createAlfaBindingOrder, getAlfaOrderQR, getAlfaOrderStatus } from '@/src/libs/alfa.pay';
 import { balanceIncrement } from "./balance";
+import { hasOneTimeOrderFlag } from "./paymentHistory";
 import { notifyBalanceTopupSuccess, notifyBalanceTopupFailure } from "./balanceNotify";
 import { addTransaction } from "../repositories/transactions/repo";
 import { applySubscriptionOrder } from "./subscription";
@@ -227,6 +228,7 @@ export const checkOrderStatus = async (slug:string, user: User): Promise<checkOr
         }
         
         const transaction_info = {
+            ...(hasOneTimeOrderFlag(order.data) ? { oneTime: true } : {}),
             transaction: alfaOrder.data.transactionAttributes,
             card: alfaOrder.data.cardAuthInfo,
             attributes: alfaOrder.data.attributes,

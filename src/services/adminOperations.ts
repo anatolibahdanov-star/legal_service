@@ -61,6 +61,8 @@ const mapPorderOperation = (
             return { type: AdminOperationTypeE.Payment, amount, comment: null, actor: "Платёжная система", questionId, questionUuid }
         case PaymentOperationE.Topup:
             return { type: AdminOperationTypeE.Payment, amount, comment: "Пополнение баланса", actor: "Платёжная система", questionId: null, questionUuid: null }
+        case PaymentOperationE.OneTimeTopup:
+            return { type: AdminOperationTypeE.Payment, amount, comment: "Начисление разового вопроса", actor: "Платёжная система", questionId: null, questionUuid: null }
         case PaymentOperationE.SubscriptionPayment:
             return { type: AdminOperationTypeE.SubscriptionPayment, amount, comment: subscriptionPaymentComment(planName, subEvent), actor: "Платёжная система", questionId: null, questionUuid: null }
         case PaymentOperationE.Charge:
