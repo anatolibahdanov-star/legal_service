@@ -344,7 +344,6 @@ export function Subscriptions() {
     const userId = session?.user?.id ? String(session.user.id) : null
     if (!userId || isStaff) return
     if (buyingId !== null || oneTimeBuying) return
-    if (window.location.hash !== '#subscriptions') return
     if (peekPendingOneTimePurchase()) {
       clearPendingOneTimePurchase()
       void doOneTimeTopup()
