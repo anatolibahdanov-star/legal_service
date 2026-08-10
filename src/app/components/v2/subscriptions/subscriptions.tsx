@@ -15,6 +15,8 @@ import {
   clearPendingSubscriptionPlan,
   setPendingSubscriptionPlan,
   setPendingOneTimePurchase,
+  peekPendingOneTimePurchase,
+  clearPendingOneTimePurchase,
 } from '@/src/libs/authIntent'
 import styles from './subscriptions.module.css'
 
@@ -156,6 +158,7 @@ export function Subscriptions() {
   const isStaff = isStaffRole(session?.user?.role)
   const [monthly, setMonthly] = useState<Plan[]>(MONTHLY_FALLBACK)
   const [buyingId, setBuyingId] = useState<number | null>(null)
+  const [oneTimeBuying, setOneTimeBuying] = useState(false)
   const [mySub, setMySub] = useState<MySub | null>(null)
   const [subCheck, setSubCheck] = useState<'loading' | 'ready' | 'error'>('loading')
   const [subLoadedFor, setSubLoadedFor] = useState<string | null>(null)
@@ -247,6 +250,25 @@ export function Subscriptions() {
     }
   }
 
+  const doOneTimeTopup = async () => {
+    if (oneTimeBuying) return
+    setOneTimeBuying(true)
+    try {
+      const min = await CustomGetRequest('/orders/min-topup/')
+      const minTopupRub = typeof min?.data?.minTopupRub === 'number' ? min.data.minTopupRub : 100
+      const res = await CustomRequest('/orders/', { amount: Math.round(minTopupRub * 100) })
+      if (res.status && res.data?.alpha_form_url) {
+        window.location.href = res.data.alpha_form_url
+        return
+      }
+      setOneTimeBuying(false)
+      alert(res.error || 'Не удалось создать платёж. Попробуйте ещё раз.')
+    } catch {
+      setOneTimeBuying(false)
+      alert('Техническая ошибка. Попробуйте ещё раз.')
+    }
+  }
+
   /** Same path for manual buy and post-login resume: confirm when needed, else pay. */
   const startBuyForPlan = (plan: Plan) => {
     if (!plan.planId || buyingId !== null) return
@@ -318,12 +340,19 @@ export function Subscriptions() {
     }
   }, [session?.user?.id, isStaff])
 
-  // Guest chose a plan → logged in/registered → resume through the confirm modal.
+  // Guest chose a plan or one-time top-up → logged in/registered → straight to payment
+  // (subscription still shows the confirm modal when it would change an existing sub).
   useEffect(() => {
     const userId = session?.user?.id ? String(session.user.id) : null
     if (!userId || isStaff) return
-    if (subLoadedFor !== userId || buyingId !== null) return
+    if (buyingId !== null || oneTimeBuying) return
     if (window.location.hash !== '#subscriptions') return
+    if (peekPendingOneTimePurchase()) {
+      clearPendingOneTimePurchase()
+      void doOneTimeTopup()
+      return
+    }
+    if (subLoadedFor !== userId) return
     const pendingId = peekPendingSubscriptionPlan()
     if (!pendingId) return
     // Wait until DB-backed plans (with planId) are loaded — fallback cards have none.
@@ -333,16 +362,9 @@ export function Subscriptions() {
     const plan = dbPlans.find((item) => item.planId === pendingId)
     if (!plan?.planId) return
     document.getElementById('subscriptions')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    setConfirmData(buildConfirm(plan) ?? {
-      plan,
-      title: 'Подтверждение покупки',
-      paragraphs: [
-        `Вы выбрали тариф «${plan.name}» — ${plan.price}${plan.priceSuffix ?? ''}.`,
-        'Нажмите «Продолжить», чтобы перейти к оплате.',
-      ],
-    })
+    startBuyForPlan(plan)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.user?.id, isStaff, subLoadedFor, buyingId, monthly])
+  }, [session?.user?.id, isStaff, subLoadedFor, buyingId, oneTimeBuying, monthly])
 
   const plans: Plan[] = [oneTimePlan, ...monthly]
 
