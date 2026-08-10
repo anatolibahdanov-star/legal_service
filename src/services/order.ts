@@ -327,13 +327,20 @@ export const checkOrderStatus = async (slug:string, user: User): Promise<checkOr
                 }
             } else {
                 // Balance top-up — original behavior, increase user.balance.
+                // Ledger data must fit balance.data varchar(300) — the full
+                // transaction_info lives on the porder row, keep a summary here.
                 const balance: BalanceI = {
                     amount: updatedOrderStatus.amount,
                     balance_type: BalanceTypeE.Increase,
                     user: user,
                     order: updatedOrderStatus,
                     status: BalanceStatusE.Success,
-                    data: updateOrder.transaction_info,
+                    data: JSON.stringify({
+                        order_number: transaction_info.order_number ?? null,
+                        order_status: transaction_info.order_status ?? null,
+                        amount: transaction_info.amount ?? null,
+                        payment_system: transaction_info.payment_system ?? null,
+                    }),
                 }
                 await balanceIncrement(balance)
 

@@ -27,7 +27,8 @@ const toRubles = (row: DBPaymentRow): number =>
 const detectAlfaMethod = (data: string | null): PaymentMethodE => {
     if (!data) return PaymentMethodE.Sbp
     try {
-        const parsed = JSON.parse(data)
+        let parsed = JSON.parse(data)
+        if (typeof parsed === 'string') parsed = JSON.parse(parsed)
         const markers = `${parsed?.payment_system ?? ""} ${parsed?.payment_way ?? ""}`.toUpperCase()
         if (markers.includes("YANDEX") || markers.includes("APPLE") || markers.includes("GOOGLE")) {
             return PaymentMethodE.YandexPay
@@ -60,7 +61,9 @@ const resolveMethod = (row: DBPaymentRow): PaymentMethodE =>
 export const hasOneTimeOrderFlag = (data: string | null): boolean => {
     if (!data) return false
     try {
-        return JSON.parse(data)?.oneTime === true
+        let parsed = JSON.parse(data)
+        if (typeof parsed === 'string') parsed = JSON.parse(parsed)
+        return parsed?.oneTime === true
     } catch {
         return false
     }
