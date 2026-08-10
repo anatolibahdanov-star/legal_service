@@ -169,6 +169,7 @@ export enum AdminOperationTypeE {
   FreeAccrual = "free_accrual",
   FreeCharge = "free_charge",
   FreeExpire = "free_expire",
+  OneTimeAccrual = "one_time_accrual",
 }
 
 export enum FreeQuestionOpTypeE {

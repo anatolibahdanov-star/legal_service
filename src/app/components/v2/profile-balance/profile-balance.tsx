@@ -78,6 +78,7 @@ const isAlphaStatusFinal = (status: number): boolean =>
 // Пополнение баланса / возврат / бонусное начисление — приход.
 const isCredit = (op: AdminBalanceOperationI): boolean =>
   op.type === AdminOperationTypeE.FreeAccrual ||
+  op.type === AdminOperationTypeE.OneTimeAccrual ||
   op.type === AdminOperationTypeE.Refund ||
   (op.type === AdminOperationTypeE.Payment && op.questionId === null)
 
@@ -623,24 +624,31 @@ export function V2ProfileBalance({ data, setUserBalance }: V2ProfileBalanceProps
       {/* Низ: траты · дела */}
       <div className={styles.secondaryGrid}>
         <div className={styles.statCard}>
-          <p className={styles.statLabel}>Потрачено в этом месяце</p>
-          <p className={styles.statValue}>{formatRub(monthlySpent)} ₽</p>
-          <p className={styles.statLabel}>Доступно вопросов</p>
-          <div className={styles.statRow}>
-            <span className={styles.statNumber}>{availableQuestions}</span>
-            <span className={styles.statBadge}>
-              подписка {subscriptionQuestions} · начислено {adminQuestions} · разовые {oneTimeQuestions}
-            </span>
+          <div>
+            <p className={styles.statLabel}>Потрачено в этом месяце</p>
+            <p className={styles.statValue}>{formatRub(monthlySpent)} ₽</p>
+          </div>
+          <div className={styles.statDivider} />
+          <div>
+            <p className={styles.statLabel}>Доступно вопросов</p>
+            <div className={styles.statRow}>
+              <span className={styles.statNumber}>{availableQuestions}</span>
+              <span className={styles.statBadge}>
+                подписка {subscriptionQuestions} · начислено {adminQuestions} · разовые {oneTimeQuestions}
+              </span>
+            </div>
           </div>
         </div>
 
         <div className={styles.statCard}>
-          <p className={styles.statLabel}>Активных дел</p>
-          <div className={styles.statRow}>
-            <span className={styles.statNumber}>{dealsActive}</span>
-            {dealsCompleted > 0 && (
-              <span className={styles.statBadge}>{dealsCompleted} завершено</span>
-            )}
+          <div>
+            <p className={styles.statLabel}>Активных дел</p>
+            <p className={styles.statValue}>{dealsActive}</p>
+          </div>
+          <div className={styles.statDivider} />
+          <div>
+            <p className={styles.statLabel}>Завершено</p>
+            <p className={styles.statValue}>{dealsCompleted}</p>
           </div>
         </div>
       </div>

@@ -11,6 +11,7 @@ const freeQuestionTypes: AdminOperationTypeE[] = [
     AdminOperationTypeE.FreeAccrual,
     AdminOperationTypeE.FreeCharge,
     AdminOperationTypeE.FreeExpire,
+    AdminOperationTypeE.OneTimeAccrual,
 ];
 
 export const isFreeQuestionOperation = (type: AdminOperationTypeE): boolean =>
@@ -54,6 +55,7 @@ export const operationTypeLabels: Record<AdminOperationTypeE, string> = {
     [AdminOperationTypeE.FreeAccrual]: "Начисление бесплатных вопросов",
     [AdminOperationTypeE.FreeCharge]: "Списание бесплатных вопросов",
     [AdminOperationTypeE.FreeExpire]: "Сгорание бесплатных вопросов",
+    [AdminOperationTypeE.OneTimeAccrual]: "Начисление разового вопроса",
 };
 
 export const subscriptionEventLabels: Record<SubscriptionEventE, string> = {
