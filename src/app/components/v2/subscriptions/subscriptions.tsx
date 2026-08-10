@@ -158,6 +158,7 @@ export function Subscriptions() {
   const [buyingId, setBuyingId] = useState<number | null>(null)
   const [oneTimeBuying, setOneTimeBuying] = useState(false)
   const oneTimeBuyingRef = useRef(false)
+  const buyingRef = useRef(false)
   const [mySub, setMySub] = useState<MySub | null>(null)
   const [subCheck, setSubCheck] = useState<'loading' | 'ready' | 'error'>('loading')
   const [subLoadedFor, setSubLoadedFor] = useState<string | null>(null)
@@ -228,7 +229,8 @@ export function Subscriptions() {
   }
 
   const doBuy = async (plan: Plan) => {
-    if (!plan.planId || buyingId !== null) return
+    if (!plan.planId || buyingRef.current) return
+    buyingRef.current = true
     setBuyingId(plan.planId)
     try {
       const res = await CustomRequest('/orders/', {
@@ -236,14 +238,17 @@ export function Subscriptions() {
         amount: 0,
         data: { planId: plan.planId },
       })
+      clearPendingSubscriptionPlan()
       if (res.status && res.data?.alpha_form_url) {
-        clearPendingSubscriptionPlan()
         window.location.href = res.data.alpha_form_url
         return
       }
+      buyingRef.current = false
       setBuyingId(null)
       alert(res.error || 'Не удалось создать платёж. Попробуйте ещё раз.')
     } catch {
+      clearPendingSubscriptionPlan()
+      buyingRef.current = false
       setBuyingId(null)
       alert('Техническая ошибка. Попробуйте ещё раз.')
     }
@@ -287,6 +292,11 @@ export function Subscriptions() {
       return
     }
     void doBuy(plan)
+  }
+
+  const closeConfirm = () => {
+    clearPendingSubscriptionPlan()
+    setConfirmData(null)
   }
 
   const handleBuy = (plan: Plan) => {
@@ -354,7 +364,7 @@ export function Subscriptions() {
   useEffect(() => {
     const userId = session?.user?.id ? String(session.user.id) : null
     if (!userId || isStaff) return
-    if (buyingId !== null || oneTimeBuying) return
+    if (buyingId !== null || oneTimeBuying || confirmData) return
     if (peekPendingOneTimePurchase()) {
       void doOneTimeTopup()
       return
@@ -365,13 +375,15 @@ export function Subscriptions() {
     // Wait until DB-backed plans (with planId) are loaded — fallback cards have none.
     const dbPlans = monthly.filter((item) => item.planId != null)
     if (dbPlans.length === 0) return
-    clearPendingSubscriptionPlan()
     const plan = dbPlans.find((item) => item.planId === pendingId)
-    if (!plan?.planId) return
+    if (!plan?.planId) {
+      clearPendingSubscriptionPlan()
+      return
+    }
     document.getElementById('subscriptions')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     startBuyForPlan(plan)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.user?.id, isStaff, subLoadedFor, buyingId, oneTimeBuying, monthly])
+  }, [session?.user?.id, isStaff, subLoadedFor, buyingId, oneTimeBuying, confirmData, monthly])
 
   const plans: Plan[] = [oneTimePlan, ...monthly]
 
@@ -555,7 +567,7 @@ export function Subscriptions() {
       </div>
 
       {confirmData ? (
-        <div className={styles.modalOverlay} onClick={() => setConfirmData(null)}>
+        <div className={styles.modalOverlay} onClick={closeConfirm}>
           <div
             className={styles.modalBox}
             onClick={(e) => e.stopPropagation()}
@@ -566,7 +578,7 @@ export function Subscriptions() {
             <button
               type="button"
               className={styles.modalClose}
-              onClick={() => setConfirmData(null)}
+              onClick={closeConfirm}
               aria-label="Закрыть"
             >
               <X className={styles.modalCloseIcon} />
@@ -583,7 +595,7 @@ export function Subscriptions() {
               <button
                 type="button"
                 className={styles.modalCancelBtn}
-                onClick={() => setConfirmData(null)}
+                onClick={closeConfirm}
               >
                 Отмена
               </button>
