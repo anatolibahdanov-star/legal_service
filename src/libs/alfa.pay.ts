@@ -21,26 +21,28 @@ const isAlfaError = (code: unknown): boolean =>
 
 const ALFA_TIMEOUT_MS = 20000
 
-export const createAlfaOrder = async (amount: number, orderId: string, user: User): Promise<CustomResponseDataI> => {
+export const createAlfaOrder = async (amount: number, orderId: string, user: User, useSbp: boolean = true): Promise<CustomResponseDataI> => {
   const msg = msgGlobal + "createAlfaOrder - "
   const domainUrl = process.env.NEXT_PUBLIC_URL
   const orderPrefix = process.env.NODE_ENV === 'development' ? 'dev-' : ''
 
   try {
+    const params = new URLSearchParams({
+        userName: USERNAME!,
+        password: PASSWORD!,
+        amount: String(amount),
+        orderNumber: orderPrefix + orderId,
+        returnUrl: domainUrl + '/balance/success',
+        failUrl: domainUrl + '/balance/unsuccess',
+        // dynamicCallbackUrl: domainUrlApi + '/alfacallbacks',
+        // currency: '643', // Rubles
+    })
+    if (useSbp) params.set('paymentType', 'SBP') // Required for QR
+
     const response = await fetch(`${ALFA_API_URL}/register.do`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-            userName: USERNAME!,
-            password: PASSWORD!,
-            amount: String(amount),
-            orderNumber: orderPrefix + orderId,
-            returnUrl: domainUrl + '/balance/success',
-            failUrl: domainUrl + '/balance/unsuccess',
-            // dynamicCallbackUrl: domainUrlApi + '/alfacallbacks',
-            // currency: '643', // Rubles
-            paymentType: 'SBP', // Required for QR
-        }),
+        body: params,
         signal: AbortSignal.timeout(ALFA_TIMEOUT_MS),
     });
 

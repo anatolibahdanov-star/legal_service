@@ -8,6 +8,7 @@ import {
     AdminBalanceOperationI,
     AdminOperationTypeE,
     FreeQuestionOpTypeE,
+    FreeQuestionSourceE,
     PaymentDisplayStatusE,
     PaymentOperationE,
     SubscriptionEventE,
@@ -17,6 +18,7 @@ const freeQuestionTypes = new Set<AdminOperationTypeE>([
     AdminOperationTypeE.FreeAccrual,
     AdminOperationTypeE.FreeCharge,
     AdminOperationTypeE.FreeExpire,
+    AdminOperationTypeE.OneTimeAccrual,
 ])
 
 const msgGlobal = "SERVICE ADMIN-OPERATIONS "
@@ -61,12 +63,12 @@ const mapPorderOperation = (
             return { type: AdminOperationTypeE.Payment, amount, comment: null, actor: "Платёжная система", questionId, questionUuid }
         case PaymentOperationE.Topup:
             return { type: AdminOperationTypeE.Payment, amount, comment: "Пополнение баланса", actor: "Платёжная система", questionId: null, questionUuid: null }
-        case PaymentOperationE.OneTimeTopup:
-            return { type: AdminOperationTypeE.Payment, amount, comment: "Оплата разового вопроса", actor: "Платёжная система", questionId: null, questionUuid: null }
         case PaymentOperationE.SubscriptionPayment:
             return { type: AdminOperationTypeE.SubscriptionPayment, amount, comment: subscriptionPaymentComment(planName, subEvent), actor: "Платёжная система", questionId: null, questionUuid: null }
         case PaymentOperationE.Charge:
             return { type: AdminOperationTypeE.Charge, amount, comment: null, actor: "Система", questionId, questionUuid }
+        case PaymentOperationE.OneTimePurchase:
+            return null
         default:
             return null
     }
@@ -95,18 +97,6 @@ export const getAdminUserOperations = async (
             row.plan_name ?? null, row.sub_event ?? null,
         )
         if (!op) continue
-        if (mapped.operation === PaymentOperationE.OneTimeTopup) {
-            operations.push({
-                id: `p-${mapped.id}-acc`,
-                createdAt: mapped.createdAt,
-                type: AdminOperationTypeE.OneTimeAccrual,
-                amount: 1,
-                comment: null,
-                actor: "Платёжная система",
-                questionId: null,
-                questionUuid: null,
-            })
-        }
         operations.push({ id: `p-${mapped.id}`, createdAt: mapped.createdAt, ...op })
     }
 
@@ -129,8 +119,13 @@ export const getAdminUserOperations = async (
         let actor: string
         switch (row.op_type) {
             case FreeQuestionOpTypeE.Accrual:
-                type = AdminOperationTypeE.FreeAccrual
-                actor = formatActor(row.admin_name, row.admin_username)
+                if (row.source === FreeQuestionSourceE.Purchase) {
+                    type = AdminOperationTypeE.OneTimeAccrual
+                    actor = "Платёжная система"
+                } else {
+                    type = AdminOperationTypeE.FreeAccrual
+                    actor = formatActor(row.admin_name, row.admin_username)
+                }
                 break
             case FreeQuestionOpTypeE.SubscriptionAccrual:
                 type = AdminOperationTypeE.FreeAccrual

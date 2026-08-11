@@ -69,10 +69,11 @@ interface PublicPlanDTO {
   featured: boolean
 }
 
-const oneTimePlan: Plan = {
+const ONE_TIME_FALLBACK_PRICE_RUB = 2000
+
+const oneTimePlan: Omit<Plan, 'price'> = {
   name: 'Разовый запрос',
   description: 'Разовая оплата 1 вопроса',
-  price: '2 000 ₽',
   badge: 'Один вопрос – один ответ, без подписки',
   tone: 'orange',
   oneTime: true,
@@ -155,6 +156,7 @@ export function Subscriptions() {
   const { data: session } = useSession()
   const isStaff = isStaffRole(session?.user?.role)
   const [monthly, setMonthly] = useState<Plan[]>(MONTHLY_FALLBACK)
+  const [oneTimePriceRub, setOneTimePriceRub] = useState(ONE_TIME_FALLBACK_PRICE_RUB)
   const [buyingId, setBuyingId] = useState<number | null>(null)
   const [oneTimeBuying, setOneTimeBuying] = useState(false)
   const oneTimeBuyingRef = useRef(false)
@@ -225,7 +227,7 @@ export function Subscriptions() {
       emitOpenAuth({ form: 'register' })
       return
     }
-    void doOneTimeTopup()
+    void doOneTimePurchase()
   }
 
   const doBuy = async (plan: Plan) => {
@@ -254,19 +256,15 @@ export function Subscriptions() {
     }
   }
 
-  const doOneTimeTopup = async () => {
+  const doOneTimePurchase = async () => {
     if (oneTimeBuyingRef.current) return
     oneTimeBuyingRef.current = true
     setOneTimeBuying(true)
     try {
-      const min = await CustomGetRequest('/orders/min-topup/')
-      const rub =
-        typeof min?.data?.oneTimeTopupRub === 'number'
-          ? min.data.oneTimeTopupRub
-          : typeof min?.data?.minTopupRub === 'number'
-            ? min.data.minTopupRub
-            : 100
-      const res = await CustomRequest('/orders/', { amount: Math.round(rub * 100), data: { oneTime: true } })
+      const res = await CustomRequest('/orders/', {
+        type: OrderTypeE.OneTimePurchase,
+        amount: 0,
+      })
       clearPendingOneTimePurchase()
       if (res.status && res.data?.alpha_form_url) {
         window.location.href = res.data.alpha_form_url
@@ -313,9 +311,14 @@ export function Subscriptions() {
     let cancelled = false
     CustomGetRequest('/subscriptions/public')
       .then((res) => {
+        if (cancelled) return
         const list = (res?.data?.plans ?? []) as PublicPlanDTO[]
-        if (!cancelled && Array.isArray(list) && list.length > 0) {
+        if (Array.isArray(list) && list.length > 0) {
           setMonthly(list.map(mapDtoToPlan))
+        }
+        const price = res?.data?.oneTimePriceRub
+        if (typeof price === 'number' && price > 0) {
+          setOneTimePriceRub(price)
         }
       })
       .catch(() => {})
@@ -370,7 +373,7 @@ export function Subscriptions() {
     // only after the tree settles — otherwise the confirm modal flashes twice.
     const timer = window.setTimeout(() => {
       if (peekPendingOneTimePurchase()) {
-        void doOneTimeTopup()
+        void doOneTimePurchase()
         return
       }
       if (subLoadedFor !== userId) return
@@ -391,7 +394,10 @@ export function Subscriptions() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.user?.id, isStaff, subLoadedFor, buyingId, oneTimeBuying, confirmData, monthly])
 
-  const plans: Plan[] = [oneTimePlan, ...monthly]
+  const plans: Plan[] = [
+    { ...oneTimePlan, price: `${rubFormatter.format(oneTimePriceRub)} ₽` },
+    ...monthly,
+  ]
 
   const [emblaRef, emblaApi] = useEmblaCarousel({
     align: 'start',

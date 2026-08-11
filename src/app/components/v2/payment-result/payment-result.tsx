@@ -6,7 +6,7 @@ import { AlertCircle, Check } from 'lucide-react'
 import finalCubeImg from '@/public/design/v2-main-page/progress-final.png'
 import styles from './payment-result.module.css'
 
-export type PaymentResultKind = 'balance' | 'subscription' | 'one_time'
+export type PaymentResultKind = 'balance' | 'subscription' | 'one_time' | 'one_time_purchase'
 
 export interface PaymentResultProps {
   kind: PaymentResultKind
@@ -36,6 +36,23 @@ function buildCopy(kind: PaymentResultKind, paid: boolean, amount?: number | nul
         : [
             'Деньги не списаны — подписка не оформлена.',
             'Вы можете попробовать оформить подписку ещё раз.',
+          ],
+      primary: paid ? 'Перейти в Личный кабинет' : 'Попробовать ещё раз',
+    }
+  }
+
+  if (kind === 'one_time_purchase') {
+    return {
+      badge: paid ? 'Оплата подтверждена' : 'Платёж не выполнен',
+      title: paid ? 'Разовый вопрос куплен' : 'Платёж не прошёл',
+      paragraphs: paid
+        ? [
+            amountLine ?? 'Платёж картой прошёл успешно.',
+            'Вам начислен 1 вопрос — он спишется автоматически, когда вы отправите запрос юристу.',
+          ]
+        : [
+            'Деньги не списаны — вопрос не начислен.',
+            'Вы можете попробовать оформить покупку ещё раз.',
           ],
       primary: paid ? 'Перейти в Личный кабинет' : 'Попробовать ещё раз',
     }

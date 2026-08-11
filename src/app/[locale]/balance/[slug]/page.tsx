@@ -44,7 +44,17 @@ interface SubscriptionViewState {
   amount: number | null;
 }
 
-type ViewState = OneTimeViewState | BalanceViewState | SubscriptionViewState;
+interface OneTimePurchaseViewState {
+  kind: 'one_time_purchase';
+  paid: boolean;
+  amount: number | null;
+}
+
+type ViewState =
+  | OneTimeViewState
+  | BalanceViewState
+  | SubscriptionViewState
+  | OneTimePurchaseViewState;
 
 /**
  * Универсальная страница возврата с Alfa.
@@ -133,6 +143,13 @@ export default function BalancePage() {
           amount: typeof lastOrder.amount === 'number' ? lastOrder.amount : null,
         });
         if (paid) setSecondsLeft(REDIRECT_SECONDS);
+      } else if (lastOrder.ptype === OrderTypeE.OneTimePurchase) {
+        setView({
+          kind: 'one_time_purchase',
+          paid,
+          amount: typeof lastOrder.amount === 'number' ? lastOrder.amount : null,
+        });
+        if (paid) setSecondsLeft(REDIRECT_SECONDS);
       } else {
         setView({ kind: 'balance', paid });
       }
@@ -152,13 +169,13 @@ export default function BalancePage() {
     window.location.assign(`${base}?tab=${tab}`);
   };
 
-  // Авто-редирект в ЛК для OneTime/Subscription: фоновый таймер. Юзер может
-  // ткнуть кнопку и уйти раньше.
+  // Авто-редирект в ЛК для всех типов, кроме пополнения баланса: фоновый
+  // таймер. Юзер может ткнуть кнопку и уйти раньше.
   useEffect(() => {
     if (secondsLeft === null) return;
-    if (view.kind !== 'one_time' && view.kind !== 'subscription') return;
+    if (view.kind === 'balance') return;
     if (secondsLeft <= 0) {
-      goToProfileTab(view.kind === 'subscription' ? 'balance' : 'cases');
+      goToProfileTab(view.kind === 'one_time' ? 'cases' : 'balance');
       return;
     }
     const t = setTimeout(() => setSecondsLeft((s) => (s === null ? null : s - 1)), 1000);

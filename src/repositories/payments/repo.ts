@@ -242,7 +242,25 @@ export async function getUserTotalExpenses(userId: string | number): Promise<num
         FROM porder po
         WHERE po.user_id = ?
           AND po.status = ${OrderStatusE.Paid}
-          AND po.order_type = ${OrderTypeE.OneTime}`
+          AND po.order_type IN (${OrderTypeE.OneTime}, ${OrderTypeE.OneTimePurchase})`
+    const calcFunc = findOne({ query, values: [userId] });
+    const executedQueries = await queryTransactionWrapper<RowDataPacket>([calcFunc], msg);
+    if (!executedQueries) {
+        logger.error(msg + "SQL not results from execution", query)
+        return 0
+    }
+    const [[rows]] = executedQueries;
+    return rows.length === 0 ? 0 : Number(rows[0].total) || 0
+}
+
+export async function getUserOneTimeSpentThisMonth(userId: string | number): Promise<number> {
+    const msg = msgGlobal + "getUserOneTimeSpentThisMonth - "
+    const query = `SELECT COALESCE(SUM(po.amount), 0) as total
+        FROM porder po
+        WHERE po.user_id = ?
+          AND po.status = ${OrderStatusE.Paid}
+          AND po.order_type = ${OrderTypeE.OneTimePurchase}
+          AND po.created_at >= DATE_FORMAT(NOW(), '%Y-%m-01')`
     const calcFunc = findOne({ query, values: [userId] });
     const executedQueries = await queryTransactionWrapper<RowDataPacket>([calcFunc], msg);
     if (!executedQueries) {
