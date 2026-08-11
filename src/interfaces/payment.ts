@@ -5,6 +5,7 @@ export enum OrderTypeE {
   OneTime = 0,
   Balance = 1,
   Subscription = 2,
+  OneTimePurchase = 3,
 }
 
 export enum SubscriptionStatusE {
@@ -30,6 +31,7 @@ export enum SubscriptionEventE {
 export enum FreeQuestionSourceE {
   Admin = 1,
   Subscription = 2,
+  Purchase = 3,
 }
 
 export enum OrderStatusE {
@@ -119,7 +121,7 @@ export interface checkOrderResponse extends ServiceResponse {
 export enum PaymentOperationE {
   Payment = "payment",
   Topup = "topup",
-  OneTimeTopup = "one_time_topup",
+  OneTimePurchase = "one_time_purchase",
   Charge = "charge",
   SubscriptionPayment = "subscription_payment",
 }

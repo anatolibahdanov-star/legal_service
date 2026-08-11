@@ -1,5 +1,6 @@
 import logger from "@/src/libs/logger"
 import { User } from "next-auth";
+import pool from '@/src/libs/db';
 
 import { createEmptyOrder, getOrderById, updateClientOrder, updateClientOrderQR, updateOrderStatus, updateOrderQuestionLink } from '@/src/repositories/orders/repo';
 import { updateWizardQuestionStatus } from '@/src/repositories/requests/repo';
@@ -9,12 +10,17 @@ import { QuestionStatusesE } from '@/src/interfaces/data';
 import { UserBalanceRequest, PaymentInfoRequest, PaymentStatusUpdateI } from "@/src/interfaces/api";
 import { createAlfaOrder, createAlfaBindingOrder, getAlfaOrderQR, getAlfaOrderStatus } from '@/src/libs/alfa.pay';
 import { balanceIncrement } from "./balance";
-import { hasOneTimeOrderFlag } from "./paymentHistory";
 import { notifyBalanceTopupSuccess, notifyBalanceTopupFailure } from "./balanceNotify";
 import { addTransaction } from "../repositories/transactions/repo";
 import { applySubscriptionOrder } from "./subscription";
+import { accruePurchasedQuestions } from "../repositories/freeQuestions/repo";
 
 const msgGlobal = "SERVICE ORDER "
+
+export const isRubleAmountOrder = (type: OrderTypeE | undefined): boolean =>
+    type === OrderTypeE.OneTime ||
+    type === OrderTypeE.Subscription ||
+    type === OrderTypeE.OneTimePurchase
 
 export const initNewOrder = async (balanceRequest: UserBalanceRequest, user: User): Promise<newOrderResponse> => {
     const msg = msgGlobal + "initNewOrder - ";
@@ -50,16 +56,17 @@ export const initNewOrder = async (balanceRequest: UserBalanceRequest, user: Use
                 data: null,
             }
 
-            // 1. Request to Alfa API to create an SBP order.
+            // 1. Request to Alfa API to create an order.
             // OneTime приходит в рублях (getQuestionPrice/LK возвращают рубли) —
             // конвертим в копейки. Balance topup исторически уже идёт в копейках
             // (ProfileBalance отправляет «10000» → 100₽), его не трогаем.
-            const alfaAmount = (balanceRequest.type === OrderTypeE.OneTime || balanceRequest.type === OrderTypeE.Subscription)
+            const alfaAmount = isRubleAmountOrder(balanceRequest.type)
                 ? Math.round(balanceRequest.amount * 100)
                 : balanceRequest.amount
+            const withQr = balanceRequest.type === OrderTypeE.Balance && balanceRequest.method !== 'form'
             const alfaCreatedOrder = balanceRequest.type === OrderTypeE.Subscription
                 ? await createAlfaBindingOrder(alfaAmount, emptyOrder.id, user, user.id.toString())
-                : await createAlfaOrder(alfaAmount, emptyOrder.id, user)
+                : await createAlfaOrder(alfaAmount, emptyOrder.id, user, withQr)
             trans.data = alfaCreatedOrder.techical_data ?? null
             if (!alfaCreatedOrder.status) {
                 const error = "Error on order create in Alfa: "
@@ -91,9 +98,7 @@ export const initNewOrder = async (balanceRequest: UserBalanceRequest, user: Use
                 return result
             }
 
-            // Subscription orders use a card form (formUrl), not an SBP QR —
-            // the card entry is what creates the recurring binding. Skip the QR fetch.
-            if (balanceRequest.type !== OrderTypeE.Subscription) {
+            if (withQr) {
                 const alfaOrderWithQR = await getAlfaOrderQR(order.alpha_id, user)
                 trans.data = alfaOrderWithQR.techical_data ?? null
                 if (!alfaOrderWithQR.status) {
@@ -228,7 +233,6 @@ export const checkOrderStatus = async (slug:string, user: User): Promise<checkOr
         }
         
         const transaction_info = {
-            ...(hasOneTimeOrderFlag(order.data) ? { oneTime: true } : {}),
             transaction: alfaOrder.data.transactionAttributes,
             card: alfaOrder.data.cardAuthInfo,
             attributes: alfaOrder.data.attributes,
@@ -325,6 +329,25 @@ export const checkOrderStatus = async (slug:string, user: User): Promise<checkOr
                         });
                     }
                 }
+            } else if (updatedOrderStatus.ptype === OrderTypeE.OneTimePurchase) {
+                const accrued = await accruePurchasedQuestions(
+                    updatedOrderStatus.user_id,
+                    1,
+                    parseInt(updatedOrderStatus.id),
+                    'Покупка разового вопроса',
+                )
+                if (accrued.ok) {
+                    logger.info(msg + 'OneTimePurchase: free question accrued', {
+                        order_id: updatedOrderStatus.id,
+                        user_id: updatedOrderStatus.user_id,
+                        already_accrued: accrued.alreadyAccrued ?? false,
+                    })
+                } else {
+                    logger.error(msg + 'OneTimePurchase: accrual failed after payment', {
+                        order_id: updatedOrderStatus.id,
+                        user_id: updatedOrderStatus.user_id,
+                    })
+                }
             } else {
                 // Balance top-up — original behavior, increase user.balance.
                 // Ledger data must fit balance.data varchar(300) — the full
@@ -382,6 +405,48 @@ export const checkOrderStatus = async (slug:string, user: User): Promise<checkOr
     result.order = order
     result.errors = null
     return result
+}
+
+export const reconcileOneTimePurchases = async (): Promise<{ reconciled: number; failed: number }> => {
+    const msg = msgGlobal + "reconcileOneTimePurchases - "
+    let reconciled = 0
+    let failed = 0
+
+    let orders: DBOrder[] = []
+    try {
+        const [rows] = await pool.query<DBOrder[]>(
+            `SELECT p.* FROM porder p
+             WHERE p.order_type = ? AND p.status = ?
+               AND NOT EXISTS (SELECT 1 FROM free_question_grant g WHERE g.order_id = p.id)
+             ORDER BY p.id ASC LIMIT 100`,
+            [OrderTypeE.OneTimePurchase, OrderStatusE.Paid],
+        )
+        orders = rows
+    } catch (error) {
+        logger.error(msg + "failed to load unaccrued paid orders", { error })
+        return { reconciled, failed }
+    }
+
+    for (const order of orders) {
+        const accrued = await accruePurchasedQuestions(
+            order.user_id,
+            1,
+            parseInt(order.id),
+            'Покупка разового вопроса',
+        )
+        if (accrued.ok) {
+            reconciled += 1
+            logger.info(msg + "accrued", { order_id: order.id, user_id: order.user_id })
+        } else {
+            failed += 1
+            logger.error(msg + "accrual failed", { order_id: order.id, user_id: order.user_id })
+        }
+    }
+
+    if (reconciled > 0 || failed > 0) {
+        logger.info(msg + "done", { reconciled, failed })
+    }
+    return { reconciled, failed }
 }
 
 const setDBTransaction = async (trans: TransactionI, user: User) => {

@@ -8,6 +8,7 @@ import {
     STUCK_AFTER_DAYS,
     LOCK_LEASE_MINUTES,
 } from "@/src/services/paymentRetry";
+import { reconcileOneTimePurchases } from "@/src/services/order";
 
 let isRunning = false;
 
@@ -21,6 +22,12 @@ export const paymentRetry = async (): Promise<void> => {
     isRunning = true;
 
     try {
+        try {
+            await reconcileOneTimePurchases();
+        } catch (err) {
+            logger.error(msg + "one-time purchase reconcile failed", (err as Error).message);
+        }
+
         const lockToken = randomUUID();
 
         let claimed;

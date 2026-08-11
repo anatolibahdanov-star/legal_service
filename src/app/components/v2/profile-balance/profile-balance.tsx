@@ -105,7 +105,8 @@ const monthLabel = capitalize(
 export function V2ProfileBalance({ data, setUserBalance }: V2ProfileBalanceProps) {
   const [newOrder, setNewOrder] = useState<DBOrder | null>(null)
   const [minTopupRub, setMinTopupRub] = useState(100)
-  const [oneTimeTopupRub, setOneTimeTopupRub] = useState<number | null>(null)
+  const [purchasedQuestions, setPurchasedQuestions] = useState(0)
+  const [oneTimeSpentThisMonth, setOneTimeSpentThisMonth] = useState(0)
   const [methodPickerOpen, setMethodPickerOpen] = useState(false)
   const [creatingMethod, setCreatingMethod] = useState<TopupMethodT | null>(null)
   const [topupError, setTopupError] = useState('')
@@ -130,15 +131,31 @@ export function V2ProfileBalance({ data, setUserBalance }: V2ProfileBalanceProps
       if (active && res.status && typeof res.data?.minTopupRub === 'number') {
         setMinTopupRub(res.data.minTopupRub)
       }
-      if (active && res.status && typeof res.data?.oneTimeTopupRub === 'number' && res.data.oneTimeTopupRub > 0) {
-        setOneTimeTopupRub(res.data.oneTimeTopupRub)
-      }
     }
     fetchMinTopup()
     return () => {
       active = false
     }
   }, [])
+
+  useEffect(() => {
+    if (!data?.id) return
+    let active = true
+    const fetchPurchased = async () => {
+      const res = await CustomGetRequest('/users/me/balance/')
+      if (!active || !res.status) return
+      if (typeof res.data?.purchasedQuestions === 'number') {
+        setPurchasedQuestions(res.data.purchasedQuestions)
+      }
+      if (typeof res.data?.oneTimeSpentThisMonth === 'number') {
+        setOneTimeSpentThisMonth(res.data.oneTimeSpentThisMonth)
+      }
+    }
+    fetchPurchased()
+    return () => {
+      active = false
+    }
+  }, [data?.id, data?.free_questions, balance])
 
   useEffect(() => {
     if (newOrder) return
@@ -274,17 +291,16 @@ export function V2ProfileBalance({ data, setUserBalance }: V2ProfileBalanceProps
     setMethodPickerOpen(false)
   }
 
-  // Незавершённый заказ переиспользуем, только если он свежий и банк отдал
-  // и форму, и QR — полусозданный или протухший заказ игнорируем и создаём новый.
-  const getReusableOrder = (now: number): DBOrder | null =>
-    now > 0 &&
-    newOrder &&
-    !isAlphaStatusFinal(newOrder.alpha_status) &&
-    newOrder.alpha_form_url &&
-    newOrder.alpha_qr_url &&
-    now - new Date(newOrder.created_at as unknown as string).getTime() < REUSABLE_ORDER_TTL_MS
-      ? newOrder
-      : null
+  // Незавершённый заказ переиспользуем, только если он свежий и годится под
+  // выбранный способ оплаты — иначе создаём новый.
+  const getReusableOrder =(now: number, method: TopupMethodT | null = null): DBOrder | null => {
+    if (now <= 0 || !newOrder) return null
+    if (isAlphaStatusFinal(newOrder.alpha_status)) return null
+    if (now - new Date(newOrder.created_at as unknown as string).getTime() >= REUSABLE_ORDER_TTL_MS) return null
+    if (method === 'qr') return newOrder.alpha_qr_url ? newOrder : null
+    if (method === 'form') return newOrder.alpha_form_url && !newOrder.alpha_qr_url ? newOrder : null
+    return newOrder.alpha_form_url || newOrder.alpha_qr_url ? newOrder : null
+  }
 
   const reusableOrder = getReusableOrder(pickerOpenedAt)
   const topupAmountRub = reusableOrder ? reusableOrder.amount / 100 : minTopupRub
@@ -294,11 +310,11 @@ export function V2ProfileBalance({ data, setUserBalance }: V2ProfileBalanceProps
     if (creatingMethod) return
     setTopupError('')
 
-    let order = getReusableOrder(Date.now())
+    let order = getReusableOrder(Date.now(), method)
     if (!order) {
       cancelRequestedRef.current = false
       setCreatingMethod(method)
-      const orderData = await CustomRequest('/orders/', { amount: topupKop })
+      const orderData = await CustomRequest('/orders/', { amount: topupKop, method })
       setCreatingMethod(null)
       if (!orderData.status) {
         if (!cancelRequestedRef.current) {
@@ -334,19 +350,19 @@ export function V2ProfileBalance({ data, setUserBalance }: V2ProfileBalanceProps
 
   const recentOperations = useMemo(() => operations.slice(0, 4), [operations])
   const lastTopup = useMemo(() => operations.find(isCredit) ?? null, [operations])
+  // Разовые покупки приходят отдельным числом: в истории операций они
+  // представлены только начислением БВ, без денежной строки.
   const monthlySpent = useMemo(
     () =>
       operations
         .filter((op) => isMoneySpend(op) && isSameMonth(op.createdAt))
-        .reduce((sum, op) => sum + Math.abs(op.amount), 0),
-    [operations],
+        .reduce((sum, op) => sum + Math.abs(op.amount), oneTimeSpentThisMonth),
+    [operations, oneTimeSpentThisMonth],
   )
 
-  const freeQuestions = data?.free_questions ?? 0
+  const availableQuestions = data?.free_questions ?? 0
   const subscriptionQuestions = mySub?.questionsRemaining ?? 0
-  const adminQuestions = Math.max(0, freeQuestions - subscriptionQuestions)
-  const oneTimeQuestions = oneTimeTopupRub ? Math.floor(balance / oneTimeTopupRub) : 0
-  const availableQuestions = freeQuestions + oneTimeQuestions
+  const adminQuestions = Math.max(0, availableQuestions - subscriptionQuestions - purchasedQuestions)
 
   const qrUrl = newOrder?.alpha_qr_url ?? null
   const alfaUrl = newOrder?.alpha_form_url ?? null
@@ -634,7 +650,7 @@ export function V2ProfileBalance({ data, setUserBalance }: V2ProfileBalanceProps
             <div className={styles.statRow}>
               <span className={styles.statNumber}>{availableQuestions}</span>
               <span className={styles.statBadge}>
-                подписка {subscriptionQuestions} · начислено {adminQuestions} · разовые {oneTimeQuestions}
+                подписка {subscriptionQuestions} · начислено {adminQuestions} · разовые {purchasedQuestions}
               </span>
             </div>
           </div>

@@ -8,6 +8,7 @@ const msgGlobal = "REPO FREE-QUESTION "
 export interface DBFreeQuestionOperationRow extends RowDataPacket {
     id: number;
     op_type: FreeQuestionOpTypeE;
+    source: FreeQuestionSourceE | null;
     amount: number;
     comment: string | null;
     created_at: string;
@@ -59,6 +60,55 @@ export async function accrueFreeQuestions(
     } catch (error) {
         await conn.rollback();
         logger.error(msg + 'transaction failed', { user_id: userId, count, error });
+        return { ok: false };
+    } finally {
+        conn.release();
+    }
+}
+
+export async function accruePurchasedQuestions(
+    userId: number | string,
+    count: number,
+    orderId: number,
+    comment: string | null,
+): Promise<{ ok: boolean; operationId?: number; alreadyAccrued?: boolean }> {
+    const msg = msgGlobal + 'accruePurchasedQuestions - ';
+    if (!Number.isInteger(count) || count <= 0) {
+        logger.error(msg + 'invalid count', { user_id: userId, count, order_id: orderId });
+        return { ok: false };
+    }
+    const conn = await pool.getConnection();
+    try {
+        await conn.beginTransaction();
+        await conn.query(`SELECT id FROM user WHERE id = ? FOR UPDATE`, [userId]);
+        const [existing] = await conn.query<RowDataPacket[]>(
+            `SELECT id FROM free_question_grant WHERE order_id = ? LIMIT 1 FOR UPDATE`,
+            [orderId],
+        );
+        if (existing.length > 0) {
+            await conn.commit();
+            logger.info(msg + 'order already accrued, skipping', { user_id: userId, order_id: orderId });
+            return { ok: true, alreadyAccrued: true };
+        }
+        const [grantRes] = await conn.query<ResultSetHeader>(
+            `INSERT INTO free_question_grant(user_id, source, remaining, initial, expires_at, subscription_id, order_id, created_at)
+             VALUES(?, ?, ?, ?, NULL, NULL, ?, NOW())`,
+            [userId, FreeQuestionSourceE.Purchase, count, count, orderId],
+        );
+        const grantId = grantRes.insertId;
+        const [insRes] = await conn.query<ResultSetHeader>(
+            `INSERT INTO free_question_operation(user_id, admin_id, question_id, op_type, source, grant_id, amount, comment, created_at)
+             VALUES(?, NULL, NULL, ?, ?, ?, ?, ?, NOW())`,
+            [userId, FreeQuestionOpTypeE.Accrual, FreeQuestionSourceE.Purchase, grantId, count, comment],
+        );
+        await conn.query<ResultSetHeader>(`UPDATE user SET free_questions = free_questions + ? WHERE id = ?`, [count, userId]);
+        await conn.commit();
+        const operationId = insRes.insertId;
+        logger.info(msg + 'accrued', { user_id: userId, count, order_id: orderId, grant_id: grantId, operation_id: operationId });
+        return { ok: true, operationId };
+    } catch (error) {
+        await conn.rollback();
+        logger.error(msg + 'transaction failed', { user_id: userId, count, order_id: orderId, error });
         return { ok: false };
     } finally {
         conn.release();
@@ -129,7 +179,7 @@ export async function getUserFreeQuestionOperations(
     cap: number = 2000,
 ): Promise<DBFreeQuestionOperationRow[]> {
     const msg = msgGlobal + 'getUserFreeQuestionOperations - ';
-    const query = `SELECT o.id, o.op_type, o.amount, o.comment, o.created_at, o.admin_id, o.question_id,
+    const query = `SELECT o.id, o.op_type, o.source, o.amount, o.comment, o.created_at, o.admin_id, o.question_id,
         a.name admin_name, a.username admin_username, q.uuid question_uuid,
         (SELECT h.plan_name FROM subscription_history h
             WHERE h.subscription_id = g.subscription_id

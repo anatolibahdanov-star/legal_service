@@ -10,8 +10,9 @@ import { getPlanById } from '@/src/repositories/subscriptions/repo';
 import { UserBalanceRequest } from '@/src/interfaces/api';
 import { OrderTypeE } from '@/src/interfaces/payment';
 import { QuestionStatusesE } from '@/src/interfaces/data';
-import { initNewOrder } from '@/src/services/order';
+import { initNewOrder, isRubleAmountOrder } from '@/src/services/order';
 import { getSettingNumber } from '@/src/services/settings';
+import { getOneTimeQuestionPriceFresh } from '@/src/services/pricing';
 
 export const dynamic = 'force-dynamic'; // defaults to auto
 
@@ -130,10 +131,23 @@ export async function POST(request: Request) {
         balanceRequest.data = { ...(balanceRequest.data ?? {}), planId: plan.id };
     }
 
+    if (balanceRequest.type === OrderTypeE.OneTimePurchase) {
+        const priceRub = await getOneTimeQuestionPriceFresh();
+        if (!Number.isFinite(priceRub) || priceRub <= 0) {
+            logger.error(msg + 'OneTimePurchase: price is not configured', { user_id: user.id, price: priceRub });
+            return NextResponse.json(
+                { success: false, message: 'Цена разового вопроса не настроена.' },
+                { status: 409 }
+            );
+        }
+        balanceRequest.amount = priceRub;
+        balanceRequest.method = 'form';
+    }
+
     // Kopeck-denominated top-up floor applies to Balance top-ups (which are sent
-    // in kopecks), including the default (untyped) case. Subscription amount is
-    // rubles, validated above via the plan, so it is excluded here.
-    if (balanceRequest.type !== OrderTypeE.OneTime && balanceRequest.type !== OrderTypeE.Subscription) {
+    // in kopecks), including the default (untyped) case. Amounts of the other
+    // order types are in rubles and are set server-side, so they are excluded.
+    if (!isRubleAmountOrder(balanceRequest.type)) {
         const amountKop = Number(balanceRequest.amount)
         const minKop = Math.round(Math.max(0, getSettingNumber('min_topup_rub', 100)) * 100)
         if (!Number.isFinite(amountKop) || amountKop <= 0) {

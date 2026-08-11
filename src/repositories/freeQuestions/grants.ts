@@ -164,6 +164,21 @@ export async function getSubscriptionBvRemaining(userId: number | string): Promi
     }
 }
 
+export async function getPurchasedBvRemaining(userId: number | string): Promise<number> {
+    const msg = msgGlobal + 'getPurchasedBvRemaining - ';
+    try {
+        const [rows] = await pool.query<RowDataPacket[]>(
+            `SELECT COALESCE(SUM(remaining), 0) AS total FROM free_question_grant
+             WHERE user_id = ? AND source = ? AND remaining > 0 AND (expires_at IS NULL OR expires_at > NOW())`,
+            [userId, FreeQuestionSourceE.Purchase],
+        );
+        return Number(rows[0]?.total ?? 0);
+    } catch (error) {
+        logger.error(msg + 'failed', { user_id: userId, error });
+        return 0;
+    }
+}
+
 export async function getExpiredSubscriptionGrantIds(cap: number = 1000): Promise<number[]> {
     const msg = msgGlobal + 'getExpiredSubscriptionGrantIds - ';
     try {

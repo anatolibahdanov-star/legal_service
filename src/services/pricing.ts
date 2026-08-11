@@ -3,6 +3,7 @@ import { getSettingNumber, reloadSettings } from '@/src/services/settings';
 
 const DEFAULT_PRICE_RUB = 4.5;
 const DEFAULT_PRICE_RUB_LK = 3;
+const DEFAULT_ONE_TIME_PRICE_RUB = 2000;
 
 export type QuestionSource = 'lk' | 'main';
 
@@ -39,6 +40,10 @@ export function getQuestionPriceFor(source: QuestionSource): number {
   return source === 'lk' ? getQuestionPriceLK() : getQuestionPrice();
 }
 
+export function getOneTimeQuestionPrice(): number {
+  return Math.max(0, getSettingNumber('one_time_question_price_rub', DEFAULT_ONE_TIME_PRICE_RUB));
+}
+
 // Money-critical reads (price shown and charged to the user). These force a
 // settings refresh from the DB first, so a price changed in the admin panel
 // applies immediately instead of waiting out the in-memory cache TTL.
@@ -50,4 +55,9 @@ export async function getQuestionPriceLKFresh(): Promise<number> {
 export async function getQuestionPriceForFresh(source: QuestionSource): Promise<number> {
   await reloadSettings();
   return getQuestionPriceFor(source);
+}
+
+export async function getOneTimeQuestionPriceFresh(): Promise<number> {
+  await reloadSettings();
+  return getOneTimeQuestionPrice();
 }

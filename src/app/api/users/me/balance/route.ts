@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth/next';
 import logger from '@/src/libs/logger';
 import { authOptions } from '@/src/app/api/auth/[...nextauth]/route';
 import { getUsersByIds } from '@/src/repositories/users/repo';
+import { getPurchasedBvRemaining } from '@/src/repositories/freeQuestions/grants';
+import { getUserOneTimeSpentThisMonth } from '@/src/repositories/payments/repo';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,8 +37,19 @@ export async function GET() {
     );
   }
 
+  const [purchasedQuestions, oneTimeSpentThisMonth] = await Promise.all([
+    getPurchasedBvRemaining(session.user.id),
+    getUserOneTimeSpentThisMonth(session.user.id),
+  ]);
+
   return NextResponse.json(
-    { success: true, balance: user.balance ?? 0, freeQuestions: user.free_questions ?? 0 },
+    {
+      success: true,
+      balance: user.balance ?? 0,
+      freeQuestions: user.free_questions ?? 0,
+      purchasedQuestions,
+      oneTimeSpentThisMonth,
+    },
     { status: 200 },
   );
 }

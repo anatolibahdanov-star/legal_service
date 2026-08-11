@@ -46,6 +46,7 @@ export interface UserBalanceRequest {
     orderNumber: string;
     type?: OrderTypeE;
     status?: OrderStatusE;
+    method?: 'form' | 'qr';
     /** Free-form payload stored in porder.data — used by wizard OneTime
      *  orders to carry the question text across the Alfa redirect. */
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
