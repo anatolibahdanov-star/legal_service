@@ -14,6 +14,7 @@ import {
 const operationLabels: Record<PaymentOperationE, string> = {
   [PaymentOperationE.Payment]: "Оплата",
   [PaymentOperationE.Topup]: "Пополнение баланса",
+  [PaymentOperationE.OneTimeTopup]: "Начисление разового вопроса",
   [PaymentOperationE.Charge]: "Списание с баланса",
   [PaymentOperationE.SubscriptionPayment]: "Оплата подписки",
 };
@@ -85,6 +86,9 @@ export const ProfilePaymentHistory = () => {
   const renderDescription = (item: PaymentHistoryItemI) => {
     if (item.operation === PaymentOperationE.Topup) {
       return <span className="text-[#87b7ce]">Пополнение баланса</span>;
+    }
+    if (item.operation === PaymentOperationE.OneTimeTopup) {
+      return <span className="text-[#87b7ce]">Начисление разового вопроса</span>;
     }
     if (item.questionId) {
       const label = `Вопрос №${item.questionId}`;

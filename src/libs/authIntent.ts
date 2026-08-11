@@ -121,7 +121,6 @@ export function clearAllPendingPurchases(): void {
 export function getPostAuthPath(role?: string | null): string {
   if (role === 'admin') return '/admin#/requests'
   if (role === 'lowyer') return '/admin/requests'
-  if (peekPendingSubscriptionPlan()) return '/#subscriptions'
-  if (consumePendingOneTimePurchase()) return '/profile/?tab=balance'
+  if (peekPendingSubscriptionPlan() || peekPendingOneTimePurchase()) return '/ru#subscriptions'
   return '/profile'
 }

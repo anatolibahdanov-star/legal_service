@@ -27,7 +27,8 @@ const toRubles = (row: DBPaymentRow): number =>
 const detectAlfaMethod = (data: string | null): PaymentMethodE => {
     if (!data) return PaymentMethodE.Sbp
     try {
-        const parsed = JSON.parse(data)
+        let parsed = JSON.parse(data)
+        if (typeof parsed === 'string') parsed = JSON.parse(parsed)
         const markers = `${parsed?.payment_system ?? ""} ${parsed?.payment_way ?? ""}`.toUpperCase()
         if (markers.includes("YANDEX") || markers.includes("APPLE") || markers.includes("GOOGLE")) {
             return PaymentMethodE.YandexPay
@@ -57,9 +58,22 @@ export const detectPaymentMethod = (
 const resolveMethod = (row: DBPaymentRow): PaymentMethodE =>
     detectPaymentMethod(row.ptype, row.alpha_id, row.data)
 
+export const hasOneTimeOrderFlag = (data: string | null): boolean => {
+    if (!data) return false
+    try {
+        let parsed = JSON.parse(data)
+        if (typeof parsed === 'string') parsed = JSON.parse(parsed)
+        return parsed?.oneTime === true
+    } catch {
+        return false
+    }
+}
+
 const resolveOperation = (row: DBPaymentRow, method: PaymentMethodE): PaymentOperationE => {
     if (row.ptype === OrderTypeE.Subscription) return PaymentOperationE.SubscriptionPayment
-    if (row.ptype === OrderTypeE.Balance) return PaymentOperationE.Topup
+    if (row.ptype === OrderTypeE.Balance) {
+        return hasOneTimeOrderFlag(row.data) ? PaymentOperationE.OneTimeTopup : PaymentOperationE.Topup
+    }
     if (method === PaymentMethodE.Balance) return PaymentOperationE.Charge
     return PaymentOperationE.Payment
 }

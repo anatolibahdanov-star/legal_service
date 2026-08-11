@@ -61,6 +61,8 @@ const mapPorderOperation = (
             return { type: AdminOperationTypeE.Payment, amount, comment: null, actor: "Платёжная система", questionId, questionUuid }
         case PaymentOperationE.Topup:
             return { type: AdminOperationTypeE.Payment, amount, comment: "Пополнение баланса", actor: "Платёжная система", questionId: null, questionUuid: null }
+        case PaymentOperationE.OneTimeTopup:
+            return { type: AdminOperationTypeE.Payment, amount, comment: "Оплата разового вопроса", actor: "Платёжная система", questionId: null, questionUuid: null }
         case PaymentOperationE.SubscriptionPayment:
             return { type: AdminOperationTypeE.SubscriptionPayment, amount, comment: subscriptionPaymentComment(planName, subEvent), actor: "Платёжная система", questionId: null, questionUuid: null }
         case PaymentOperationE.Charge:
@@ -93,6 +95,18 @@ export const getAdminUserOperations = async (
             row.plan_name ?? null, row.sub_event ?? null,
         )
         if (!op) continue
+        if (mapped.operation === PaymentOperationE.OneTimeTopup) {
+            operations.push({
+                id: `p-${mapped.id}-acc`,
+                createdAt: mapped.createdAt,
+                type: AdminOperationTypeE.OneTimeAccrual,
+                amount: 1,
+                comment: null,
+                actor: "Платёжная система",
+                questionId: null,
+                questionUuid: null,
+            })
+        }
         operations.push({ id: `p-${mapped.id}`, createdAt: mapped.createdAt, ...op })
     }
 

@@ -1,7 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import useEmblaCarousel from 'embla-carousel-react'
 import { X } from 'lucide-react'
@@ -15,6 +14,8 @@ import {
   clearPendingSubscriptionPlan,
   setPendingSubscriptionPlan,
   setPendingOneTimePurchase,
+  peekPendingOneTimePurchase,
+  clearPendingOneTimePurchase,
 } from '@/src/libs/authIntent'
 import styles from './subscriptions.module.css'
 
@@ -151,11 +152,13 @@ function CheckIcon() {
 }
 
 export function Subscriptions() {
-  const router = useRouter()
   const { data: session } = useSession()
   const isStaff = isStaffRole(session?.user?.role)
   const [monthly, setMonthly] = useState<Plan[]>(MONTHLY_FALLBACK)
   const [buyingId, setBuyingId] = useState<number | null>(null)
+  const [oneTimeBuying, setOneTimeBuying] = useState(false)
+  const oneTimeBuyingRef = useRef(false)
+  const buyingRef = useRef(false)
   const [mySub, setMySub] = useState<MySub | null>(null)
   const [subCheck, setSubCheck] = useState<'loading' | 'ready' | 'error'>('loading')
   const [subLoadedFor, setSubLoadedFor] = useState<string | null>(null)
@@ -222,11 +225,12 @@ export function Subscriptions() {
       emitOpenAuth({ form: 'register' })
       return
     }
-    router.push('/profile/?tab=balance')
+    void doOneTimeTopup()
   }
 
   const doBuy = async (plan: Plan) => {
-    if (!plan.planId || buyingId !== null) return
+    if (!plan.planId || buyingRef.current) return
+    buyingRef.current = true
     setBuyingId(plan.planId)
     try {
       const res = await CustomRequest('/orders/', {
@@ -234,15 +238,47 @@ export function Subscriptions() {
         amount: 0,
         data: { planId: plan.planId },
       })
+      clearPendingSubscriptionPlan()
       if (res.status && res.data?.alpha_form_url) {
-        clearPendingSubscriptionPlan()
         window.location.href = res.data.alpha_form_url
         return
       }
+      buyingRef.current = false
       setBuyingId(null)
       alert(res.error || 'Не удалось создать платёж. Попробуйте ещё раз.')
     } catch {
+      clearPendingSubscriptionPlan()
+      buyingRef.current = false
       setBuyingId(null)
+      alert('Техническая ошибка. Попробуйте ещё раз.')
+    }
+  }
+
+  const doOneTimeTopup = async () => {
+    if (oneTimeBuyingRef.current) return
+    oneTimeBuyingRef.current = true
+    setOneTimeBuying(true)
+    try {
+      const min = await CustomGetRequest('/orders/min-topup/')
+      const rub =
+        typeof min?.data?.oneTimeTopupRub === 'number'
+          ? min.data.oneTimeTopupRub
+          : typeof min?.data?.minTopupRub === 'number'
+            ? min.data.minTopupRub
+            : 100
+      const res = await CustomRequest('/orders/', { amount: Math.round(rub * 100), data: { oneTime: true } })
+      clearPendingOneTimePurchase()
+      if (res.status && res.data?.alpha_form_url) {
+        window.location.href = res.data.alpha_form_url
+        return
+      }
+      oneTimeBuyingRef.current = false
+      setOneTimeBuying(false)
+      alert(res.error || 'Не удалось создать платёж. Попробуйте ещё раз.')
+    } catch {
+      clearPendingOneTimePurchase()
+      oneTimeBuyingRef.current = false
+      setOneTimeBuying(false)
       alert('Техническая ошибка. Попробуйте ещё раз.')
     }
   }
@@ -256,6 +292,11 @@ export function Subscriptions() {
       return
     }
     void doBuy(plan)
+  }
+
+  const closeConfirm = () => {
+    clearPendingSubscriptionPlan()
+    setConfirmData(null)
   }
 
   const handleBuy = (plan: Plan) => {
@@ -318,31 +359,37 @@ export function Subscriptions() {
     }
   }, [session?.user?.id, isStaff])
 
-  // Guest chose a plan → logged in/registered → resume through the confirm modal.
+  // Guest chose a plan or one-time top-up → logged in/registered → straight to payment
+  // (subscription still shows the confirm modal when it would change an existing sub).
   useEffect(() => {
     const userId = session?.user?.id ? String(session.user.id) : null
     if (!userId || isStaff) return
-    if (subLoadedFor !== userId || buyingId !== null) return
-    if (window.location.hash !== '#subscriptions') return
-    const pendingId = peekPendingSubscriptionPlan()
-    if (!pendingId) return
-    // Wait until DB-backed plans (with planId) are loaded — fallback cards have none.
-    const dbPlans = monthly.filter((item) => item.planId != null)
-    if (dbPlans.length === 0) return
-    clearPendingSubscriptionPlan()
-    const plan = dbPlans.find((item) => item.planId === pendingId)
-    if (!plan?.planId) return
-    document.getElementById('subscriptions')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    setConfirmData(buildConfirm(plan) ?? {
-      plan,
-      title: 'Подтверждение покупки',
-      paragraphs: [
-        `Вы выбрали тариф «${plan.name}» — ${plan.price}${plan.priceSuffix ?? ''}.`,
-        'Нажмите «Продолжить», чтобы перейти к оплате.',
-      ],
-    })
+    if (buyingId !== null || oneTimeBuying || confirmData) return
+    if (!peekPendingOneTimePurchase() && peekPendingSubscriptionPlan() === null) return
+    // Debounced: post-login router.refresh() can remount the component, so act
+    // only after the tree settles — otherwise the confirm modal flashes twice.
+    const timer = window.setTimeout(() => {
+      if (peekPendingOneTimePurchase()) {
+        void doOneTimeTopup()
+        return
+      }
+      if (subLoadedFor !== userId) return
+      const pendingId = peekPendingSubscriptionPlan()
+      if (!pendingId) return
+      // Wait until DB-backed plans (with planId) are loaded — fallback cards have none.
+      const dbPlans = monthly.filter((item) => item.planId != null)
+      if (dbPlans.length === 0) return
+      const plan = dbPlans.find((item) => item.planId === pendingId)
+      if (!plan?.planId) {
+        clearPendingSubscriptionPlan()
+        return
+      }
+      document.getElementById('subscriptions')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      startBuyForPlan(plan)
+    }, 500)
+    return () => window.clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.user?.id, isStaff, subLoadedFor, buyingId, monthly])
+  }, [session?.user?.id, isStaff, subLoadedFor, buyingId, oneTimeBuying, confirmData, monthly])
 
   const plans: Plan[] = [oneTimePlan, ...monthly]
 
@@ -479,8 +526,9 @@ export function Subscriptions() {
                         type="button"
                         className={styles.primaryButton}
                         onClick={handleOneTimeBuy}
+                        disabled={oneTimeBuying || buyingId !== null}
                       >
-                        Купить
+                        {oneTimeBuying ? 'Создаём платёж…' : 'Купить'}
                       </button>
                     ) : !session?.user ? (
                       <button
@@ -525,7 +573,7 @@ export function Subscriptions() {
       </div>
 
       {confirmData ? (
-        <div className={styles.modalOverlay} onClick={() => setConfirmData(null)}>
+        <div className={styles.modalOverlay} onClick={closeConfirm}>
           <div
             className={styles.modalBox}
             onClick={(e) => e.stopPropagation()}
@@ -536,7 +584,7 @@ export function Subscriptions() {
             <button
               type="button"
               className={styles.modalClose}
-              onClick={() => setConfirmData(null)}
+              onClick={closeConfirm}
               aria-label="Закрыть"
             >
               <X className={styles.modalCloseIcon} />
@@ -553,7 +601,7 @@ export function Subscriptions() {
               <button
                 type="button"
                 className={styles.modalCancelBtn}
-                onClick={() => setConfirmData(null)}
+                onClick={closeConfirm}
               >
                 Отмена
               </button>

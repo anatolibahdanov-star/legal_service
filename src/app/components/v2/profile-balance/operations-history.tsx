@@ -28,6 +28,7 @@ const PER_PAGE = 6
 
 const isCredit = (op: AdminBalanceOperationI): boolean =>
   op.type === AdminOperationTypeE.FreeAccrual ||
+  op.type === AdminOperationTypeE.OneTimeAccrual ||
   op.type === AdminOperationTypeE.Refund ||
   (op.type === AdminOperationTypeE.Payment && op.questionId === null)
 

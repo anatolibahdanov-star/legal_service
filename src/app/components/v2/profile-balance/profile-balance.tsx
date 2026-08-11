@@ -78,6 +78,7 @@ const isAlphaStatusFinal = (status: number): boolean =>
 // Пополнение баланса / возврат / бонусное начисление — приход.
 const isCredit = (op: AdminBalanceOperationI): boolean =>
   op.type === AdminOperationTypeE.FreeAccrual ||
+  op.type === AdminOperationTypeE.OneTimeAccrual ||
   op.type === AdminOperationTypeE.Refund ||
   (op.type === AdminOperationTypeE.Payment && op.questionId === null)
 
@@ -104,6 +105,7 @@ const monthLabel = capitalize(
 export function V2ProfileBalance({ data, setUserBalance }: V2ProfileBalanceProps) {
   const [newOrder, setNewOrder] = useState<DBOrder | null>(null)
   const [minTopupRub, setMinTopupRub] = useState(100)
+  const [oneTimeTopupRub, setOneTimeTopupRub] = useState<number | null>(null)
   const [methodPickerOpen, setMethodPickerOpen] = useState(false)
   const [creatingMethod, setCreatingMethod] = useState<TopupMethodT | null>(null)
   const [topupError, setTopupError] = useState('')
@@ -127,6 +129,9 @@ export function V2ProfileBalance({ data, setUserBalance }: V2ProfileBalanceProps
       const res = await CustomGetRequest('/orders/min-topup/')
       if (active && res.status && typeof res.data?.minTopupRub === 'number') {
         setMinTopupRub(res.data.minTopupRub)
+      }
+      if (active && res.status && typeof res.data?.oneTimeTopupRub === 'number' && res.data.oneTimeTopupRub > 0) {
+        setOneTimeTopupRub(res.data.oneTimeTopupRub)
       }
     }
     fetchMinTopup()
@@ -336,6 +341,12 @@ export function V2ProfileBalance({ data, setUserBalance }: V2ProfileBalanceProps
         .reduce((sum, op) => sum + Math.abs(op.amount), 0),
     [operations],
   )
+
+  const freeQuestions = data?.free_questions ?? 0
+  const subscriptionQuestions = mySub?.questionsRemaining ?? 0
+  const adminQuestions = Math.max(0, freeQuestions - subscriptionQuestions)
+  const oneTimeQuestions = oneTimeTopupRub ? Math.floor(balance / oneTimeTopupRub) : 0
+  const availableQuestions = freeQuestions + oneTimeQuestions
 
   const qrUrl = newOrder?.alpha_qr_url ?? null
   const alfaUrl = newOrder?.alpha_form_url ?? null
@@ -613,17 +624,31 @@ export function V2ProfileBalance({ data, setUserBalance }: V2ProfileBalanceProps
       {/* Низ: траты · дела */}
       <div className={styles.secondaryGrid}>
         <div className={styles.statCard}>
-          <p className={styles.statLabel}>Потрачено в этом месяце</p>
-          <p className={styles.statValue}>{formatRub(monthlySpent)} ₽</p>
+          <div>
+            <p className={styles.statLabel}>Потрачено в этом месяце</p>
+            <p className={styles.statValue}>{formatRub(monthlySpent)} ₽</p>
+          </div>
+          <div className={styles.statDivider} />
+          <div>
+            <p className={styles.statLabel}>Доступно вопросов</p>
+            <div className={styles.statRow}>
+              <span className={styles.statNumber}>{availableQuestions}</span>
+              <span className={styles.statBadge}>
+                подписка {subscriptionQuestions} · начислено {adminQuestions} · разовые {oneTimeQuestions}
+              </span>
+            </div>
+          </div>
         </div>
 
         <div className={styles.statCard}>
-          <p className={styles.statLabel}>Активных дел</p>
-          <div className={styles.statRow}>
-            <span className={styles.statNumber}>{dealsActive}</span>
-            {dealsCompleted > 0 && (
-              <span className={styles.statBadge}>{dealsCompleted} завершено</span>
-            )}
+          <div>
+            <p className={styles.statLabel}>Активных дел</p>
+            <p className={styles.statValue}>{dealsActive}</p>
+          </div>
+          <div className={styles.statDivider} />
+          <div>
+            <p className={styles.statLabel}>Завершено</p>
+            <p className={styles.statValue}>{dealsCompleted}</p>
           </div>
         </div>
       </div>
