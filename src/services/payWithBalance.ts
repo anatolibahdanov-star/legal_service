@@ -137,7 +137,7 @@ async function runPayment(params: PayParams): Promise<PayWithBalanceResult> {
   if (freeCharge.ok) {
     const updatedFree = await updateWizardQuestionStatus(
       question.id,
-      QuestionStatusesE.InProgress,
+      QuestionStatusesE.New,
       userId,
     );
     if (!updatedFree) {
@@ -211,10 +211,10 @@ async function runPayment(params: PayParams): Promise<PayWithBalanceResult> {
   }
   logger.info(msgGlobal + 'charged', { ...ctx, ledger_id: charge.transactionId });
 
-  // 4. Flip the question status: Unpaid → InProgress.
+  // 4. Flip the question status: Unpaid → New (waiting for a lawyer to claim it).
   const updated = await updateWizardQuestionStatus(
     question.id,
-    QuestionStatusesE.InProgress,
+    QuestionStatusesE.New,
     userId,
   );
   if (!updated) {

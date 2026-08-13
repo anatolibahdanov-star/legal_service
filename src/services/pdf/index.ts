@@ -53,11 +53,15 @@ export class PdfNotFoundError extends Error {
  * short_id. Internally we always pivot to the canonical question.uuid so the
  * S3 storage key is stable regardless of which alias the caller used.
  *
- *  1. Resolve id → question (loads root + user_id).
+ *  1. Resolve id → question (loads root + user_id), build the Quarkdown source
+ *     and hash it — cheap, no renderer involved.
  *  2. Look up `question_pdf` row in DB.
- *  3. If row exists → fetch S3 by `storage_key`.
+ *  3. If row exists and its `content_hash` matches the freshly built source →
+ *     fetch S3 by `storage_key`.
  *     - hit  → return as cache hit.
  *     - miss → log warning, delete orphan DB row, fall through to generate.
+ *     A hash mismatch means the question data or the PDF template changed since
+ *     the file was cached, so it also falls through to generate.
  *  4. Otherwise → render via Quarkdown, write to S3 (with metadata), upsert DB.
  *
  * All steps log to winston. Concurrent generation for the same question
@@ -76,8 +80,11 @@ export async function getOrGeneratePdf(id: string): Promise<PdfResult | null> {
   const userId = Number(root.user_id);
   const canonicalUuid = root.uuid;
 
+  const source = buildQuarkdownSource({ root, thread, ...assetPaths() });
+  const contentHash = sha256(source);
+
   // --- Cache path ---
-  const cached = await readFromCache(questionId, canonicalUuid);
+  const cached = await readFromCache(questionId, canonicalUuid, contentHash);
   if (cached) {
     logger.info(msg + 'cache hit', {
       uuid: canonicalUuid,
@@ -96,7 +103,13 @@ export async function getOrGeneratePdf(id: string): Promise<PdfResult | null> {
     return { ...result, generated: false };
   }
 
-  const work = generateAndStore({ uuid: canonicalUuid, root, thread, questionId, userId });
+  const work = generateAndStore({
+    uuid: canonicalUuid,
+    source,
+    contentHash,
+    questionId,
+    userId,
+  });
   inflight.set(questionId, work);
   try {
     const result = await work;
@@ -108,25 +121,17 @@ export async function getOrGeneratePdf(id: string): Promise<PdfResult | null> {
 
 interface GenerateArgs {
   uuid: string;
-  root: DBQuestion;
-  thread: DBQuestion[];
+  source: string;
+  contentHash: string;
   questionId: number;
   userId: number;
 }
 
 async function generateAndStore(args: GenerateArgs): Promise<PdfResult> {
   const msg = 'pdfService.generateAndStore - ';
-  const { uuid, root, thread, questionId, userId } = args;
+  const { uuid, source, contentHash, questionId, userId } = args;
 
-  const logoPath = path.join(process.cwd(), LOGO_PUBLIC_PATH);
-  await assertFileExists(logoPath);
-  const facsimilePath = path.join(process.cwd(), FACSIMILE_PUBLIC_PATH);
-  await assertFileExists(facsimilePath);
-  const fontPath = path.join(process.cwd(), FONT_PUBLIC_PATH);
-  await assertFileExists(fontPath);
-
-  const source = buildQuarkdownSource({ root, thread, logoPath, facsimilePath, fontPath });
-  const contentHash = sha256(source);
+  await assertAssets();
   const storageKey = buildStorageKey(questionId, uuid);
 
   let pdf: Uint8Array;
@@ -200,21 +205,21 @@ async function generateAndStore(args: GenerateArgs): Promise<PdfResult> {
 /**
  * Fast existence check used by the UI to pick the right loader label
  * ("Загружаем…" if PDF exists, "Генерируем…" if not). Touches only the DB —
- * no S3 round-trip — so it stays in the millisecond range.
+ * no S3 round-trip, no renderer — so it stays in the millisecond range. The
+ * hash comparison mirrors `readFromCache`, so a cached-but-stale file reports
+ * `false` and the label matches the wait the user actually gets.
  *
  * Accepts either the full uuid or the 4-char short_id.
  */
 export async function hasCachedPdf(id: string): Promise<boolean> {
   try {
-    const root = isShortId(id)
-      ? await getQuestionByShortId(id)
-      : await (async () => {
-          const rows = await getQuestionsByIds([id], false);
-          return rows?.[0] ?? null;
-        })();
-    if (!root) return false;
+    const loaded = await loadThread(id);
+    if (!loaded) return false;
+    const { root, thread } = loaded;
     const row = await getQuestionPdfByQuestionId(Number(root.id));
-    return !!row;
+    if (!row) return false;
+    const source = buildQuarkdownSource({ root, thread, ...assetPaths() });
+    return row.content_hash === sha256(source);
   } catch (err) {
     logger.error('pdfService.hasCachedPdf - error', {
       id,
@@ -300,20 +305,9 @@ export async function generateDraftPdf(
 
   const patchedThread = spliceDraftReply(thread, input);
 
-  const logoPath = path.join(process.cwd(), LOGO_PUBLIC_PATH);
-  await assertFileExists(logoPath);
-  const facsimilePath = path.join(process.cwd(), FACSIMILE_PUBLIC_PATH);
-  await assertFileExists(facsimilePath);
-  const fontPath = path.join(process.cwd(), FONT_PUBLIC_PATH);
-  await assertFileExists(fontPath);
+  await assertAssets();
 
-  const source = buildQuarkdownSource({
-    root,
-    thread: patchedThread,
-    logoPath,
-    facsimilePath,
-    fontPath,
-  });
+  const source = buildQuarkdownSource({ root, thread: patchedThread, ...assetPaths() });
   const contentHash = sha256(source);
   const storageKey = buildDraftStorageKey(questionId);
 
@@ -403,10 +397,23 @@ function spliceDraftReply(thread: DBQuestion[], input: DraftPdfInput): DBQuestio
 async function readFromCache(
   questionId: number,
   uuid: string,
+  expectedHash: string,
 ): Promise<PdfResult | null> {
   const msg = 'pdfService.readFromCache - ';
   const row = await getQuestionPdfByQuestionId(questionId);
   if (!row) return null;
+
+  if (row.content_hash !== expectedHash) {
+    // Question data or the PDF template changed since this file was cached —
+    // regenerate instead of serving a document that no longer matches.
+    logger.info(msg + 'stale content hash, regenerating', {
+      uuid,
+      question_id: questionId,
+      cached_hash: row.content_hash,
+      expected_hash: expectedHash,
+    });
+    return null;
+  }
 
   let s3Object: PdfObject | null;
   try {
@@ -453,6 +460,21 @@ function bindingFromRow(row: DBQuestionPdf): PdfResult['binding'] {
     storageKey: row.storage_key,
     contentHash: row.content_hash,
   };
+}
+
+function assetPaths(): { logoPath: string; facsimilePath: string; fontPath: string } {
+  return {
+    logoPath: path.join(process.cwd(), LOGO_PUBLIC_PATH),
+    facsimilePath: path.join(process.cwd(), FACSIMILE_PUBLIC_PATH),
+    fontPath: path.join(process.cwd(), FONT_PUBLIC_PATH),
+  };
+}
+
+async function assertAssets(): Promise<void> {
+  const { logoPath, facsimilePath, fontPath } = assetPaths();
+  await assertFileExists(logoPath);
+  await assertFileExists(facsimilePath);
+  await assertFileExists(fontPath);
 }
 
 async function assertFileExists(filePath: string): Promise<void> {

@@ -182,6 +182,31 @@ export function releaseRequest(id: string | number) {
   return changeRequestAssignment(id, 'DELETE')
 }
 
+export async function moderateRequest(
+  id: string | number,
+  action: 'spam' | 'invalid',
+): Promise<{ ok: boolean; data?: DBQuestion; error?: string; status?: number }> {
+  try {
+    const res = await fetch(`/api/request-moderation/${id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ action }),
+    })
+    const payload = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      return {
+        ok: false,
+        error: payload?.message || 'Не удалось изменить статус дела.',
+        status: res.status,
+      }
+    }
+    return { ok: true, data: payload.data as DBQuestion }
+  } catch {
+    return { ok: false, error: 'Не удалось изменить статус дела.' }
+  }
+}
+
 export async function deleteRequest(
   id: string | number,
 ): Promise<{ ok: boolean; error?: string }> {

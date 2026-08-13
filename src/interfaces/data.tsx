@@ -84,7 +84,7 @@ export const statusesDesign: Record<number, StatusColorI> = {
     3: {color: "#ef4444", name: "СПАМ"},
     2: {color: "#3b82f6", name: "В работе"},
     1: {color: "#f59e0b", name: "Ожидает ответа"},
-    0: {color: "#ef4444", name: "Ошибка"},
+    0: {color: "#a855f7", name: "Не активирован"},
   }
 
 export const dFormat = 'dd.MM.yyyy в HH:mm'

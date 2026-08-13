@@ -62,7 +62,13 @@ const editorOptions = {
 };
 
 const REQUEST_STATUS_CHOICES = getAdminChoices(QuestionStatusesE, "Статус обработки вопроса: ", true)
-    .filter(choice => [QuestionStatusesE.New, QuestionStatusesE.InProgress, QuestionStatusesE.Approved].includes(Number(choice.id)));
+    .filter(choice => [
+        QuestionStatusesE.New,
+        QuestionStatusesE.InProgress,
+        QuestionStatusesE.Approved,
+        QuestionStatusesE.Spam,
+        QuestionStatusesE.Disabled,
+    ].includes(Number(choice.id)));
 
 const useUnpaidLock = () => {
     const record = useRecordContext();
