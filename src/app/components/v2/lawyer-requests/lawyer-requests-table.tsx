@@ -67,8 +67,8 @@ export function LawyerRequestsTable({ scope, isSuper, adminId }: Props) {
 
   const [filters, setFilters] = useState<LawyerRequestFilters>(emptyFilters)
   const [activeFilterKeys, setActiveFilterKeys] = useState<OptionalFilterKey[]>([])
-  // Newest submissions first by default — that's the order lawyers care about most.
-  const [sort, setSort] = useState<RequestSort>({ field: 'created_at', dir: 'DESC' })
+  // Open, paid cases nobody has claimed yet should be first in the shared queue.
+  const [sort, setSort] = useState<RequestSort>({ field: 'lawyer_queue', dir: 'DESC' })
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
   const [rows, setRows] = useState<RequestRow[]>([])

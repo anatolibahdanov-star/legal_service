@@ -262,8 +262,14 @@ export function LawyerRequestDetailPage({ requestId }: Props) {
       viewer.document.close()
     }
 
-    // Always regenerate draft for preview so template/layout changes
-    // (dates, contacts, footer) are visible without editing the answer.
+    const answerChanged = plainText(finalReply) !== plainText(lastMessage?.final_reply)
+    if (!answerChanged) {
+      const url = `/api/pdf/${pdfId}`
+      if (viewer) viewer.location.href = url
+      else window.open(url, '_blank', 'noopener,noreferrer')
+      return
+    }
+
     setPdfLoading(true)
     try {
       const res = await fetch(`/api/pdf/${pdfId}/draft`, {
