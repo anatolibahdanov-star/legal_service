@@ -47,10 +47,12 @@ export async function POST(
   } catch {
     return NextResponse.json({ message: 'Некорректный запрос.' }, { status: 400 })
   }
-  const nextStatus = ACTION_STATUS[action as ModerationAction]
-  if (!nextStatus) {
+  // Compare against the known actions, not the mapped status: «invalid» maps to
+  // Disabled === 0, so a truthiness check would reject it.
+  if (action !== 'spam' && action !== 'invalid') {
     return NextResponse.json({ message: 'Неизвестное действие.' }, { status: 400 })
   }
+  const nextStatus = ACTION_STATUS[action]
 
   const questions = await getQuestionsByIds([String(id)])
   const current = questions?.[0] ?? null

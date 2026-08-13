@@ -415,7 +415,7 @@ export const ProfileJobList = ({is_user, user}: ProfileJobListPropsI) => {
       const statusMap = {
           Approved: { label: "Отвечено", color: "bg-[#10b981] text-white" },
           New: { label: "В ожидании", color: "bg-[#f59e0b] text-white" },
-          Disabled: { label: "Ошибка", color: "bg-[#ef4444] text-white" },
+          Disabled: { label: "Не активирован", color: "bg-[#a855f7] text-white" },
           Spam: { label: "СПАМ", color: "bg-[#ef4444] text-white" },
           InProgress: { label: "В работе", color: "bg-[#3b82f6] text-white" },
           Unpaid: { label: "Не оплачен", color: "bg-[#94a3b8] text-white" },
