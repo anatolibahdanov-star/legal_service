@@ -104,8 +104,8 @@ export function CaseModal({ caseItem, isOpen, onClose, openRatingSection, user, 
       }
 
       const statusMap = {
-          Approved: { label: "Отвечено", color: "bg-[#10b981] text-white" },
-          New: { label: "В ожидании", color: "bg-[#f59e0b] text-white" },
+          Approved: { label: "Отвечен", color: "bg-[#10b981] text-white" },
+          New: { label: "Новый", color: "bg-[#f59e0b] text-white" },
           Disabled: { label: "Не активирован", color: "bg-[#a855f7] text-white" },
           Spam: { label: "СПАМ", color: "bg-[#ef4444] text-white" },
           InProgress: { label: "В работе", color: "bg-[#3b82f6] text-white" },

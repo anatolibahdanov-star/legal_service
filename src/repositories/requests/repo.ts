@@ -306,6 +306,13 @@ export function getAdminQuestionFilter(filter: DBFilterQuestions | null = null):
         result += (resultAnd + 'q.job_status=' + filter.status + ' ')
         isFilter = true
     }
+    if (filter.archived !== undefined) {
+        const resultAnd = isFilter ? 'AND ' : ''
+        const operator = filter.archived ? 'IN' : 'NOT IN'
+        result += (resultAnd + 'q.job_status ' + operator
+            + '(' + QuestionStatusesE.Spam + ', ' + QuestionStatusesE.Disabled + ') ')
+        isFilter = true
+    }
     if (filter.is_rating) {
         const resultAnd = isFilter ? 'AND ' : ''
         result += (resultAnd + 'q.rating>0 ')
