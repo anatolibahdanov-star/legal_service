@@ -230,6 +230,10 @@ export async function getJobById(id: number): Promise<DBQuestion[] | null> {
 }
 
 export function getAdminQuestionOrder(orderBy:string[]): string {
+    if (orderBy?.[0] === "lawyer_queue") {
+        return `CASE WHEN q.job_status=${QuestionStatusesE.InProgress} AND q.admin_id IS NULL THEN 0 ELSE 1 END ASC, q.created_at DESC`
+    }
+
     const tablesFields: { [key: string]: string } = {
         "id": "q.id",
         "username": "u.name",
@@ -238,7 +242,7 @@ export function getAdminQuestionOrder(orderBy:string[]): string {
         "lawyer": "adi.name",
         "reply": "r.reply",
         "final_reply": "fr.final_reply",
-        "status": "q.status",
+        "status": "q.job_status",
         "created_at": "q.created_at",
         "updated_at": "q.updated_at",
     }
