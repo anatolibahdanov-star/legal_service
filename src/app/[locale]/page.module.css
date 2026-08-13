@@ -207,6 +207,8 @@
   }
 
   .heroTitle {
+    position: relative;
+    top: -28px;
     font-size: 46px;
     line-height: 52px;
     font-weight: 600;
