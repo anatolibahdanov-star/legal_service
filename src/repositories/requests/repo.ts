@@ -231,7 +231,10 @@ export async function getJobById(id: number): Promise<DBQuestion[] | null> {
 
 export function getAdminQuestionOrder(orderBy:string[]): string {
     if (orderBy?.[0] === "lawyer_queue") {
-        return `CASE WHEN q.job_status=${QuestionStatusesE.InProgress} AND q.admin_id IS NULL THEN 0 ELSE 1 END ASC, q.created_at DESC`
+        // Unclaimed paid cases first. A paid question waits as "Новый"; the
+        // InProgress branch keeps rows paid before that transition existed,
+        // plus cases whose lawyer was released without a status change.
+        return `CASE WHEN q.job_status IN(${QuestionStatusesE.New}, ${QuestionStatusesE.InProgress}) AND q.admin_id IS NULL THEN 0 ELSE 1 END ASC, q.created_at DESC`
     }
 
     const tablesFields: { [key: string]: string } = {
