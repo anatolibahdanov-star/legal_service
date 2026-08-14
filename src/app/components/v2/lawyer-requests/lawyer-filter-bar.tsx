@@ -8,8 +8,8 @@ import {
   EMAIL_STATUS_OPTIONS,
   FILTER_FIELD_DEFS,
   OPTIONAL_FILTER_KEYS,
-  STATUS_OPTIONS,
   type OptionalFilterKey,
+  type StatusOption,
 } from './lawyer-requests.data'
 import styles from './lawyer-requests.module.css'
 
@@ -17,6 +17,8 @@ type Props = {
   filters: LawyerRequestFilters
   activeKeys: OptionalFilterKey[]
   categories: CategoryOption[]
+  /** Набор статусов зависит от вкладки: рабочие или архивные. */
+  statusOptions: StatusOption[]
   onChange: (next: LawyerRequestFilters) => void
   onActiveKeysChange: (keys: OptionalFilterKey[]) => void
 }
@@ -25,6 +27,7 @@ export function LawyerFilterBar({
   filters,
   activeKeys,
   categories,
+  statusOptions,
   onChange,
   onActiveKeysChange,
 }: Props) {
@@ -131,7 +134,7 @@ export function LawyerFilterBar({
                     onChange={(e) => set('status', e.target.value)}
                   >
                     <option value="">Все</option>
-                    {STATUS_OPTIONS.map((s) => (
+                    {statusOptions.map((s) => (
                       <option key={s.value} value={s.value}>
                         {s.label}
                       </option>

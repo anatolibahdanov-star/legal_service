@@ -89,13 +89,13 @@ export async function POST(
   }
 
   const existingCount = await countByQuestionId(questionId, 'user');
-  const status = Number(question.status);
   const jobStatus = Number(question.job_status);
-  const isPreSubmit =
-    existingCount === 0 &&
-    (status === QuestionStatusesE.Unpaid || status === QuestionStatusesE.New);
-  const isInProgressUpload = jobStatus === QuestionStatusesE.InProgress;
-  if (!isPreSubmit && !isInProgressUpload) {
+  const isPreSubmit = existingCount === 0 && jobStatus === QuestionStatusesE.Unpaid;
+  // Paid and not yet answered: the question waits in the pool (New) or is being
+  // worked on (InProgress) — in both states the user may still add files.
+  const isOpenForUpload =
+    jobStatus === QuestionStatusesE.New || jobStatus === QuestionStatusesE.InProgress;
+  if (!isPreSubmit && !isOpenForUpload) {
     return NextResponse.json(
       { success: false, message: 'Файлы нельзя изменить после отправки запроса.' },
       { status: 409 },

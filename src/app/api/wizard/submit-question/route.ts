@@ -137,7 +137,7 @@ export async function POST(request: NextRequest) {
 
   const updated = await updateWizardQuestionStatus(
     question.id,
-    QuestionStatusesE.InProgress,
+    QuestionStatusesE.New,
     userId,
   );
   if (!updated) {

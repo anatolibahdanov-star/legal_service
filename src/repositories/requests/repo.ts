@@ -231,7 +231,10 @@ export async function getJobById(id: number): Promise<DBQuestion[] | null> {
 
 export function getAdminQuestionOrder(orderBy:string[]): string {
     if (orderBy?.[0] === "lawyer_queue") {
-        return `CASE WHEN q.job_status=${QuestionStatusesE.InProgress} AND q.admin_id IS NULL THEN 0 ELSE 1 END ASC, q.created_at DESC`
+        // Unclaimed paid cases first. A paid question waits as "Новый"; the
+        // InProgress branch keeps rows paid before that transition existed,
+        // plus cases whose lawyer was released without a status change.
+        return `CASE WHEN q.job_status IN(${QuestionStatusesE.New}, ${QuestionStatusesE.InProgress}) AND q.admin_id IS NULL THEN 0 ELSE 1 END ASC, q.created_at DESC`
     }
 
     const tablesFields: { [key: string]: string } = {
@@ -301,6 +304,13 @@ export function getAdminQuestionFilter(filter: DBFilterQuestions | null = null):
     if (filter.status || filter.status === 0) {
         const resultAnd = isFilter ? 'AND ' : ''
         result += (resultAnd + 'q.job_status=' + filter.status + ' ')
+        isFilter = true
+    }
+    if (filter.archived !== undefined) {
+        const resultAnd = isFilter ? 'AND ' : ''
+        const operator = filter.archived ? 'IN' : 'NOT IN'
+        result += (resultAnd + 'q.job_status ' + operator
+            + '(' + QuestionStatusesE.Spam + ', ' + QuestionStatusesE.Disabled + ') ')
         isFilter = true
     }
     if (filter.is_rating) {
@@ -671,8 +681,17 @@ export async function claimQuestion(
     adminId: string | number,
 ): Promise<DBQuestion | null> {
     const msg = msgGlobal + "claimQuestion - ";
+    // Taking a case moves it into "В работе". Questions pulled out of the
+    // archive (СПАМ / Не активирован) re-enter the same way; an already
+    // answered or unpaid question keeps its status.
     const query = `UPDATE question
-        SET admin_id=?, updated_at=NOW()
+        SET admin_id=?,
+            job_status=CASE
+                WHEN job_status IN(${QuestionStatusesE.New}, ${QuestionStatusesE.Spam}, ${QuestionStatusesE.Disabled})
+                    THEN ${QuestionStatusesE.InProgress}
+                ELSE job_status
+            END,
+            updated_at=NOW()
         WHERE id=? AND parent_id IS NULL AND admin_id IS NULL`;
     const updateFunc = update({ query, values: [adminId, id] });
     const executed = await executeTransactionWrapper<ResultSetHeader>([updateFunc], msg);
@@ -690,8 +709,15 @@ export async function releaseQuestion(
     canReleaseAny: boolean,
 ): Promise<DBQuestion | null> {
     const msg = msgGlobal + "releaseQuestion - ";
+    // Dropping a case returns it to the pool as "Новый". A case that is already
+    // answered (or archived) keeps its status — only the assignment is cleared.
     let query = `UPDATE question
-        SET admin_id=NULL, updated_at=NOW()
+        SET admin_id=NULL,
+            job_status=CASE
+                WHEN job_status=${QuestionStatusesE.InProgress} THEN ${QuestionStatusesE.New}
+                ELSE job_status
+            END,
+            updated_at=NOW()
         WHERE id=? AND parent_id IS NULL`;
     const values: Array<string | number> = [id];
     if (!canReleaseAny) {
@@ -702,6 +728,29 @@ export async function releaseQuestion(
     const executed = await executeTransactionWrapper<ResultSetHeader>([updateFunc], msg);
     if (!executed) {
         logger.error(msg + "SQL not results from execution", { id, adminId, canReleaseAny });
+        return null;
+    }
+    const questions = await getQuestionsByIds([String(id)]);
+    return questions?.[0] ?? null;
+}
+
+export async function moderateQuestion(
+    id: string | number,
+    nextStatus: QuestionStatusesE.Spam | QuestionStatusesE.Disabled,
+): Promise<DBQuestion | null> {
+    const msg = msgGlobal + "moderateQuestion - ";
+    // Only a case that is still waiting or in work can be archived, so the
+    // guard lives in the UPDATE and the transition stays atomic. The assignment
+    // is cleared so any lawyer can pull the question back out of the archive by
+    // claiming it (claimQuestion flips it back to "В работе").
+    const query = `UPDATE question
+        SET job_status=?, admin_id=NULL, updated_at=NOW()
+        WHERE id=? AND parent_id IS NULL
+            AND job_status IN(${QuestionStatusesE.New}, ${QuestionStatusesE.InProgress})`;
+    const updateFunc = update({ query, values: [nextStatus, id] });
+    const executed = await executeTransactionWrapper<ResultSetHeader>([updateFunc], msg);
+    if (!executed) {
+        logger.error(msg + "SQL not results from execution", { id, nextStatus });
         return null;
     }
     const questions = await getQuestionsByIds([String(id)]);

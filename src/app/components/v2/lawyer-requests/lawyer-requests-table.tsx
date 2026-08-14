@@ -10,11 +10,13 @@ import { LawyerFilterBar } from './lawyer-filter-bar'
 import { TruncatedText } from './truncated-text'
 import {
   PAGE_SIZE,
+  statusOptionsForScope,
   waitingElapsed,
   statusColor,
   statusLabel,
   type CategoryOption,
   type LawyerRequestFilters,
+  type LawyerRequestScope,
   type OptionalFilterKey,
   type RequestRow,
 } from './lawyer-requests.data'
@@ -56,19 +58,28 @@ function paginationItems(current: number, total: number): PaginationItem[] {
 const emptyFilters = (): LawyerRequestFilters => ({})
 
 type Props = {
-  /** "mine" scopes the list to the current lawyer's own cases ("Мои дела"). */
-  scope: 'all' | 'mine'
+  /**
+   * "mine" scopes the list to the current lawyer's own cases ("Мои дела"),
+   * "archive" to the questions dropped as СПАМ / не активированные.
+   */
+  scope: LawyerRequestScope
   isSuper: boolean
   adminId?: string | number
 }
 
 export function LawyerRequestsTable({ scope, isSuper, adminId }: Props) {
   const router = useRouter()
+  const isArchive = scope === 'archive'
 
   const [filters, setFilters] = useState<LawyerRequestFilters>(emptyFilters)
   const [activeFilterKeys, setActiveFilterKeys] = useState<OptionalFilterKey[]>([])
   // Open, paid cases nobody has claimed yet should be first in the shared queue.
-  const [sort, setSort] = useState<RequestSort>({ field: 'lawyer_queue', dir: 'DESC' })
+  // The archive has no queue to prioritise — newest first is what's useful there.
+  const [sort, setSort] = useState<RequestSort>(
+    isArchive
+      ? { field: 'created_at', dir: 'DESC' }
+      : { field: 'lawyer_queue', dir: 'DESC' },
+  )
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE)
   const [rows, setRows] = useState<RequestRow[]>([])
@@ -91,12 +102,13 @@ export function LawyerRequestsTable({ scope, isSuper, adminId }: Props) {
       filters,
       sort,
       adminId: scope === 'mine' ? adminId : undefined,
+      archived: isArchive,
     })
     setRows(res.rows)
     setTotal(res.total)
     if (res.error) setError(res.error)
     setLoading(false)
-  }, [filters, page, pageSize, sort, scope, adminId])
+  }, [filters, page, pageSize, sort, scope, adminId, isArchive])
 
   useEffect(() => {
     // Data loading owns the table's loading/error/result state.
@@ -120,7 +132,10 @@ export function LawyerRequestsTable({ scope, isSuper, adminId }: Props) {
 
   const handleExport = async () => {
     setExporting(true)
-    const res = await exportLawyerRequestsCsv(filters)
+    const res = await exportLawyerRequestsCsv(filters, {
+      adminId: scope === 'mine' ? adminId : undefined,
+      archived: isArchive,
+    })
     setExporting(false)
     if (!res.ok) {
       toast.error(res.error || 'Не удалось экспортировать')
@@ -149,6 +164,7 @@ export function LawyerRequestsTable({ scope, isSuper, adminId }: Props) {
           filters={filters}
           activeKeys={activeFilterKeys}
           categories={categories}
+          statusOptions={statusOptionsForScope(scope)}
           onChange={handleFiltersChange}
           onActiveKeysChange={setActiveFilterKeys}
         />
@@ -171,7 +187,9 @@ export function LawyerRequestsTable({ scope, isSuper, adminId }: Props) {
         <p className={styles.error}>{error}</p>
       ) : rows.length === 0 ? (
         <p className={styles.empty}>
-          {scope === 'mine' ? 'У вас пока нет дел в работе' : 'Заявок не найдено'}
+          {isArchive
+            ? 'Архив пуст — отбракованных вопросов нет'
+            : scope === 'mine' ? 'У вас пока нет дел в работе' : 'Заявок не найдено'}
         </p>
       ) : (
         <>

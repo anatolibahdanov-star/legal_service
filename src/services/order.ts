@@ -278,7 +278,7 @@ export const checkOrderStatus = async (slug:string, user: User): Promise<checkOr
                 } else {
                     const updatedQuestion = await updateWizardQuestionStatus(
                         oneTimeQuestionId,
-                        QuestionStatusesE.InProgress,
+                        QuestionStatusesE.New,
                         user.id,
                     );
                     if (updatedQuestion) {

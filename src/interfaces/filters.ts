@@ -16,6 +16,8 @@ export interface DBFilterQuestions {
   is_child?:boolean;
   admin_id?:number;
   is_rating?:boolean;
+  /** true — только архив (СПАМ + не активированные), false — только рабочие. */
+  archived?:boolean;
 }
 
 export interface DBFilterUsers {

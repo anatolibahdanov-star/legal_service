@@ -11,11 +11,12 @@ import { StaffGate } from './staff-gate'
 import { LawyerRequestsTable } from './lawyer-requests-table'
 import styles from './lawyer-requests.module.css'
 
-type LawyerPageTab = 'requests' | 'my-cases' | 'account'
+type LawyerPageTab = 'requests' | 'my-cases' | 'archive' | 'account'
 
 const TITLES: Record<LawyerPageTab, string> = {
   requests: 'Заявки',
   'my-cases': 'Мои дела',
+  archive: 'Архив вопросов',
   account: 'Аккаунт',
 }
 
@@ -67,6 +68,13 @@ export function LawyerRequestsPage() {
               </button>
               <button
                 type="button"
+                className={`${styles.tab} ${activeTab === 'archive' ? styles.tabActive : ''}`}
+                onClick={() => setActiveTab('archive')}
+              >
+                Архив
+              </button>
+              <button
+                type="button"
                 className={`${styles.tab} ${activeTab === 'account' ? styles.tabActive : ''}`}
                 onClick={() => setActiveTab('account')}
               >
@@ -94,6 +102,8 @@ export function LawyerRequestsPage() {
             </div>
           ) : activeTab === 'my-cases' ? (
             <LawyerRequestsTable scope="mine" isSuper={isSuper} adminId={user?.id} />
+          ) : activeTab === 'archive' ? (
+            <LawyerRequestsTable scope="archive" isSuper={isSuper} />
           ) : (
             <LawyerRequestsTable scope="all" isSuper={isSuper} />
           )}

@@ -58,7 +58,7 @@ export enum LangItemsE {
   NotRegistered = "Не зарегестрирован",
   Disabled = "Не активирован",
   Sent = "Отправлено",
-  Approved = "Подтверждено",
+  Approved = "Отвечен",
   Activated="Активировано",
   Registered="Зарегистрирован",
   SuperAdmin="Администратор",
@@ -80,11 +80,11 @@ export enum LangItemsE {
 
 export const statusesDesign: Record<number, StatusColorI> = {
     5: {color: "#94a3b8", name: "Не оплачен"},
-    4: {color: "#10b981", name: "Ответ получен"},
+    4: {color: "#10b981", name: "Отвечен"},
     3: {color: "#ef4444", name: "СПАМ"},
     2: {color: "#3b82f6", name: "В работе"},
-    1: {color: "#f59e0b", name: "Ожидает ответа"},
-    0: {color: "#ef4444", name: "Ошибка"},
+    1: {color: "#f59e0b", name: "Новый"},
+    0: {color: "#a855f7", name: "Не активирован"},
   }
 
 export const dFormat = 'dd.MM.yyyy в HH:mm'

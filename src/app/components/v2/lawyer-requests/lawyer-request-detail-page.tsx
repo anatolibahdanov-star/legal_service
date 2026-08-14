@@ -27,6 +27,7 @@ import {
   fetchAttachmentsMap,
   fetchRequestRecord,
   fetchRequestThread,
+  moderateRequest,
   releaseRequest,
   runConsultantPlus,
   saveRequest,
@@ -72,6 +73,7 @@ export function LawyerRequestDetailPage({ requestId }: Props) {
   const [sendLoading, setSendLoading] = useState(false)
   const [pdfLoading, setPdfLoading] = useState(false)
   const [assignmentLoading, setAssignmentLoading] = useState(false)
+  const [moderatingAction, setModeratingAction] = useState<'spam' | 'invalid' | null>(null)
   const [confirmation, setConfirmation] = useState<ConfirmationAction | null>(null)
 
   const [files, setFiles] = useState<File[]>([])
@@ -92,7 +94,19 @@ export function LawyerRequestDetailPage({ requestId }: Props) {
   const canRelease = isMine || (isAssigned && isSuper)
   const isAnswerReceived = record?.job_status === QuestionStatusesE.Approved
   const isUnpaid = record?.job_status === QuestionStatusesE.Unpaid
+  const isArchived =
+    record?.job_status === QuestionStatusesE.Spam
+    || record?.job_status === QuestionStatusesE.Disabled
   const canSendAnswer = !isAnswerReceived && !isUnpaid
+  const canArchive = !isAnswerReceived && !isUnpaid && !isArchived
+  const moderationLoading = moderatingAction !== null
+  const archiveBlockedReason = isAnswerReceived
+    ? 'Дело завершено — ответ уже отправлен'
+    : isUnpaid
+      ? 'Нельзя работать с неоплаченным вопросом'
+      : isArchived
+        ? 'Вопрос уже в архиве'
+        : undefined
 
   const askConfirmation = (action: ConfirmationAction) => setConfirmation(action)
 
@@ -231,6 +245,33 @@ export function LawyerRequestDetailPage({ requestId }: Props) {
       return
     }
     toast.success('Ответ отправлен пользователю')
+    await reload()
+  }
+
+  const handleModeration = async (action: 'spam' | 'invalid') => {
+    if (!record || moderationLoading) return
+    if (isUnpaid) {
+      toast.warning('Вопрос не оплачен — работа с ним недоступна.')
+      return
+    }
+    if (isAnswerReceived) {
+      toast.warning('Дело завершено — ответ уже отправлен.')
+      return
+    }
+    if (!(await ensureOwnership())) return
+    setModeratingAction(action)
+    const res = await moderateRequest(record.id, action)
+    setModeratingAction(null)
+    if (!res.ok) {
+      toast.error(res.error || 'Не удалось изменить статус дела.')
+      if (res.status === 409) await reload()
+      return
+    }
+    toast.success(
+      action === 'spam'
+        ? 'Вопрос отправлен в архив как СПАМ.'
+        : 'Вопрос отправлен в архив как некорректный.',
+    )
     await reload()
   }
 
@@ -596,6 +637,38 @@ export function LawyerRequestDetailPage({ requestId }: Props) {
                 >
                   {pdfLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                   Предпросмотр в PDF
+                </button>
+                <button
+                  type="button"
+                  className={styles.btnDanger}
+                  onClick={() => askConfirmation({
+                    title: 'Отметить вопрос как СПАМ?',
+                    description: 'Дело уйдёт в архив и пропадёт из рабочего списка. Вернуть его можно, снова взяв в работу.',
+                    confirmLabel: 'В архив (СПАМ)',
+                    tone: 'danger',
+                    run: () => handleModeration('spam'),
+                  })}
+                  disabled={moderationLoading || assignmentLoading || !canArchive}
+                  title={archiveBlockedReason}
+                >
+                  {moderatingAction === 'spam' ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  СПАМ
+                </button>
+                <button
+                  type="button"
+                  className={styles.btnDanger}
+                  onClick={() => askConfirmation({
+                    title: 'Отметить вопрос некорректным?',
+                    description: 'Дело уйдёт в архив со статусом «Не активирован». Вернуть его можно, снова взяв в работу.',
+                    confirmLabel: 'В архив (не активирован)',
+                    tone: 'danger',
+                    run: () => handleModeration('invalid'),
+                  })}
+                  disabled={moderationLoading || assignmentLoading || !canArchive}
+                  title={archiveBlockedReason}
+                >
+                  {moderatingAction === 'invalid' ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  Некорректный
                 </button>
                 <button
                   type="button"

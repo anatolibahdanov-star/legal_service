@@ -3,6 +3,12 @@ import { ru } from 'date-fns/locale'
 import { QuestionStatusesE, EmailStatusesE, statusesDesign } from '@/src/interfaces/data'
 import type { AttachmentDTO, DBQuestion } from '@/src/interfaces/db'
 
+/**
+ * «archive» — вопросы, отбракованные юристом (СПАМ / не активированные).
+ * Рабочие вкладки их не показывают, архив показывает только их.
+ */
+export type LawyerRequestScope = 'all' | 'mine' | 'archive'
+
 export const PAGE_SIZE = 20
 export const EXPORT_PAGE_SIZE = 200
 export const EXPORT_MAX_ROWS = 2000
@@ -52,11 +58,29 @@ export const FILTER_FIELD_DEFS: Record<
 
 export type CategoryOption = { id: number | string; name: string }
 
-export const STATUS_OPTIONS: Array<{ value: number; label: string }> = [
-  { value: QuestionStatusesE.New, label: statusesDesign[QuestionStatusesE.New].name },
-  { value: QuestionStatusesE.InProgress, label: statusesDesign[QuestionStatusesE.InProgress].name },
-  { value: QuestionStatusesE.Approved, label: statusesDesign[QuestionStatusesE.Approved].name },
+export type StatusOption = { value: number; label: string }
+
+const statusOption = (value: QuestionStatusesE): StatusOption => ({
+  value,
+  label: statusesDesign[value].name,
+})
+
+/** Статусы рабочего списка — вкладки «Заявки» и «Мои дела». */
+export const WORK_STATUS_OPTIONS: StatusOption[] = [
+  statusOption(QuestionStatusesE.New),
+  statusOption(QuestionStatusesE.InProgress),
+  statusOption(QuestionStatusesE.Approved),
 ]
+
+/** Статусы архива — вкладка «Архив». */
+export const ARCHIVE_STATUS_OPTIONS: StatusOption[] = [
+  statusOption(QuestionStatusesE.Spam),
+  statusOption(QuestionStatusesE.Disabled),
+]
+
+export function statusOptionsForScope(scope: LawyerRequestScope): StatusOption[] {
+  return scope === 'archive' ? ARCHIVE_STATUS_OPTIONS : WORK_STATUS_OPTIONS
+}
 
 export const EMAIL_STATUS_OPTIONS: Array<{ value: number; label: string }> = [
   { value: EmailStatusesE.None, label: 'Не отправлено' },

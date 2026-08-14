@@ -38,6 +38,8 @@ export async function fetchLawyerRequests(opts: {
   sort?: RequestSort
   /** Scopes the list to a single lawyer's own cases (the "Мои дела" tab). */
   adminId?: string | number
+  /** true — только архив (СПАМ / не активированные), false — только рабочие. */
+  archived?: boolean
 }): Promise<{ rows: RequestRow[]; total: number; error?: string }> {
   const pageSize = opts.pageSize ?? PAGE_SIZE
   const start = (opts.page - 1) * pageSize
@@ -45,6 +47,7 @@ export async function fetchLawyerRequests(opts: {
   const sort = opts.sort ?? { field: 'id', dir: 'DESC' }
   const filterPayload = buildFilterPayload(opts.filters)
   if (opts.adminId !== undefined) filterPayload.admin_id = Number(opts.adminId)
+  if (opts.archived !== undefined) filterPayload.archived = opts.archived
 
   const params = new URLSearchParams({
     range: JSON.stringify([start, end]),
@@ -71,6 +74,7 @@ export async function fetchLawyerRequests(opts: {
 
 export async function exportLawyerRequestsCsv(
   filters: LawyerRequestFilters,
+  opts: { adminId?: string | number; archived?: boolean } = {},
 ): Promise<{ ok: boolean; error?: string; count?: number }> {
   const all: RequestRow[] = []
   let page = 1
@@ -81,6 +85,8 @@ export async function exportLawyerRequestsCsv(
       page,
       pageSize: EXPORT_PAGE_SIZE,
       filters,
+      adminId: opts.adminId,
+      archived: opts.archived,
     })
     if (res.error) return { ok: false, error: res.error }
     total = res.total
@@ -180,6 +186,31 @@ export function claimRequest(id: string | number) {
 
 export function releaseRequest(id: string | number) {
   return changeRequestAssignment(id, 'DELETE')
+}
+
+export async function moderateRequest(
+  id: string | number,
+  action: 'spam' | 'invalid',
+): Promise<{ ok: boolean; data?: DBQuestion; error?: string; status?: number }> {
+  try {
+    const res = await fetch(`/api/request-moderation/${id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ action }),
+    })
+    const payload = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      return {
+        ok: false,
+        error: payload?.message || 'Не удалось изменить статус дела.',
+        status: res.status,
+      }
+    }
+    return { ok: true, data: payload.data as DBQuestion }
+  } catch {
+    return { ok: false, error: 'Не удалось изменить статус дела.' }
+  }
 }
 
 export async function deleteRequest(
