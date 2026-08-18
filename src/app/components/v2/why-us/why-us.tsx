@@ -95,7 +95,11 @@ function WhyUsCarousel() {
                 </div>
                 <div className={styles.whyUsCardBody}>
                   <p className={styles.whyUsCardTitle}>{card.title}</p>
-                  <p className={styles.whyUsCardDesc}>
+                  <p
+                    className={`${styles.whyUsCardDesc} ${
+                      card.emphasizeDesc ? styles.whyUsCardDescEmphasized : ''
+                    }`}
+                  >
                     <CardDesc text={card.desc} />
                   </p>
                 </div>
