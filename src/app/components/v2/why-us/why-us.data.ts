@@ -12,6 +12,7 @@ export interface WhyUsCard {
   title: string
   desc: string
   textColor: string
+  emphasizeDesc?: boolean
 }
 
 export const CARDS: WhyUsCard[] = [
@@ -19,14 +20,13 @@ export const CARDS: WhyUsCard[] = [
     bg: '#34347C',
     iconBg: '#4242A1',
     icon: iconWhyUs1,
-    title: 'Сервис организован следующим образом',
+    title: 'Пользователь задает вопрос',
     desc: [
-      'Пользователь задает вопрос',
       'ИИ подготавливает проект ответа',
-      'Практикующий юрист проверяет и дорабатывает его',
-      'Финальный ответ подписывается специалистом',
+      'Профильный юрист проверяет и дорабатывает его',
     ].join('\n\n'),
     textColor: '#fff',
+    emphasizeDesc: true,
   },
   {
     bg: '#D8D054',

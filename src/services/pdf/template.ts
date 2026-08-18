@@ -144,7 +144,6 @@ export function buildQuarkdownSource(input: QuarkdownTemplateInput): string {
   const lawyerAdminId = resolveLawyerAdminId(root, thread);
   const when = formatSampleDateTime(root.created_at as unknown as string);
   const userRefs = formatUserRefs(root);
-  const userName = displayName(root);
   const questionText = collectQuestionText(thread);
   const answerText = collectAnswerText(thread);
 
@@ -155,7 +154,7 @@ export function buildQuarkdownSource(input: QuarkdownTemplateInput): string {
         ? `**Данный ответ составляется на вопрос, полученный ${escapeInline(when)}. Текст вопроса:**`
         : `**Данный ответ составляется на вопрос пользователя. Текст вопроса:**`;
 
-  const transition = `**По итогам рассмотрения информации из вопроса ${escapeInline(userName)} можно сообщить следующее:**`;
+  const transition = `**По итогам рассмотрения информации из вопроса можно сообщить следующее:**`;
 
   const quotedQuestion = questionText
     ? `«${escapeBlock(questionText)}»`
