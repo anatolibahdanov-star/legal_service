@@ -2,7 +2,7 @@ import logger from "@/src/libs/logger"
 import { User } from "next-auth";
 import { CustomResponseDataI } from "../interfaces/api";
 
-const ALFA_API_URL = process.env.ALFA_API_URL || 'https://pay.alfabank.ru/payment/rest';
+const ALFA_API_URL = process.env.ALFA_API_URL || 'https://payment.alfabank.ru/payment/rest';
 const ALFA_API_URL_DYN = `${ALFA_API_URL}/sbp/c2b/qr/dynamic/get.do`;
 const USERNAME = process.env.ALFA_USERNAME;
 const PASSWORD = process.env.ALFA_PASSWORD;

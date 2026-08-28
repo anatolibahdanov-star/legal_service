@@ -245,6 +245,7 @@ export const checkOrderStatus = async (slug:string, user: User): Promise<checkOr
             order_number: alfaOrder.data.orderNumber,
             order_status: alfaOrder.data.orderStatus,
             action_code: alfaOrder.data.actionCode,
+            action_code_description: alfaOrder.data.actionCodeDescription,
             payment_amount_info: alfaOrder.data.paymentAmountInfo,
         }
         transaction.data = transaction_info
@@ -388,7 +389,7 @@ export const checkOrderStatus = async (slug:string, user: User): Promise<checkOr
                 alphaId: updatedOrderStatus.alpha_id,
                 data: updateOrder.transaction_info,
                 eventAt: updatedOrderStatus.updated_at ?? updatedOrderStatus.created_at,
-                reason: transaction_info.message ?? null,
+                reason: transaction_info.action_code_description?.trim() || null,
             })
         }
 
